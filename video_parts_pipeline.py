@@ -25,6 +25,8 @@ DEFAULT_FFMPEG_BIN = r"D:\ffmpeg\bin"
 DEFAULT_PRESET = "workshop"
 DEFAULT_FEATURED_WIDTH = 630
 DEFAULT_MIN_GIF_FPS = 15
+DEFAULT_PRECHECK_BPPF = 0.10
+DEFAULT_PRECHECK_MARGIN_PCT = 10.0
 
 
 def load_dotenv() -> None:
@@ -52,6 +54,13 @@ def env_int(name: str, default: int) -> int:
     if raw is None or raw.strip() == "":
         return default
     return int(raw.strip())
+
+
+def env_float(name: str, default: float) -> float:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return float(raw.strip())
 
 
 def env_bool(name: str, default: bool) -> bool:
@@ -216,11 +225,71 @@ def probe(ffprobe: Path, input_video: Path) -> tuple[int, int, float]:
     return width, height, duration
 
 
+def compute_target_height(src_w: int, src_h: int, total_target_w: int) -> int:
+    return max(1, round(src_h * (total_target_w / src_w)))
+
+
+def estimate_gif_kb(
+    width: int,
+    height: int,
+    fps: int,
+    duration: float,
+    bppf: float,
+) -> float:
+    # bppf = bytes per pixel-frame in an optimistic compression scenario.
+    pixel_frames = width * height * fps * duration
+    return (pixel_frames * bppf) / 1024.0
+
+
+def run_size_precheck(
+    input_video: Path,
+    src_w: int,
+    src_h: int,
+    duration: float,
+    parts: int,
+    part_width: int,
+    min_gif_fps: int,
+    max_gif_kb: int,
+    precheck_bppf: float,
+    precheck_margin_pct: float,
+) -> None:
+    total_target_w = parts * part_width
+    target_h = compute_target_height(src_w, src_h, total_target_w)
+    est_kb = estimate_gif_kb(
+        width=part_width,
+        height=target_h,
+        fps=min_gif_fps,
+        duration=duration,
+        bppf=precheck_bppf,
+    )
+    allowed_kb = max_gif_kb * (1.0 + (precheck_margin_pct / 100.0))
+    src_kb = input_video.stat().st_size / 1024.0
+
+    print(
+        "Precheck: "
+        f"source={src_kb:.1f}KB, "
+        f"estimated_min_output={est_kb:.1f}KB per GIF "
+        f"(at {min_gif_fps}fps, bppf={precheck_bppf:.3f}), "
+        f"allowed={allowed_kb:.1f}KB"
+    )
+
+    if est_kb > allowed_kb:
+        raise RuntimeError(
+            "Precheck failed: source video is likely too heavy for configured GIF limit. "
+            f"Estimated minimum is {est_kb:.1f}KB per GIF, while limit is {max_gif_kb}KB "
+            f"(margin {precheck_margin_pct:.1f}%). "
+            "Use --skip-precheck to bypass."
+        )
+
+
 def make_gif_parts(
     ffmpeg: Path,
     input_video: Path,
     out_dir: Path,
     preset: str,
+    src_w: int,
+    src_h: int,
+    duration: float,
     parts: int,
     part_width: int,
     gif_fps: int,
@@ -230,9 +299,8 @@ def make_gif_parts(
     max_gif_kb: int,
     target_gif_kb: int,
 ) -> None:
-    src_w, src_h, duration = probe(ffmpeg.parent / "ffprobe.exe", input_video)
     total_target_w = parts * part_width
-    target_h = max(1, round(src_h * (total_target_w / src_w)))
+    target_h = compute_target_height(src_w, src_h, total_target_w)
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -317,6 +385,11 @@ def main() -> int:
     default_parts = env_int("GIF_PARTS", 5)
     default_part_width = env_int("GIF_PART_WIDTH", 150)
     default_min_gif_fps = env_int("GIF_MIN_FPS", DEFAULT_MIN_GIF_FPS)
+    default_precheck_enabled = env_bool("GIF_PRECHECK_ENABLED", True)
+    default_precheck_bppf = env_float("GIF_PRECHECK_BPPF", DEFAULT_PRECHECK_BPPF)
+    default_precheck_margin_pct = env_float(
+        "GIF_PRECHECK_MARGIN_PCT", DEFAULT_PRECHECK_MARGIN_PCT
+    )
     default_preset = os.getenv("GIF_PRESET", DEFAULT_PRESET).strip().lower()
     default_featured_width = env_int("FEATURED_ARTWORK_WIDTH", DEFAULT_FEATURED_WIDTH)
     default_gif_fps = env_int("GIF_FPS", 15)
@@ -422,6 +495,14 @@ def main() -> int:
             "Default: <input_stem>/output"
         ),
     )
+    parser.add_argument(
+        "--skip-precheck",
+        action="store_true",
+        help=(
+            "Bypass early feasibility precheck. "
+            "By default precheck is enabled (unless disabled via .env)."
+        ),
+    )
     args = parser.parse_args()
 
     input_video = Path(args.input).resolve()
@@ -470,6 +551,10 @@ def main() -> int:
         raise ValueError("--gif-fps must be >= 1")
     if default_min_gif_fps < 1:
         raise ValueError("GIF_MIN_FPS in .env must be >= 1")
+    if default_precheck_bppf <= 0:
+        raise ValueError("GIF_PRECHECK_BPPF in .env must be > 0")
+    if default_precheck_margin_pct < 0:
+        raise ValueError("GIF_PRECHECK_MARGIN_PCT in .env must be >= 0")
     if args.gif_fps < default_min_gif_fps:
         raise ValueError(
             f"--gif-fps must be >= {default_min_gif_fps} (from .env GIF_MIN_FPS)"
@@ -481,6 +566,25 @@ def main() -> int:
     if target_gif_kb > max_gif_kb:
         raise ValueError("--target-gif-kb must be <= --max-gif-kb")
     hex_byte = parse_hex_byte(args.hex_byte)
+    src_w, src_h, duration = probe(ffprobe, input_video)
+
+    precheck_enabled = default_precheck_enabled and not args.skip_precheck
+    if precheck_enabled:
+        run_size_precheck(
+            input_video=input_video,
+            src_w=src_w,
+            src_h=src_h,
+            duration=duration,
+            parts=parts,
+            part_width=part_width,
+            min_gif_fps=default_min_gif_fps,
+            max_gif_kb=max_gif_kb,
+            precheck_bppf=default_precheck_bppf,
+            precheck_margin_pct=default_precheck_margin_pct,
+        )
+    else:
+        reason = "--skip-precheck" if args.skip_precheck else ".env GIF_PRECHECK_ENABLED=false"
+        print(f"Precheck: skipped ({reason})")
 
     if args.out_dir:
         out_dir = Path(args.out_dir).resolve()
@@ -492,6 +596,9 @@ def main() -> int:
         input_video=input_video,
         out_dir=out_dir,
         preset=args.preset,
+        src_w=src_w,
+        src_h=src_h,
+        duration=duration,
         parts=parts,
         part_width=part_width,
         gif_fps=args.gif_fps,

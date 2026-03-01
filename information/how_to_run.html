@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>How To Run</title>
+</head>
+<body>
+  <h1>How To Run (Short)</h1>
+
+  <h2>0) Before you run (Python + FFmpeg)</h2>
+  <p><strong>Python</strong> runs the local automation scripts:</p>
+  <ul>
+    <li><code>video_parts_pipeline.py</code></li>
+    <li><code>steam_hex_patch.py</code></li>
+    <li><code>steam_hex_edit_header.py</code></li>
+  </ul>
+  <p><strong>FFmpeg</strong> does the actual media work (video -&gt; GIF, resize, palette, probe).</p>
+  <p>The scripts use <code>FFMPEG_BIN</code> from <code>.env</code> (current default: <code>D:\ffmpeg\bin</code>).</p>
+  <p>Download links:</p>
+  <ul>
+    <li><a href="https://www.python.org/downloads/">Python</a></li>
+    <li><a href="https://ffmpeg.org/download.html">FFmpeg official site</a></li>
+  </ul>
+
+  <p>Quick checks:</p>
+  <pre><code>python --version</code></pre>
+  <pre><code>D:\ffmpeg\bin\ffmpeg.exe -version</code></pre>
+  <pre><code>D:\ffmpeg\bin\ffprobe.exe -version</code></pre>
+
+  <p>If any command fails, fix Python/FFmpeg path first, then run the steps below.</p>
+
+  <h2>1) Generate GIFs from video</h2>
+  <p>Workshop (5 parts, 150px each):</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop</code></pre>
+
+  <p>Featured (single 630px):</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured</code></pre>
+
+  <p>Brief:</p>
+  <ul>
+    <li>Script reads defaults from <code>.env</code>.</li>
+    <li>Precheck runs first (to catch likely too-large outputs).</li>
+  </ul>
+  <p>If needed, bypass precheck:</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured --skip-precheck</code></pre>
+
+  <h2>2) Autofill Steam upload page (DevTools Console)</h2>
+  <ul>
+    <li>Workshop: <code>autofill/steam_upload_autofill_workshop.js</code></li>
+    <li>Featured: <code>autofill/steam_upload_autofill_featured.js</code></li>
+  </ul>
+  <p>Brief: sets required fields and checkbox automatically.</p>
+
+  <h2>3) Hex tools</h2>
+  <p>Patch EOF byte only:</p>
+  <pre><code>python steam_hex_patch.py .\media\my_folder --recursive --ext .gif</code></pre>
+
+  <p>Patch GIF header width/height (+ optional EOF):</p>
+  <pre><code>python steam_hex_edit_header.py .\media\my_folder --recursive</code></pre>
+
+  <h2>4) Where output appears</h2>
+  <p>Default output path:</p>
+  <pre><code>.\media\&lt;input_file_name&gt;\output\</code></pre>
+</body>
+</html>

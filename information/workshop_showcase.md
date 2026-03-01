@@ -40,6 +40,7 @@ Default behavior:
 - aspect ratio preserved
 - max `5000 KB`, target `4500 KB`
 - min FPS comes from `.env` (`GIF_MIN_FPS`, default `15`)
+- early feasibility precheck is enabled by default
 - auto hex patch (`0x21`)
 
 ## Command examples
@@ -52,6 +53,9 @@ python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --
 
 # Workshop with custom output folder
 python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --out-dir .\media\my_video\workshop_output
+
+# Bypass early precheck (not recommended)
+python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --skip-precheck
 ```
 
 ## Resolution notes

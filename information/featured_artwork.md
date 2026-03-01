@@ -33,6 +33,7 @@ Preset behavior:
 - width: `630px`
 - size policy: max `4500 KB`, target `4500 KB`
 - minimum FPS: `15` (from `.env` -> `GIF_MIN_FPS`)
+- early feasibility precheck is enabled by default
 - automatic hex patch: last byte `0x21`
 
 ## 2) Upload as Artwork (not Workshop)
@@ -62,9 +63,14 @@ python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured --
 
 # Featured with custom size limits (override defaults)
 python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured --max-gif-kb 4500 --target-gif-kb 4500
+
+# Bypass early precheck (not recommended)
+python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured --skip-precheck
 ```
 
 ## Notes
 - Do **not** use the workshop conversion command (`consumer_app_id=480`, `file_type=0`) for featured artwork uploads.
 - For this featured flow, upload as normal **Artwork** and use the `image_width/image_height` console line above.
-- Script fails fast if `--gif-fps` is below `.env` `GIF_MIN_FPS` or if final output is still above max KB.
+- Script fails fast if `--gif-fps` is below `.env` `GIF_MIN_FPS`.
+- Script runs an early size precheck unless `--skip-precheck` is set.
+- Script fails if final output is still above max KB.

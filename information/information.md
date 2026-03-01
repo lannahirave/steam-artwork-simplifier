@@ -3,6 +3,7 @@
 Checked on March 1, 2026.
 
 ## Guides
+- Run instructions: `information/how_to_run.html`
 - Workshop-specific guide: `information/workshop_showcase.md`
 - Featured-specific guide: `information/featured_artwork.md`
 - Header hex-edit guide: `information/hex_edit_header.md`
@@ -30,11 +31,16 @@ FFMPEG_BIN=D:\ffmpeg\bin
 GIF_PRESET=workshop
 GIF_FPS=15
 GIF_MIN_FPS=15
+GIF_PRECHECK_ENABLED=true
+GIF_PRECHECK_BPPF=0.10
+GIF_PRECHECK_MARGIN_PCT=10
 GIF_HEX_PATCH_ENABLED=true
 GIF_HEX_BYTE=21
 ```
 
 ## Notes
 - CLI arguments override `.env` values.
+- Early precheck runs by default and may fail fast for oversized sources.
+- Use `--skip-precheck` to bypass early precheck.
 - Script fails if output remains above configured KB limit.
 - Script fails if `--gif-fps` is below `.env` `GIF_MIN_FPS`.
