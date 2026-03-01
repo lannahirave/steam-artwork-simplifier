@@ -21,8 +21,46 @@ Checked on March 1, 2026.
 6. Add or edit `Workshop Showcase` (or `My Workshop Showcase`) and pick the uploaded item(s).
 7. Save profile changes.
 
+## Local automation (this repo)
+- Script: `video_parts_pipeline.py`
+- Input: one video file (for example `media/art3.mp4`)
+- Output: one folder with final GIFs only, at `media/<file_name>/output/`
+- It creates 5 GIF parts by default.
+- Each part is **150px wide**; height is auto-calculated to preserve aspect ratio.
+- If a GIF is over **5000 KB**, script recompresses it and targets **4500 KB**.
+- HEX step is automatic: final byte is patched to `0x21` for each output GIF.
+- Defaults are loaded from `.env` in repo root.
+
+### Command examples
+```bash
+# Default (5 parts, 150px width, 15 fps, auto size handling + hex patch)
+python video_parts_pipeline.py --input .\media\art3.mp4
+
+# Custom settings
+python video_parts_pipeline.py --input .\media\art3.mp4 --parts 5 --part-width 150 --gif-fps 12
+
+# Custom output directory
+python video_parts_pipeline.py --input .\media\art3.mp4 --out-dir .\media\art3\output_custom
+```
+
+### `.env` keys (used by scripts)
+```env
+FFMPEG_BIN=D:\ffmpeg\bin
+GIF_PARTS=5
+GIF_PART_WIDTH=150
+GIF_FPS=15
+GIF_MAX_KB=5000
+GIF_TARGET_KB=4500
+GIF_HEX_PATCH_ENABLED=true
+GIF_HEX_BYTE=21
+HEX_DEFAULT_BYTE=21
+HEX_DEFAULT_EXTENSIONS=.gif,.png,.jpg,.jpeg,.webm,.mp4
+HEX_BACKUP_ENABLED=true
+```
+
 ## GIF resolution for `Workshop Showcase`
 - Valve does not publish a strict pixel-resolution rule for this web upload route; values below are community-verified.
+- If you use the local script in this repo, output is **150px width per part** with aspect-ratio-preserved height (not forced `150x150`).
 - For `My Workshop Showcase`, treat each upload as a square tile.
 - Common working size: **150x150 px per GIF** (community template standard for this showcase).
 - On profile it is rendered smaller (community guide reports around **122x122** visible size), so bigger files are downscaled.

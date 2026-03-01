@@ -10,11 +10,39 @@ Default behavior:
 from __future__ import annotations
 
 import argparse
+import os
 from pathlib import Path
 from typing import Iterable, List
 
 
 DEFAULT_EXTENSIONS = {".gif", ".png", ".jpg", ".jpeg", ".webm", ".mp4"}
+
+
+def load_dotenv() -> None:
+    script_dir = Path(__file__).resolve().parent
+    candidates = [Path.cwd() / ".env", script_dir / ".env"]
+    seen: set[Path] = set()
+    for env_path in candidates:
+        env_path = env_path.resolve()
+        if env_path in seen or not env_path.exists():
+            continue
+        seen.add(env_path)
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+def env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    return raw.strip().lower() in {"1", "true", "yes", "on"}
 
 
 def parse_hex_byte(value: str) -> int:
@@ -73,6 +101,11 @@ def patch_last_byte(path: Path, new_byte: int, backup: bool, dry_run: bool) -> s
 
 
 def parse_args() -> argparse.Namespace:
+    load_dotenv()
+    ext_default = os.getenv("HEX_DEFAULT_EXTENSIONS", ",".join(sorted(DEFAULT_EXTENSIONS)))
+    byte_default = parse_hex_byte(os.getenv("HEX_DEFAULT_BYTE", "21"))
+    backup_default = env_bool("HEX_BACKUP_ENABLED", True)
+
     parser = argparse.ArgumentParser(
         description="Patch the last byte of image/video files (default: 0x21)."
     )
@@ -88,7 +121,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--ext",
-        default=",".join(sorted(DEFAULT_EXTENSIONS)),
+        default=ext_default,
         help=(
             "Comma-separated extensions filter (example: .gif,.png). "
             "Use '*' to process any extension."
@@ -97,14 +130,23 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--byte",
         type=parse_hex_byte,
-        default=parse_hex_byte("21"),
+        default=byte_default,
         help="Hex byte to write at EOF (default: 21).",
     )
-    parser.add_argument(
-        "--no-backup",
+    backup_group = parser.add_mutually_exclusive_group()
+    backup_group.add_argument(
+        "--backup",
+        dest="backup",
         action="store_true",
+        help="Create .bak backups before patching.",
+    )
+    backup_group.add_argument(
+        "--no-backup",
+        dest="backup",
+        action="store_false",
         help="Do not create .bak backups.",
     )
+    parser.set_defaults(backup=backup_default)
     parser.add_argument(
         "--dry-run",
         action="store_true",
@@ -144,7 +186,7 @@ def main() -> int:
             message = patch_last_byte(
                 f,
                 new_byte=args.byte,
-                backup=not args.no_backup,
+                backup=args.backup,
                 dry_run=args.dry_run,
             )
             print(message)

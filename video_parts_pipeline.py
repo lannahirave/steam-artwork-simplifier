@@ -12,12 +12,59 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 from pathlib import Path
 from typing import Sequence
 
-MAX_GIF_KB = 5000
-TARGET_GIF_KB = 4500
+DEFAULT_MAX_GIF_KB = 5000
+DEFAULT_TARGET_GIF_KB = 4500
+DEFAULT_FFMPEG_BIN = r"D:\ffmpeg\bin"
+
+
+def load_dotenv() -> None:
+    script_dir = Path(__file__).resolve().parent
+    candidates = [Path.cwd() / ".env", script_dir / ".env"]
+    seen: set[Path] = set()
+    for env_path in candidates:
+        env_path = env_path.resolve()
+        if env_path in seen or not env_path.exists():
+            continue
+        seen.add(env_path)
+        for line in env_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line or line.startswith("#") or "=" not in line:
+                continue
+            key, value = line.split("=", 1)
+            key = key.strip()
+            value = value.strip().strip('"').strip("'")
+            if key and key not in os.environ:
+                os.environ[key] = value
+
+
+def env_int(name: str, default: int) -> int:
+    raw = os.getenv(name)
+    if raw is None or raw.strip() == "":
+        return default
+    return int(raw.strip())
+
+
+def env_bool(name: str, default: bool) -> bool:
+    raw = os.getenv(name)
+    if raw is None:
+        return default
+    val = raw.strip().lower()
+    return val in {"1", "true", "yes", "on"}
+
+
+def parse_hex_byte(value: str) -> int:
+    raw = value.strip().lower()
+    if raw.startswith("0x"):
+        raw = raw[2:]
+    num = int(raw, 16)
+    if not 0 <= num <= 0xFF:
+        raise ValueError("Hex byte must be between 00 and FF")
+    return num
 
 
 def run(cmd: Sequence[str]) -> str:
@@ -90,9 +137,11 @@ def enforce_gif_size_limit(
     gif_path: Path,
     base_filter: str,
     base_fps: int,
+    max_gif_kb: int,
+    target_gif_kb: int,
 ) -> tuple[float, bool, bool]:
     current_kb = file_kb(gif_path)
-    if current_kb <= MAX_GIF_KB:
+    if current_kb <= max_gif_kb:
         return current_kb, False, True
 
     changed = False
@@ -134,14 +183,14 @@ def enforce_gif_size_limit(
             tmp_gif.replace(gif_path)
             current_kb = tmp_kb
             changed = True
-            if current_kb <= TARGET_GIF_KB:
+            if current_kb <= target_gif_kb:
                 reached_target = True
                 break
         else:
             tmp_gif.unlink(missing_ok=True)
 
     tmp_gif.unlink(missing_ok=True)
-    if not reached_target and current_kb <= TARGET_GIF_KB:
+    if not reached_target and current_kb <= target_gif_kb:
         reached_target = True
     return current_kb, changed, reached_target
 
@@ -175,6 +224,9 @@ def make_gif_parts(
     part_width: int,
     gif_fps: int,
     apply_hex_patch: bool,
+    hex_byte: int,
+    max_gif_kb: int,
+    target_gif_kb: int,
 ) -> None:
     src_w, src_h, duration = probe(ffmpeg.parent / "ffprobe.exe", input_video)
     total_target_w = parts * part_width
@@ -211,17 +263,23 @@ def make_gif_parts(
             gif_path=gif_path,
             base_filter=base_filter,
             base_fps=gif_fps,
+            max_gif_kb=max_gif_kb,
+            target_gif_kb=target_gif_kb,
         )
 
         if apply_hex_patch:
-            old_byte, new_byte = patch_last_byte(gif_path, 0x21)
+            old_byte, new_byte = patch_last_byte(gif_path, hex_byte)
             status = (
                 "recompressed" if recompressed else "original"
             )
             limit_status = (
-                f"ok<={TARGET_GIF_KB}KB"
+                f"ok<={target_gif_kb}KB"
                 if reached_target
-                else ("ok<=5000KB" if final_kb <= MAX_GIF_KB else "still>5000KB")
+                else (
+                    f"ok<={max_gif_kb}KB"
+                    if final_kb <= max_gif_kb
+                    else f"still>{max_gif_kb}KB"
+                )
             )
             print(
                 f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | "
@@ -230,32 +288,94 @@ def make_gif_parts(
         else:
             status = "recompressed" if recompressed else "original"
             limit_status = (
-                f"ok<={TARGET_GIF_KB}KB"
+                f"ok<={target_gif_kb}KB"
                 if reached_target
-                else ("ok<=5000KB" if final_kb <= MAX_GIF_KB else "still>5000KB")
+                else (
+                    f"ok<={max_gif_kb}KB"
+                    if final_kb <= max_gif_kb
+                    else f"still>{max_gif_kb}KB"
+                )
             )
             print(f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | {limit_status}")
 
 
 def main() -> int:
+    load_dotenv()
+    default_parts = env_int("GIF_PARTS", 5)
+    default_part_width = env_int("GIF_PART_WIDTH", 150)
+    default_gif_fps = env_int("GIF_FPS", 15)
+    default_ffmpeg_bin = os.getenv("FFMPEG_BIN", DEFAULT_FFMPEG_BIN)
+    default_max_gif_kb = env_int("GIF_MAX_KB", DEFAULT_MAX_GIF_KB)
+    default_target_gif_kb = env_int("GIF_TARGET_KB", DEFAULT_TARGET_GIF_KB)
+    default_hex_patch = env_bool("GIF_HEX_PATCH_ENABLED", True)
+    default_hex_byte = parse_hex_byte(os.getenv("GIF_HEX_BYTE", "21"))
+
     parser = argparse.ArgumentParser(
         description="Create fixed-width GIF slices from one video."
     )
     parser.add_argument("--input", required=True, help="Input video path.")
-    parser.add_argument("--parts", type=int, default=5, help="Number of GIF parts.")
     parser.add_argument(
-        "--part-width", type=int, default=150, help="Width of each GIF part (px)."
+        "--parts",
+        type=int,
+        default=default_parts,
+        help=f"Number of GIF parts (default from .env GIF_PARTS={default_parts}).",
     )
-    parser.add_argument("--gif-fps", type=int, default=15, help="GIF FPS.")
     parser.add_argument(
-        "--no-hex-patch",
+        "--part-width",
+        type=int,
+        default=default_part_width,
+        help=(
+            "Width of each GIF part (px) "
+            f"(default from .env GIF_PART_WIDTH={default_part_width})."
+        ),
+    )
+    parser.add_argument(
+        "--gif-fps",
+        type=int,
+        default=default_gif_fps,
+        help=f"GIF FPS (default from .env GIF_FPS={default_gif_fps}).",
+    )
+    hex_group = parser.add_mutually_exclusive_group()
+    hex_group.add_argument(
+        "--hex-patch",
+        dest="hex_patch",
         action="store_true",
-        help="Disable automatic last-byte hex patch (default is enabled).",
+        help="Enable automatic last-byte hex patch.",
+    )
+    hex_group.add_argument(
+        "--no-hex-patch",
+        dest="hex_patch",
+        action="store_false",
+        help="Disable automatic last-byte hex patch.",
+    )
+    parser.set_defaults(hex_patch=default_hex_patch)
+    parser.add_argument(
+        "--hex-byte",
+        default=f"{default_hex_byte:02X}",
+        help="Hex byte for patching final GIF EOF (default from .env GIF_HEX_BYTE).",
+    )
+    parser.add_argument(
+        "--max-gif-kb",
+        type=int,
+        default=default_max_gif_kb,
+        help=(
+            "Hard upper GIF size limit in KB "
+            f"(default from .env GIF_MAX_KB={default_max_gif_kb})."
+        ),
+    )
+    parser.add_argument(
+        "--target-gif-kb",
+        type=int,
+        default=default_target_gif_kb,
+        help=(
+            "Compression target in KB if over limit "
+            f"(default from .env GIF_TARGET_KB={default_target_gif_kb})."
+        ),
     )
     parser.add_argument(
         "--ffmpeg-bin",
-        default=r"D:\ffmpeg\bin",
-        help=r"Directory with ffmpeg.exe and ffprobe.exe (default: D:\ffmpeg\bin).",
+        default=default_ffmpeg_bin,
+        help="Directory with ffmpeg.exe and ffprobe.exe (default from .env FFMPEG_BIN).",
     )
     parser.add_argument(
         "--out-dir",
@@ -283,6 +403,13 @@ def main() -> int:
         raise ValueError("--part-width must be >= 1")
     if args.gif_fps < 1:
         raise ValueError("--gif-fps must be >= 1")
+    if args.max_gif_kb < 1:
+        raise ValueError("--max-gif-kb must be >= 1")
+    if args.target_gif_kb < 1:
+        raise ValueError("--target-gif-kb must be >= 1")
+    if args.target_gif_kb > args.max_gif_kb:
+        raise ValueError("--target-gif-kb must be <= --max-gif-kb")
+    hex_byte = parse_hex_byte(args.hex_byte)
 
     if args.out_dir:
         out_dir = Path(args.out_dir).resolve()
@@ -296,7 +423,10 @@ def main() -> int:
         parts=args.parts,
         part_width=args.part_width,
         gif_fps=args.gif_fps,
-        apply_hex_patch=not args.no_hex_patch,
+        apply_hex_patch=args.hex_patch,
+        hex_byte=hex_byte,
+        max_gif_kb=args.max_gif_kb,
+        target_gif_kb=args.target_gif_kb,
     )
     print("Done.")
     return 0
