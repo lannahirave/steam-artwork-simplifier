@@ -11,6 +11,7 @@ Behavior:
 from __future__ import annotations
 
 import argparse
+import concurrent.futures
 import json
 import os
 import subprocess
@@ -27,6 +28,9 @@ DEFAULT_FEATURED_WIDTH = 630
 DEFAULT_MIN_GIF_FPS = 15
 DEFAULT_PRECHECK_BPPF = 0.10
 DEFAULT_PRECHECK_MARGIN_PCT = 10.0
+DEFAULT_MAX_WORKERS = 0
+DEFAULT_FFMPEG_THREADS = 0
+DEFAULT_USE_NVIDIA = False
 
 
 def load_dotenv() -> None:
@@ -113,12 +117,23 @@ def encode_gif_from_video(
     output_gif: Path,
     vf: str,
     max_colors: int,
+    ffmpeg_threads: int,
+    use_nvidia: bool,
 ) -> None:
     palette = output_gif.with_name(f"_{output_gif.stem}_palette.png")
+    hwaccel_args = []
+    if use_nvidia:
+        hwaccel_args = [
+            "-hwaccel",
+            "cuda",
+        ]
     run(
         [
             str(ffmpeg),
             "-y",
+            "-threads",
+            str(ffmpeg_threads),
+            *hwaccel_args,
             "-i",
             str(input_video),
             "-vf",
@@ -132,6 +147,9 @@ def encode_gif_from_video(
         [
             str(ffmpeg),
             "-y",
+            "-threads",
+            str(ffmpeg_threads),
+            *hwaccel_args,
             "-i",
             str(input_video),
             "-i",
@@ -154,6 +172,8 @@ def enforce_gif_size_limit(
     min_gif_fps: int,
     max_gif_kb: int,
     target_gif_kb: int,
+    ffmpeg_threads: int,
+    use_nvidia: bool,
 ) -> tuple[float, bool, bool]:
     current_kb = file_kb(gif_path)
     if current_kb <= max_gif_kb:
@@ -186,6 +206,8 @@ def enforce_gif_size_limit(
             output_gif=tmp_gif,
             vf=vf,
             max_colors=colors,
+            ffmpeg_threads=ffmpeg_threads,
+            use_nvidia=use_nvidia,
         )
         tmp_kb = file_kb(tmp_gif)
         if tmp_kb < current_kb:
@@ -227,6 +249,25 @@ def probe(ffprobe: Path, input_video: Path) -> tuple[int, int, float]:
 
 def compute_target_height(src_w: int, src_h: int, total_target_w: int) -> int:
     return max(1, round(src_h * (total_target_w / src_w)))
+
+
+def resolve_parallel_settings(
+    parts: int,
+    max_workers: int,
+    ffmpeg_threads: int,
+) -> tuple[int, int]:
+    cpu_count = os.cpu_count() or 1
+    if max_workers <= 0:
+        workers = min(parts, cpu_count)
+    else:
+        workers = min(parts, max_workers)
+    workers = max(1, workers)
+
+    if ffmpeg_threads <= 0:
+        threads = max(1, cpu_count // workers)
+    else:
+        threads = max(1, ffmpeg_threads)
+    return workers, threads
 
 
 def estimate_gif_kb(
@@ -278,6 +319,7 @@ def run_size_precheck(
             "Precheck failed: source video is likely too heavy for configured GIF limit. "
             f"Estimated minimum is {est_kb:.1f}KB per GIF, while limit is {max_gif_kb}KB "
             f"(margin {precheck_margin_pct:.1f}%). "
+            f"Current FPS floor is GIF_MIN_FPS={min_gif_fps}. "
             "Use --skip-precheck to bypass."
         )
 
@@ -298,9 +340,17 @@ def make_gif_parts(
     hex_byte: int,
     max_gif_kb: int,
     target_gif_kb: int,
+    max_workers: int,
+    ffmpeg_threads: int,
+    use_nvidia: bool,
 ) -> None:
     total_target_w = parts * part_width
     target_h = compute_target_height(src_w, src_h, total_target_w)
+    workers, threads = resolve_parallel_settings(
+        parts=parts,
+        max_workers=max_workers,
+        ffmpeg_threads=ffmpeg_threads,
+    )
 
     out_dir.mkdir(parents=True, exist_ok=True)
 
@@ -308,10 +358,11 @@ def make_gif_parts(
         f"Input: {input_video.name} | {src_w}x{src_h} | {duration:.3f}s\n"
         f"Preset: {preset}\n"
         f"Rescale for slicing: {src_w}x{src_h} -> {total_target_w}x{target_h}\n"
-        f"Output: {parts} GIFs, each {part_width}x{target_h}"
+        f"Output: {parts} GIFs, each {part_width}x{target_h}\n"
+        f"Parallel: workers={workers}, ffmpeg_threads_per_job={threads}"
     )
 
-    for i in range(parts):
+    def build_one_part(i: int) -> tuple[int, str]:
         idx = i + 1
         x = i * part_width
         if parts == 1:
@@ -329,6 +380,8 @@ def make_gif_parts(
             output_gif=gif_path,
             vf=vf_initial,
             max_colors=256,
+            ffmpeg_threads=threads,
+            use_nvidia=use_nvidia,
         )
 
         final_kb, recompressed, reached_target = enforce_gif_size_limit(
@@ -340,19 +393,22 @@ def make_gif_parts(
             min_gif_fps=min_gif_fps,
             max_gif_kb=max_gif_kb,
             target_gif_kb=target_gif_kb,
+            ffmpeg_threads=threads,
+            use_nvidia=use_nvidia,
         )
 
         if final_kb > max_gif_kb:
             raise RuntimeError(
                 f"Output GIF exceeds limit: {gif_path} is {final_kb:.1f}KB "
-                f"(max {max_gif_kb}KB). Increase limits in .env or reduce content."
+                f"(max {max_gif_kb}KB). "
+                f"Current FPS floor is GIF_MIN_FPS={min_gif_fps}; "
+                "lowering FPS below this floor is blocked. "
+                "Adjust .env limits/FPS floor or reduce content."
             )
 
         if apply_hex_patch:
             old_byte, new_byte = patch_last_byte(gif_path, hex_byte)
-            status = (
-                "recompressed" if recompressed else "original"
-            )
+            status = "recompressed" if recompressed else "original"
             limit_status = (
                 f"ok<={target_gif_kb}KB"
                 if reached_target
@@ -362,7 +418,7 @@ def make_gif_parts(
                     else f"still>{max_gif_kb}KB"
                 )
             )
-            print(
+            msg = (
                 f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | "
                 f"{limit_status} | hex: {old_byte:02X}->{new_byte:02X}"
             )
@@ -377,7 +433,23 @@ def make_gif_parts(
                     else f"still>{max_gif_kb}KB"
                 )
             )
-            print(f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | {limit_status}")
+            msg = f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | {limit_status}"
+        return idx, msg
+
+    if workers <= 1:
+        for i in range(parts):
+            _, msg = build_one_part(i)
+            print(msg)
+        return
+
+    results: dict[int, str] = {}
+    with concurrent.futures.ThreadPoolExecutor(max_workers=workers) as pool:
+        futures = [pool.submit(build_one_part, i) for i in range(parts)]
+        for fut in concurrent.futures.as_completed(futures):
+            idx, msg = fut.result()
+            results[idx] = msg
+    for idx in sorted(results):
+        print(results[idx])
 
 
 def main() -> int:
@@ -390,6 +462,9 @@ def main() -> int:
     default_precheck_margin_pct = env_float(
         "GIF_PRECHECK_MARGIN_PCT", DEFAULT_PRECHECK_MARGIN_PCT
     )
+    default_max_workers = env_int("GIF_MAX_WORKERS", DEFAULT_MAX_WORKERS)
+    default_ffmpeg_threads = env_int("FFMPEG_THREADS", DEFAULT_FFMPEG_THREADS)
+    default_use_nvidia = env_bool("USE_NVIDIA", DEFAULT_USE_NVIDIA)
     default_preset = os.getenv("GIF_PRESET", DEFAULT_PRESET).strip().lower()
     default_featured_width = env_int("FEATURED_ARTWORK_WIDTH", DEFAULT_FEATURED_WIDTH)
     default_gif_fps = env_int("GIF_FPS", 15)
@@ -496,6 +571,41 @@ def main() -> int:
         ),
     )
     parser.add_argument(
+        "--max-workers",
+        type=int,
+        default=default_max_workers,
+        help=(
+            "Parallel jobs for part generation. 0 means auto "
+            f"(default from .env GIF_MAX_WORKERS={default_max_workers})."
+        ),
+    )
+    parser.add_argument(
+        "--ffmpeg-threads",
+        type=int,
+        default=default_ffmpeg_threads,
+        help=(
+            "Threads per ffmpeg job. 0 means auto split across workers "
+            f"(default from .env FFMPEG_THREADS={default_ffmpeg_threads})."
+        ),
+    )
+    nvidia_group = parser.add_mutually_exclusive_group()
+    nvidia_group.add_argument(
+        "--use-nvidia",
+        dest="use_nvidia",
+        action="store_true",
+        help=(
+            "Enable NVIDIA CUDA hardware decode for ffmpeg input (optional; "
+            "palette filters still run on CPU)."
+        ),
+    )
+    nvidia_group.add_argument(
+        "--no-use-nvidia",
+        dest="use_nvidia",
+        action="store_false",
+        help="Disable NVIDIA CUDA hardware decode.",
+    )
+    parser.set_defaults(use_nvidia=default_use_nvidia)
+    parser.add_argument(
         "--skip-precheck",
         action="store_true",
         help=(
@@ -555,6 +665,10 @@ def main() -> int:
         raise ValueError("GIF_PRECHECK_BPPF in .env must be > 0")
     if default_precheck_margin_pct < 0:
         raise ValueError("GIF_PRECHECK_MARGIN_PCT in .env must be >= 0")
+    if args.max_workers < 0:
+        raise ValueError("--max-workers must be >= 0")
+    if args.ffmpeg_threads < 0:
+        raise ValueError("--ffmpeg-threads must be >= 0")
     if args.gif_fps < default_min_gif_fps:
         raise ValueError(
             f"--gif-fps must be >= {default_min_gif_fps} (from .env GIF_MIN_FPS)"
@@ -607,6 +721,9 @@ def main() -> int:
         hex_byte=hex_byte,
         max_gif_kb=max_gif_kb,
         target_gif_kb=target_gif_kb,
+        max_workers=args.max_workers,
+        ffmpeg_threads=args.ffmpeg_threads,
+        use_nvidia=args.use_nvidia,
     )
     print("Done.")
     return 0

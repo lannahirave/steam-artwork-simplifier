@@ -34,6 +34,9 @@ GIF_MIN_FPS=15
 GIF_PRECHECK_ENABLED=true
 GIF_PRECHECK_BPPF=0.10
 GIF_PRECHECK_MARGIN_PCT=10
+GIF_MAX_WORKERS=0
+FFMPEG_THREADS=0
+USE_NVIDIA=false
 GIF_HEX_PATCH_ENABLED=true
 GIF_HEX_BYTE=21
 ```
@@ -42,5 +45,6 @@ GIF_HEX_BYTE=21
 - CLI arguments override `.env` values.
 - Early precheck runs by default and may fail fast for oversized sources.
 - Use `--skip-precheck` to bypass early precheck.
+- Use `--use-nvidia` to enable optional CUDA decode (default remains off).
 - Script fails if output remains above configured KB limit.
 - Script fails if `--gif-fps` is below `.env` `GIF_MIN_FPS`.

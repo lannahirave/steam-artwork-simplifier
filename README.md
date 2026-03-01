@@ -58,9 +58,20 @@ GIF_MIN_FPS=15
 GIF_PRECHECK_ENABLED=true
 GIF_HEX_PATCH_ENABLED=true
 GIF_HEX_BYTE=21
+GIF_MAX_WORKERS=0
+FFMPEG_THREADS=0
+USE_NVIDIA=false
 ```
 
 `CLI` arguments override `.env` values.
+
+Performance notes:
+- `GIF_MAX_WORKERS=0` means auto parallel jobs (up to CPU core count / part count).
+- `FFMPEG_THREADS=0` means auto thread split per job to keep CPU close to full utilization.
+- `USE_NVIDIA=false` keeps CPU-only mode by default; set `true` or pass `--use-nvidia` to enable CUDA decode.
+- CLI override example:
+  - `python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --max-workers 0 --ffmpeg-threads 0`
+  - `python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --use-nvidia`
 
 ## Documentation
 

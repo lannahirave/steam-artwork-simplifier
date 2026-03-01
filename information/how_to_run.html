@@ -62,5 +62,15 @@
   <h2>4) Where output appears</h2>
   <p>Default output path:</p>
   <pre><code>.\media\&lt;input_file_name&gt;\output\</code></pre>
+
+  <h2>5) Speed / CPU usage</h2>
+  <p>Use all available CPU automatically:</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --max-workers 0 --ffmpeg-threads 0</code></pre>
+  <p>Equivalent <code>.env</code> defaults:</p>
+  <pre><code>GIF_MAX_WORKERS=0
+FFMPEG_THREADS=0
+USE_NVIDIA=false</code></pre>
+  <p>Optional NVIDIA decode (off by default):</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --use-nvidia</code></pre>
 </body>
 </html>
