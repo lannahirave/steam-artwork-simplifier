@@ -19,7 +19,12 @@ from typing import Sequence
 
 DEFAULT_MAX_GIF_KB = 5000
 DEFAULT_TARGET_GIF_KB = 4500
+DEFAULT_FEATURED_MAX_GIF_KB = 4500
+DEFAULT_FEATURED_TARGET_GIF_KB = 4500
 DEFAULT_FFMPEG_BIN = r"D:\ffmpeg\bin"
+DEFAULT_PRESET = "workshop"
+DEFAULT_FEATURED_WIDTH = 630
+DEFAULT_MIN_GIF_FPS = 15
 
 
 def load_dotenv() -> None:
@@ -137,6 +142,7 @@ def enforce_gif_size_limit(
     gif_path: Path,
     base_filter: str,
     base_fps: int,
+    min_gif_fps: int,
     max_gif_kb: int,
     target_gif_kb: int,
 ) -> tuple[float, bool, bool]:
@@ -148,17 +154,11 @@ def enforce_gif_size_limit(
     reached_target = False
     tmp_gif = gif_path.with_name(f"_{gif_path.stem}_recompress.gif")
 
-    fps_candidates = [
-        max(1, base_fps - 1),
-        max(1, base_fps - 2),
-        max(1, base_fps - 3),
-        max(1, base_fps - 4),
-        max(1, base_fps - 5),
-        max(1, base_fps - 6),
-        8,
-        6,
-    ]
-    colors_candidates = [224, 192, 160, 128, 96, 64]
+    fps_floor = max(1, min_gif_fps)
+    fps_candidates = list(range(base_fps, fps_floor - 1, -1))
+    if not fps_candidates:
+        fps_candidates = [base_fps]
+    colors_candidates = [224, 192, 160, 128, 96, 64, 48, 32]
 
     seen: set[tuple[int, int]] = set()
     candidates: list[tuple[int, int]] = []
@@ -220,9 +220,11 @@ def make_gif_parts(
     ffmpeg: Path,
     input_video: Path,
     out_dir: Path,
+    preset: str,
     parts: int,
     part_width: int,
     gif_fps: int,
+    min_gif_fps: int,
     apply_hex_patch: bool,
     hex_byte: int,
     max_gif_kb: int,
@@ -236,6 +238,7 @@ def make_gif_parts(
 
     print(
         f"Input: {input_video.name} | {src_w}x{src_h} | {duration:.3f}s\n"
+        f"Preset: {preset}\n"
         f"Rescale for slicing: {src_w}x{src_h} -> {total_target_w}x{target_h}\n"
         f"Output: {parts} GIFs, each {part_width}x{target_h}"
     )
@@ -243,7 +246,10 @@ def make_gif_parts(
     for i in range(parts):
         idx = i + 1
         x = i * part_width
-        gif_path = out_dir / f"part_{idx:02d}.gif"
+        if parts == 1:
+            gif_path = out_dir / "featured.gif"
+        else:
+            gif_path = out_dir / f"part_{idx:02d}.gif"
         base_filter = (
             f"scale={total_target_w}:{target_h}:flags=lanczos,"
             f"crop={part_width}:{target_h}:{x}:0"
@@ -263,9 +269,16 @@ def make_gif_parts(
             gif_path=gif_path,
             base_filter=base_filter,
             base_fps=gif_fps,
+            min_gif_fps=min_gif_fps,
             max_gif_kb=max_gif_kb,
             target_gif_kb=target_gif_kb,
         )
+
+        if final_kb > max_gif_kb:
+            raise RuntimeError(
+                f"Output GIF exceeds limit: {gif_path} is {final_kb:.1f}KB "
+                f"(max {max_gif_kb}KB). Increase limits in .env or reduce content."
+            )
 
         if apply_hex_patch:
             old_byte, new_byte = patch_last_byte(gif_path, hex_byte)
@@ -303,10 +316,21 @@ def main() -> int:
     load_dotenv()
     default_parts = env_int("GIF_PARTS", 5)
     default_part_width = env_int("GIF_PART_WIDTH", 150)
+    default_min_gif_fps = env_int("GIF_MIN_FPS", DEFAULT_MIN_GIF_FPS)
+    default_preset = os.getenv("GIF_PRESET", DEFAULT_PRESET).strip().lower()
+    default_featured_width = env_int("FEATURED_ARTWORK_WIDTH", DEFAULT_FEATURED_WIDTH)
     default_gif_fps = env_int("GIF_FPS", 15)
     default_ffmpeg_bin = os.getenv("FFMPEG_BIN", DEFAULT_FFMPEG_BIN)
-    default_max_gif_kb = env_int("GIF_MAX_KB", DEFAULT_MAX_GIF_KB)
-    default_target_gif_kb = env_int("GIF_TARGET_KB", DEFAULT_TARGET_GIF_KB)
+    default_workshop_max_gif_kb = env_int(
+        "WORKSHOP_MAX_KB", env_int("GIF_MAX_KB", DEFAULT_MAX_GIF_KB)
+    )
+    default_workshop_target_gif_kb = env_int(
+        "WORKSHOP_TARGET_KB", env_int("GIF_TARGET_KB", DEFAULT_TARGET_GIF_KB)
+    )
+    default_featured_max_gif_kb = env_int("FEATURED_MAX_KB", DEFAULT_FEATURED_MAX_GIF_KB)
+    default_featured_target_gif_kb = env_int(
+        "FEATURED_TARGET_KB", DEFAULT_FEATURED_TARGET_GIF_KB
+    )
     default_hex_patch = env_bool("GIF_HEX_PATCH_ENABLED", True)
     default_hex_byte = parse_hex_byte(os.getenv("GIF_HEX_BYTE", "21"))
 
@@ -315,18 +339,30 @@ def main() -> int:
     )
     parser.add_argument("--input", required=True, help="Input video path.")
     parser.add_argument(
+        "--preset",
+        choices=["workshop", "featured"],
+        default=default_preset if default_preset in {"workshop", "featured"} else "workshop",
+        help=(
+            "Output preset: workshop=5x150 slices, featured=single 630px output "
+            f"(default from .env GIF_PRESET={default_preset})."
+        ),
+    )
+    parser.add_argument(
         "--parts",
         type=int,
-        default=default_parts,
-        help=f"Number of GIF parts (default from .env GIF_PARTS={default_parts}).",
+        default=None,
+        help=(
+            "Number of GIF parts. If omitted, preset default is used "
+            f"(workshop->{default_parts}, featured->1)."
+        ),
     )
     parser.add_argument(
         "--part-width",
         type=int,
-        default=default_part_width,
+        default=None,
         help=(
-            "Width of each GIF part (px) "
-            f"(default from .env GIF_PART_WIDTH={default_part_width})."
+            "Width of each GIF part (px). If omitted, preset default is used "
+            f"(workshop->{default_part_width}, featured->{default_featured_width})."
         ),
     )
     parser.add_argument(
@@ -357,19 +393,20 @@ def main() -> int:
     parser.add_argument(
         "--max-gif-kb",
         type=int,
-        default=default_max_gif_kb,
+        default=None,
         help=(
-            "Hard upper GIF size limit in KB "
-            f"(default from .env GIF_MAX_KB={default_max_gif_kb})."
+            "Hard upper GIF size limit in KB. If omitted, preset default is used "
+            f"(workshop->{default_workshop_max_gif_kb}, featured->{default_featured_max_gif_kb})."
         ),
     )
     parser.add_argument(
         "--target-gif-kb",
         type=int,
-        default=default_target_gif_kb,
+        default=None,
         help=(
-            "Compression target in KB if over limit "
-            f"(default from .env GIF_TARGET_KB={default_target_gif_kb})."
+            "Compression target in KB if over limit. If omitted, preset default is used "
+            f"(workshop->{default_workshop_target_gif_kb}, "
+            f"featured->{default_featured_target_gif_kb})."
         ),
     )
     parser.add_argument(
@@ -397,17 +434,51 @@ def main() -> int:
         raise FileNotFoundError(f"ffmpeg not found: {ffmpeg}")
     if not ffprobe.exists():
         raise FileNotFoundError(f"ffprobe not found: {ffprobe}")
-    if args.parts < 2:
-        raise ValueError("--parts must be >= 2")
-    if args.part_width < 1:
+
+    if args.preset == "featured":
+        parts = args.parts if args.parts is not None else 1
+        part_width = args.part_width if args.part_width is not None else default_featured_width
+        max_gif_kb = (
+            args.max_gif_kb
+            if args.max_gif_kb is not None
+            else default_featured_max_gif_kb
+        )
+        target_gif_kb = (
+            args.target_gif_kb
+            if args.target_gif_kb is not None
+            else default_featured_target_gif_kb
+        )
+    else:
+        parts = args.parts if args.parts is not None else default_parts
+        part_width = args.part_width if args.part_width is not None else default_part_width
+        max_gif_kb = (
+            args.max_gif_kb
+            if args.max_gif_kb is not None
+            else default_workshop_max_gif_kb
+        )
+        target_gif_kb = (
+            args.target_gif_kb
+            if args.target_gif_kb is not None
+            else default_workshop_target_gif_kb
+        )
+
+    if parts < 1:
+        raise ValueError("--parts must be >= 1")
+    if part_width < 1:
         raise ValueError("--part-width must be >= 1")
     if args.gif_fps < 1:
         raise ValueError("--gif-fps must be >= 1")
-    if args.max_gif_kb < 1:
+    if default_min_gif_fps < 1:
+        raise ValueError("GIF_MIN_FPS in .env must be >= 1")
+    if args.gif_fps < default_min_gif_fps:
+        raise ValueError(
+            f"--gif-fps must be >= {default_min_gif_fps} (from .env GIF_MIN_FPS)"
+        )
+    if max_gif_kb < 1:
         raise ValueError("--max-gif-kb must be >= 1")
-    if args.target_gif_kb < 1:
+    if target_gif_kb < 1:
         raise ValueError("--target-gif-kb must be >= 1")
-    if args.target_gif_kb > args.max_gif_kb:
+    if target_gif_kb > max_gif_kb:
         raise ValueError("--target-gif-kb must be <= --max-gif-kb")
     hex_byte = parse_hex_byte(args.hex_byte)
 
@@ -420,13 +491,15 @@ def main() -> int:
         ffmpeg=ffmpeg,
         input_video=input_video,
         out_dir=out_dir,
-        parts=args.parts,
-        part_width=args.part_width,
+        preset=args.preset,
+        parts=parts,
+        part_width=part_width,
         gif_fps=args.gif_fps,
+        min_gif_fps=default_min_gif_fps,
         apply_hex_patch=args.hex_patch,
         hex_byte=hex_byte,
-        max_gif_kb=args.max_gif_kb,
-        target_gif_kb=args.target_gif_kb,
+        max_gif_kb=max_gif_kb,
+        target_gif_kb=target_gif_kb,
     )
     print("Done.")
     return 0

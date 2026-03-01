@@ -1,7 +1,6 @@
 (() => {
   "use strict";
 
-  // Invisible title value: LRM + space
   const INVISIBLE_TITLE = "\u200E ";
 
   function emit(el, type) {
@@ -71,9 +70,8 @@
     return true;
   }
 
-  function applyHiddenFields() {
+  function applyWorkshopFields() {
     if (typeof window.$J === "function") {
-      // Requested Steam console command
       $J("[name=consumer_app_id]").val(480);
       $J("[name=file_type]").val(0);
       $J("[name=visibility]").val(0);
@@ -102,16 +100,15 @@
   }
 
   const agreeSet = checkAgreement();
-  applyHiddenFields();
+  applyWorkshopFields();
 
-  console.log(
-    "[steam_upload_autofill] done",
-    {
-      titleSet: !!titleInput,
-      agreeSet,
-      invisibleTitleCodepoints: [...INVISIBLE_TITLE].map((c) =>
-        c.codePointAt(0).toString(16).toUpperCase()
-      ),
-    }
-  );
+  console.log("[steam_upload_autofill workshop] done", {
+    titleSet: !!titleInput,
+    agreeSet,
+    fields: {
+      consumer_app_id: 480,
+      file_type: 0,
+      visibility: 0,
+    },
+  });
 })();
