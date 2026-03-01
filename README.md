@@ -61,6 +61,9 @@ GIF_HEX_BYTE=21
 GIF_MAX_WORKERS=0
 FFMPEG_THREADS=0
 USE_NVIDIA=false
+GIF_LOSSY_OVERSIZE_ENABLED=true
+GIF_LOSSY_LEVEL=2
+GIF_LOSSY_MAX_ATTEMPTS=24
 ```
 
 `CLI` arguments override `.env` values.
@@ -69,9 +72,12 @@ Performance notes:
 - `GIF_MAX_WORKERS=0` means auto parallel jobs (up to CPU core count / part count).
 - `FFMPEG_THREADS=0` means auto thread split per job to keep CPU close to full utilization.
 - `USE_NVIDIA=false` keeps CPU-only mode by default; set `true` or pass `--use-nvidia` to enable CUDA decode.
+- `GIF_LOSSY_OVERSIZE_ENABLED=true` enables an extra lossy fallback only when GIF is still above `MAX_KB`.
+- `GIF_LOSSY_LEVEL` controls fallback strength (`1..3`), `GIF_LOSSY_MAX_ATTEMPTS` caps extra encode attempts.
 - CLI override example:
   - `python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --max-workers 0 --ffmpeg-threads 0`
   - `python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --use-nvidia`
+  - `python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --lossy-oversize --lossy-level 2 --lossy-max-attempts 24`
 
 ## Documentation
 

@@ -72,5 +72,7 @@ FFMPEG_THREADS=0
 USE_NVIDIA=false</code></pre>
   <p>Optional NVIDIA decode (off by default):</p>
   <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --use-nvidia</code></pre>
+  <p>Oversize lossy fallback (runs only if GIF is still above max KB):</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --lossy-oversize --lossy-level 2 --lossy-max-attempts 24</code></pre>
 </body>
 </html>

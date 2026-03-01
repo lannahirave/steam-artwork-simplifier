@@ -37,6 +37,9 @@ GIF_PRECHECK_MARGIN_PCT=10
 GIF_MAX_WORKERS=0
 FFMPEG_THREADS=0
 USE_NVIDIA=false
+GIF_LOSSY_OVERSIZE_ENABLED=true
+GIF_LOSSY_LEVEL=2
+GIF_LOSSY_MAX_ATTEMPTS=24
 GIF_HEX_PATCH_ENABLED=true
 GIF_HEX_BYTE=21
 ```
@@ -46,5 +49,6 @@ GIF_HEX_BYTE=21
 - Early precheck runs by default and may fail fast for oversized sources.
 - Use `--skip-precheck` to bypass early precheck.
 - Use `--use-nvidia` to enable optional CUDA decode (default remains off).
+- Use `--lossy-oversize` plus `--lossy-level` for extra oversize-only lossy compression.
 - Script fails if output remains above configured KB limit.
 - Script fails if `--gif-fps` is below `.env` `GIF_MIN_FPS`.

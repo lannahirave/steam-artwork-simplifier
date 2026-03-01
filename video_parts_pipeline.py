@@ -31,6 +31,9 @@ DEFAULT_PRECHECK_MARGIN_PCT = 10.0
 DEFAULT_MAX_WORKERS = 0
 DEFAULT_FFMPEG_THREADS = 0
 DEFAULT_USE_NVIDIA = False
+DEFAULT_LOSSY_OVERSIZE_ENABLED = True
+DEFAULT_LOSSY_LEVEL = 2
+DEFAULT_LOSSY_MAX_ATTEMPTS = 24
 
 
 def load_dotenv() -> None:
@@ -119,6 +122,8 @@ def encode_gif_from_video(
     max_colors: int,
     ffmpeg_threads: int,
     use_nvidia: bool,
+    palette_stats_mode: str = "single",
+    palette_dither: str = "sierra2_4a",
 ) -> None:
     palette = output_gif.with_name(f"_{output_gif.stem}_palette.png")
     hwaccel_args = []
@@ -137,7 +142,7 @@ def encode_gif_from_video(
             "-i",
             str(input_video),
             "-vf",
-            f"{vf},palettegen=max_colors={max_colors}:stats_mode=single",
+            f"{vf},palettegen=max_colors={max_colors}:stats_mode={palette_stats_mode}",
             "-frames:v",
             "1",
             str(palette),
@@ -155,7 +160,7 @@ def encode_gif_from_video(
             "-i",
             str(palette),
             "-lavfi",
-            f"{vf}[x];[x][1:v]paletteuse=dither=sierra2_4a",
+            f"{vf}[x];[x][1:v]paletteuse=dither={palette_dither}",
             str(output_gif),
         ]
     )
@@ -174,13 +179,17 @@ def enforce_gif_size_limit(
     target_gif_kb: int,
     ffmpeg_threads: int,
     use_nvidia: bool,
-) -> tuple[float, bool, bool]:
+    lossy_oversize_enabled: bool,
+    lossy_level: int,
+    lossy_max_attempts: int,
+) -> tuple[float, bool, bool, bool]:
     current_kb = file_kb(gif_path)
     if current_kb <= max_gif_kb:
-        return current_kb, False, True
+        return current_kb, False, True, False
 
     changed = False
     reached_target = False
+    lossy_used = False
     tmp_gif = gif_path.with_name(f"_{gif_path.stem}_recompress.gif")
 
     fps_floor = max(1, min_gif_fps)
@@ -220,10 +229,58 @@ def enforce_gif_size_limit(
         else:
             tmp_gif.unlink(missing_ok=True)
 
+    if current_kb > max_gif_kb and lossy_oversize_enabled:
+        lossy_candidates = build_lossy_candidates(
+            base_fps=base_fps,
+            min_gif_fps=min_gif_fps,
+            lossy_level=lossy_level,
+            max_attempts=lossy_max_attempts,
+        )
+        print(
+            f"  Oversize fallback: {gif_path.name} is {current_kb:.1f}KB "
+            f"(>{max_gif_kb}KB), trying lossy profile level {lossy_level} "
+            f"with up to {lossy_max_attempts} attempts."
+        )
+        for fps, colors, dither, stats_mode, prefilter in lossy_candidates:
+            vf_parts = [f"fps={fps}"]
+            if prefilter:
+                vf_parts.append(prefilter)
+            vf_parts.append(base_filter)
+            vf = ",".join(vf_parts)
+            try:
+                encode_gif_from_video(
+                    ffmpeg=ffmpeg,
+                    input_video=input_video,
+                    output_gif=tmp_gif,
+                    vf=vf,
+                    max_colors=colors,
+                    ffmpeg_threads=ffmpeg_threads,
+                    use_nvidia=use_nvidia,
+                    palette_stats_mode=stats_mode,
+                    palette_dither=dither,
+                )
+            except RuntimeError:
+                tmp_gif.unlink(missing_ok=True)
+                continue
+
+            tmp_kb = file_kb(tmp_gif)
+            if tmp_kb < current_kb:
+                tmp_gif.replace(gif_path)
+                current_kb = tmp_kb
+                changed = True
+                lossy_used = True
+                if current_kb <= target_gif_kb:
+                    reached_target = True
+                    break
+                if current_kb <= max_gif_kb:
+                    break
+            else:
+                tmp_gif.unlink(missing_ok=True)
+
     tmp_gif.unlink(missing_ok=True)
     if not reached_target and current_kb <= target_gif_kb:
         reached_target = True
-    return current_kb, changed, reached_target
+    return current_kb, changed, reached_target, lossy_used
 
 
 def probe(ffprobe: Path, input_video: Path) -> tuple[int, int, float]:
@@ -268,6 +325,50 @@ def resolve_parallel_settings(
     else:
         threads = max(1, ffmpeg_threads)
     return workers, threads
+
+
+def build_lossy_candidates(
+    base_fps: int,
+    min_gif_fps: int,
+    lossy_level: int,
+    max_attempts: int,
+) -> list[tuple[int, int, str, str, str]]:
+    fps_floor = max(1, min_gif_fps)
+    fps_candidates = list(range(base_fps, fps_floor - 1, -1))
+    if not fps_candidates:
+        fps_candidates = [base_fps]
+
+    if lossy_level <= 1:
+        colors_candidates = [64, 48, 32, 24]
+        dither_candidates = ["bayer:bayer_scale=5", "none"]
+        stats_modes = ["single"]
+        prefilters = [""]
+    elif lossy_level == 2:
+        colors_candidates = [64, 48, 32, 24, 16]
+        dither_candidates = ["bayer:bayer_scale=5", "bayer:bayer_scale=3", "none"]
+        stats_modes = ["single", "diff"]
+        prefilters = ["", "gblur=sigma=0.3"]
+    else:
+        colors_candidates = [64, 48, 32, 24, 16, 12]
+        dither_candidates = ["bayer:bayer_scale=5", "bayer:bayer_scale=3", "none"]
+        stats_modes = ["single", "diff"]
+        prefilters = ["", "gblur=sigma=0.3", "gblur=sigma=0.6"]
+
+    candidates: list[tuple[int, int, str, str, str]] = []
+    seen: set[tuple[int, int, str, str, str]] = set()
+    for fps in fps_candidates:
+        for prefilter in prefilters:
+            for stats_mode in stats_modes:
+                for dither in dither_candidates:
+                    for colors in colors_candidates:
+                        candidate = (fps, colors, dither, stats_mode, prefilter)
+                        if candidate in seen:
+                            continue
+                        seen.add(candidate)
+                        candidates.append(candidate)
+                        if len(candidates) >= max_attempts:
+                            return candidates
+    return candidates
 
 
 def estimate_gif_kb(
@@ -343,6 +444,9 @@ def make_gif_parts(
     max_workers: int,
     ffmpeg_threads: int,
     use_nvidia: bool,
+    lossy_oversize_enabled: bool,
+    lossy_level: int,
+    lossy_max_attempts: int,
 ) -> None:
     total_target_w = parts * part_width
     target_h = compute_target_height(src_w, src_h, total_target_w)
@@ -359,7 +463,9 @@ def make_gif_parts(
         f"Preset: {preset}\n"
         f"Rescale for slicing: {src_w}x{src_h} -> {total_target_w}x{target_h}\n"
         f"Output: {parts} GIFs, each {part_width}x{target_h}\n"
-        f"Parallel: workers={workers}, ffmpeg_threads_per_job={threads}"
+        f"Parallel: workers={workers}, ffmpeg_threads_per_job={threads}\n"
+        f"Lossy oversize fallback: {'on' if lossy_oversize_enabled else 'off'} "
+        f"(level={lossy_level}, attempts={lossy_max_attempts})"
     )
 
     def build_one_part(i: int) -> tuple[int, str]:
@@ -384,7 +490,7 @@ def make_gif_parts(
             use_nvidia=use_nvidia,
         )
 
-        final_kb, recompressed, reached_target = enforce_gif_size_limit(
+        final_kb, recompressed, reached_target, lossy_used = enforce_gif_size_limit(
             ffmpeg=ffmpeg,
             input_video=input_video,
             gif_path=gif_path,
@@ -395,6 +501,9 @@ def make_gif_parts(
             target_gif_kb=target_gif_kb,
             ffmpeg_threads=threads,
             use_nvidia=use_nvidia,
+            lossy_oversize_enabled=lossy_oversize_enabled,
+            lossy_level=lossy_level,
+            lossy_max_attempts=lossy_max_attempts,
         )
 
         if final_kb > max_gif_kb:
@@ -408,7 +517,12 @@ def make_gif_parts(
 
         if apply_hex_patch:
             old_byte, new_byte = patch_last_byte(gif_path, hex_byte)
-            status = "recompressed" if recompressed else "original"
+            if lossy_used:
+                status = "lossy"
+            elif recompressed:
+                status = "recompressed"
+            else:
+                status = "original"
             limit_status = (
                 f"ok<={target_gif_kb}KB"
                 if reached_target
@@ -423,7 +537,12 @@ def make_gif_parts(
                 f"{limit_status} | hex: {old_byte:02X}->{new_byte:02X}"
             )
         else:
-            status = "recompressed" if recompressed else "original"
+            if lossy_used:
+                status = "lossy"
+            elif recompressed:
+                status = "recompressed"
+            else:
+                status = "original"
             limit_status = (
                 f"ok<={target_gif_kb}KB"
                 if reached_target
@@ -465,6 +584,13 @@ def main() -> int:
     default_max_workers = env_int("GIF_MAX_WORKERS", DEFAULT_MAX_WORKERS)
     default_ffmpeg_threads = env_int("FFMPEG_THREADS", DEFAULT_FFMPEG_THREADS)
     default_use_nvidia = env_bool("USE_NVIDIA", DEFAULT_USE_NVIDIA)
+    default_lossy_oversize_enabled = env_bool(
+        "GIF_LOSSY_OVERSIZE_ENABLED", DEFAULT_LOSSY_OVERSIZE_ENABLED
+    )
+    default_lossy_level = env_int("GIF_LOSSY_LEVEL", DEFAULT_LOSSY_LEVEL)
+    default_lossy_max_attempts = env_int(
+        "GIF_LOSSY_MAX_ATTEMPTS", DEFAULT_LOSSY_MAX_ATTEMPTS
+    )
     default_preset = os.getenv("GIF_PRESET", DEFAULT_PRESET).strip().lower()
     default_featured_width = env_int("FEATURED_ARTWORK_WIDTH", DEFAULT_FEATURED_WIDTH)
     default_gif_fps = env_int("GIF_FPS", 15)
@@ -605,6 +731,41 @@ def main() -> int:
         help="Disable NVIDIA CUDA hardware decode.",
     )
     parser.set_defaults(use_nvidia=default_use_nvidia)
+    lossy_group = parser.add_mutually_exclusive_group()
+    lossy_group.add_argument(
+        "--lossy-oversize",
+        dest="lossy_oversize",
+        action="store_true",
+        help=(
+            "Enable extra lossy optimization when a GIF is still above --max-gif-kb "
+            f"(default from .env GIF_LOSSY_OVERSIZE_ENABLED={default_lossy_oversize_enabled})."
+        ),
+    )
+    lossy_group.add_argument(
+        "--no-lossy-oversize",
+        dest="lossy_oversize",
+        action="store_false",
+        help="Disable lossy oversize fallback.",
+    )
+    parser.set_defaults(lossy_oversize=default_lossy_oversize_enabled)
+    parser.add_argument(
+        "--lossy-level",
+        type=int,
+        default=default_lossy_level,
+        help=(
+            "Lossy fallback aggressiveness (1=mild, 2=balanced, 3=aggressive) "
+            f"(default from .env GIF_LOSSY_LEVEL={default_lossy_level})."
+        ),
+    )
+    parser.add_argument(
+        "--lossy-max-attempts",
+        type=int,
+        default=default_lossy_max_attempts,
+        help=(
+            "Maximum lossy candidate attempts per GIF when oversize fallback is active "
+            f"(default from .env GIF_LOSSY_MAX_ATTEMPTS={default_lossy_max_attempts})."
+        ),
+    )
     parser.add_argument(
         "--skip-precheck",
         action="store_true",
@@ -669,6 +830,10 @@ def main() -> int:
         raise ValueError("--max-workers must be >= 0")
     if args.ffmpeg_threads < 0:
         raise ValueError("--ffmpeg-threads must be >= 0")
+    if args.lossy_level not in {1, 2, 3}:
+        raise ValueError("--lossy-level must be 1, 2, or 3")
+    if args.lossy_max_attempts < 1:
+        raise ValueError("--lossy-max-attempts must be >= 1")
     if args.gif_fps < default_min_gif_fps:
         raise ValueError(
             f"--gif-fps must be >= {default_min_gif_fps} (from .env GIF_MIN_FPS)"
@@ -724,6 +889,9 @@ def main() -> int:
         max_workers=args.max_workers,
         ffmpeg_threads=args.ffmpeg_threads,
         use_nvidia=args.use_nvidia,
+        lossy_oversize_enabled=args.lossy_oversize,
+        lossy_level=args.lossy_level,
+        lossy_max_attempts=args.lossy_max_attempts,
     )
     print("Done.")
     return 0
