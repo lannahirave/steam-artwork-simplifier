@@ -16,6 +16,9 @@ import subprocess
 from pathlib import Path
 from typing import Sequence
 
+MAX_GIF_KB = 5000
+TARGET_GIF_KB = 4500
+
 
 def run(cmd: Sequence[str]) -> str:
     try:
@@ -37,6 +40,110 @@ def patch_last_byte(path: Path, byte_value: int = 0x21) -> tuple[int, int]:
     patched[-1] = byte_value
     path.write_bytes(patched)
     return old, byte_value
+
+
+def file_kb(path: Path) -> float:
+    return path.stat().st_size / 1024.0
+
+
+def encode_gif_from_video(
+    ffmpeg: Path,
+    input_video: Path,
+    output_gif: Path,
+    vf: str,
+    max_colors: int,
+) -> None:
+    palette = output_gif.with_name(f"_{output_gif.stem}_palette.png")
+    run(
+        [
+            str(ffmpeg),
+            "-y",
+            "-i",
+            str(input_video),
+            "-vf",
+            f"{vf},palettegen=max_colors={max_colors}:stats_mode=single",
+            "-frames:v",
+            "1",
+            str(palette),
+        ]
+    )
+    run(
+        [
+            str(ffmpeg),
+            "-y",
+            "-i",
+            str(input_video),
+            "-i",
+            str(palette),
+            "-lavfi",
+            f"{vf}[x];[x][1:v]paletteuse=dither=sierra2_4a",
+            str(output_gif),
+        ]
+    )
+    if palette.exists():
+        palette.unlink()
+
+
+def enforce_gif_size_limit(
+    ffmpeg: Path,
+    input_video: Path,
+    gif_path: Path,
+    base_filter: str,
+    base_fps: int,
+) -> tuple[float, bool, bool]:
+    current_kb = file_kb(gif_path)
+    if current_kb <= MAX_GIF_KB:
+        return current_kb, False, True
+
+    changed = False
+    reached_target = False
+    tmp_gif = gif_path.with_name(f"_{gif_path.stem}_recompress.gif")
+
+    fps_candidates = [
+        max(1, base_fps - 1),
+        max(1, base_fps - 2),
+        max(1, base_fps - 3),
+        max(1, base_fps - 4),
+        max(1, base_fps - 5),
+        max(1, base_fps - 6),
+        8,
+        6,
+    ]
+    colors_candidates = [224, 192, 160, 128, 96, 64]
+
+    seen: set[tuple[int, int]] = set()
+    candidates: list[tuple[int, int]] = []
+    for fps in fps_candidates:
+        for colors in colors_candidates:
+            pair = (fps, colors)
+            if pair not in seen:
+                seen.add(pair)
+                candidates.append(pair)
+
+    for fps, colors in candidates:
+        vf = f"fps={fps},{base_filter}"
+        encode_gif_from_video(
+            ffmpeg=ffmpeg,
+            input_video=input_video,
+            output_gif=tmp_gif,
+            vf=vf,
+            max_colors=colors,
+        )
+        tmp_kb = file_kb(tmp_gif)
+        if tmp_kb < current_kb:
+            tmp_gif.replace(gif_path)
+            current_kb = tmp_kb
+            changed = True
+            if current_kb <= TARGET_GIF_KB:
+                reached_target = True
+                break
+        else:
+            tmp_gif.unlink(missing_ok=True)
+
+    tmp_gif.unlink(missing_ok=True)
+    if not reached_target and current_kb <= TARGET_GIF_KB:
+        reached_target = True
+    return current_kb, changed, reached_target
 
 
 def probe(ffprobe: Path, input_video: Path) -> tuple[int, int, float]:
@@ -85,50 +192,49 @@ def make_gif_parts(
         idx = i + 1
         x = i * part_width
         gif_path = out_dir / f"part_{idx:02d}.gif"
-        pal_path = out_dir / f"_palette_{idx:02d}.png"
-
-        vf_base = (
-            f"fps={gif_fps},"
+        base_filter = (
             f"scale={total_target_w}:{target_h}:flags=lanczos,"
             f"crop={part_width}:{target_h}:{x}:0"
         )
-
-        run(
-            [
-                str(ffmpeg),
-                "-y",
-                "-i",
-                str(input_video),
-                "-vf",
-                f"{vf_base},palettegen=stats_mode=single",
-                "-frames:v",
-                "1",
-                str(pal_path),
-            ]
+        vf_initial = f"fps={gif_fps},{base_filter}"
+        encode_gif_from_video(
+            ffmpeg=ffmpeg,
+            input_video=input_video,
+            output_gif=gif_path,
+            vf=vf_initial,
+            max_colors=256,
         )
 
-        run(
-            [
-                str(ffmpeg),
-                "-y",
-                "-i",
-                str(input_video),
-                "-i",
-                str(pal_path),
-                "-lavfi",
-                f"{vf_base}[x];[x][1:v]paletteuse=dither=sierra2_4a",
-                str(gif_path),
-            ]
+        final_kb, recompressed, reached_target = enforce_gif_size_limit(
+            ffmpeg=ffmpeg,
+            input_video=input_video,
+            gif_path=gif_path,
+            base_filter=base_filter,
+            base_fps=gif_fps,
         )
-
-        if pal_path.exists():
-            pal_path.unlink()
 
         if apply_hex_patch:
             old_byte, new_byte = patch_last_byte(gif_path, 0x21)
-            print(f"  GIF: {gif_path} | hex: {old_byte:02X}->{new_byte:02X}")
+            status = (
+                "recompressed" if recompressed else "original"
+            )
+            limit_status = (
+                f"ok<={TARGET_GIF_KB}KB"
+                if reached_target
+                else ("ok<=5000KB" if final_kb <= MAX_GIF_KB else "still>5000KB")
+            )
+            print(
+                f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | "
+                f"{limit_status} | hex: {old_byte:02X}->{new_byte:02X}"
+            )
         else:
-            print(f"  GIF: {gif_path}")
+            status = "recompressed" if recompressed else "original"
+            limit_status = (
+                f"ok<={TARGET_GIF_KB}KB"
+                if reached_target
+                else ("ok<=5000KB" if final_kb <= MAX_GIF_KB else "still>5000KB")
+            )
+            print(f"  GIF: {gif_path} | {final_kb:.1f}KB | {status} | {limit_status}")
 
 
 def main() -> int:
