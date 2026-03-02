@@ -1,0 +1,113 @@
+import type { ConversionConfig, Preset, ResolvedPresetSettings } from './types'
+
+export const DEFAULTS = {
+  gifFps: 15,
+  minGifFps: 10,
+  workshop: {
+    parts: 5,
+    partWidth: 150,
+    maxGifKb: 5000,
+    targetGifKb: 4500,
+  },
+  featured: {
+    width: 630,
+    maxGifKb: 4500,
+    targetGifKb: 4500,
+  },
+  standardRetriesEnabled: false,
+  retryAllowFpsDrop: true,
+  retryAllowColorDrop: true,
+  precheckEnabled: false,
+  precheckBppf: 0.1,
+  precheckMarginPct: 10,
+  lossyOversize: true,
+  lossyLevel: 2,
+  lossyMaxAttempts: 24,
+  eofPatchEnabled: true,
+  eofByte: 0x21,
+  headerPatchEnabled: false,
+  headerWidth: 1000,
+  headerHeight: 1,
+} as const
+
+export function getDefaultWorkerCount(parts: number, hardwareConcurrency?: number): number {
+  const hw = hardwareConcurrency ?? (typeof navigator !== 'undefined' ? navigator.hardwareConcurrency : 4) ?? 4
+  const half = Math.floor(hw / 2)
+  const suggested = Math.max(2, half)
+  return Math.max(1, Math.min(parts, 3, suggested))
+}
+
+export function resolvePresetSettings(config: ConversionConfig): ResolvedPresetSettings {
+  if (config.preset === 'featured') {
+    return {
+      parts: 1,
+      partWidth: config.featuredWidth,
+      maxGifKb: DEFAULTS.featured.maxGifKb,
+      targetGifKb: DEFAULTS.featured.targetGifKb,
+    }
+  }
+
+  return {
+    parts: config.parts,
+    partWidth: config.partWidth,
+    maxGifKb: DEFAULTS.workshop.maxGifKb,
+    targetGifKb: DEFAULTS.workshop.targetGifKb,
+  }
+}
+
+export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig {
+  const parts = preset === 'featured' ? 1 : DEFAULTS.workshop.parts
+
+  return {
+    preset,
+    gifFps: DEFAULTS.gifFps,
+    minGifFps: DEFAULTS.minGifFps,
+    parts: DEFAULTS.workshop.parts,
+    partWidth: DEFAULTS.workshop.partWidth,
+    featuredWidth: DEFAULTS.featured.width,
+    maxGifKb: preset === 'featured' ? DEFAULTS.featured.maxGifKb : DEFAULTS.workshop.maxGifKb,
+    targetGifKb:
+      preset === 'featured' ? DEFAULTS.featured.targetGifKb : DEFAULTS.workshop.targetGifKb,
+    standardRetriesEnabled: DEFAULTS.standardRetriesEnabled,
+    retryAllowFpsDrop: DEFAULTS.retryAllowFpsDrop,
+    retryAllowColorDrop: DEFAULTS.retryAllowColorDrop,
+    lossyOversize: DEFAULTS.lossyOversize,
+    lossyLevel: DEFAULTS.lossyLevel,
+    lossyMaxAttempts: DEFAULTS.lossyMaxAttempts,
+    precheckEnabled: DEFAULTS.precheckEnabled,
+    precheckBppf: DEFAULTS.precheckBppf,
+    precheckMarginPct: DEFAULTS.precheckMarginPct,
+    eofPatchEnabled: DEFAULTS.eofPatchEnabled,
+    eofByte: DEFAULTS.eofByte,
+    headerPatchEnabled: DEFAULTS.headerPatchEnabled,
+    headerWidth: DEFAULTS.headerWidth,
+    headerHeight: DEFAULTS.headerHeight,
+    workerCount: getDefaultWorkerCount(parts),
+  }
+}
+
+export function applyPreset(config: ConversionConfig, preset: Preset): ConversionConfig {
+  const next = { ...config, preset }
+  if (preset === 'featured') {
+    return {
+      ...next,
+      workerCount: getDefaultWorkerCount(1),
+      maxGifKb: DEFAULTS.featured.maxGifKb,
+      targetGifKb: DEFAULTS.featured.targetGifKb,
+    }
+  }
+
+  return {
+    ...next,
+    workerCount: getDefaultWorkerCount(config.parts),
+    maxGifKb: DEFAULTS.workshop.maxGifKb,
+    targetGifKb: DEFAULTS.workshop.targetGifKb,
+  }
+}
+
+export function computeTargetHeight(srcWidth: number, srcHeight: number, totalTargetWidth: number): number {
+  if (srcWidth <= 0) {
+    return 1
+  }
+  return Math.max(1, Math.round(srcHeight * (totalTargetWidth / srcWidth)))
+}

@@ -5,13 +5,33 @@ Utility scripts and docs for preparing Steam profile artwork assets:
 - featured artwork (single wide GIF)
 - optional hex patching workflows used in this repo
 
+This repository now includes two paths:
+- Legacy CLI tooling (Python scripts in repo root)
+- New browser app (`web/`) built with TypeScript + React 19 + FFmpeg WASM
+
 ## What is included
 
+- `web/`: browser-only toolkit (React 19 + TypeScript + ffmpeg.wasm) with conversion UI, patch tools, preview, and ZIP export.
 - `video_parts_pipeline.py`: builds GIFs from a source video using `ffmpeg`/`ffprobe`, with size checks and optional EOF-byte patching.
 - `steam_hex_patch.py`: patches the last byte of target files (default `0x21`), with backup and dry-run support.
 - `steam_hex_edit_header.py`: edits GIF header width/height bytes (`6-9`) and optional EOF byte.
 - `autofill/*.js`: browser console helpers for Steam upload forms.
 - `information/*.md`: workflow docs for workshop, featured artwork, and header hex-edit.
+
+## New Web App (`web/`)
+
+```bash
+cd .\web
+npm install
+npm run dev
+```
+
+Notes:
+- Requires cross-origin isolation headers for fast ffmpeg.wasm mode.
+- The Vite dev/preview config in `web/vite.config.ts` already sets:
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Embedder-Policy: require-corp`
+- Full web app docs: `web/README.md`
 
 ## Requirements
 
