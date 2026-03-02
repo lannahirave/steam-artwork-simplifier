@@ -357,6 +357,12 @@ input[type='file']::file-selector-button:hover {
   font-size: 0.84rem;
 }
 
+.progress-time {
+  margin: 0.4rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
 button {
   border: 1px solid rgba(16, 33, 47, 0.22);
   background: linear-gradient(120deg, var(--surface-contrast), rgba(245, 237, 221, 0.95));
@@ -429,6 +435,13 @@ button:disabled {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 0.95rem;
+}
+
+.result-timing {
+  margin: 1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  font-weight: 600;
 }
 
 .results-grid.workshop-strip {

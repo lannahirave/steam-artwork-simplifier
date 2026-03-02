@@ -24,6 +24,7 @@ const ffmpeg = new FFmpeg()
 const ffmpegLogBuffer: string[] = []
 let loaded = false
 let currentRequestId = ''
+const SCALE_FLAGS = 'bicubic'
 
 ffmpeg.on('log', ({ message }) => {
   ffmpegLogBuffer.push(message)
@@ -243,7 +244,6 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
     if (
       singleResult.ret === 0 &&
       singleBytes !== null &&
-      !singleResult.hasAbortLog &&
       !singleSuspiciousAbort
     ) {
       return singleBytes
@@ -518,6 +518,18 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
           'standard',
           `FPS-fit improved output: ${bestSize.toFixed(1)}KB at ${nextFps}fps.`,
         )
+
+        // Speed-first behavior when standard retries are disabled:
+        // once we're within hard max, skip extra target-size chasing passes.
+        if (!options.standardRetriesEnabled && bestSize <= options.maxGifKb) {
+          return {
+            bytes: bestBytes,
+            sizeKb: bestSize,
+            status: bestStatus,
+            finalFps: bestFps,
+            finalColors: bestColors,
+          }
+        }
       }
 
       if (bestSize <= options.targetGifKb) {
@@ -528,6 +540,52 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
           finalFps: bestFps,
           finalColors: bestColors,
         }
+      }
+    }
+  }
+
+  // Always exhaust FPS-only reductions before palette reductions when oversize.
+  if (options.retryAllowFpsDrop && bestSize > options.maxGifKb) {
+    const fpsFloor = Math.max(1, options.minGifFps)
+    const totalSweepSteps = Math.max(0, bestFps - fpsFloor)
+    if (totalSweepSteps > 0) {
+      postProgress(
+        options.requestId,
+        'standard',
+        `FPS-priority sweep: trying lower FPS values before any color reduction (${totalSweepSteps} step(s)).`,
+      )
+    }
+
+    for (let fps = bestFps - 1; fps >= fpsFloor; fps -= 1) {
+      const sweepIndex = bestFps - fps
+      postProgress(
+        options.requestId,
+        'standard',
+        `FPS-priority ${sweepIndex}/${totalSweepSteps}: fps=${fps}, colors=256`,
+      )
+
+      const attemptBytes = await encodeGif({
+        inputName: options.inputName,
+        outputName: `fps-priority-${fps}-${options.requestId}.gif`,
+        vf: `fps=${fps},${options.baseFilter}`,
+        maxColors: 256,
+      })
+      const attemptSize = attemptBytes.byteLength / 1024
+      if (attemptSize < bestSize) {
+        bestBytes = attemptBytes
+        bestSize = attemptSize
+        bestFps = fps
+        bestColors = 256
+        bestStatus = 'recompressed'
+        postProgress(
+          options.requestId,
+          'standard',
+          `FPS-priority improved output: ${bestSize.toFixed(1)}KB at ${fps}fps.`,
+        )
+      }
+
+      if (bestSize <= options.maxGifKb) {
+        break
       }
     }
   }
@@ -679,7 +737,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
   const targetHeight = computeTargetHeight(payload.srcWidth, payload.srcHeight, totalTargetWidth)
   const cropX = payload.partIndex * payload.partWidth
   const baseFilter =
-    `scale=${totalTargetWidth}:${targetHeight}:flags=lanczos,` +
+    `scale=${totalTargetWidth}:${targetHeight}:flags=${SCALE_FLAGS},` +
     `crop=${payload.partWidth}:${targetHeight}:${cropX}:0`
 
   const best = await searchBestEncode({
@@ -729,7 +787,7 @@ async function runConvertFeatured(
   await ffmpeg.writeFile(inputName, payload.fileBytes)
 
   const targetHeight = computeTargetHeight(payload.srcWidth, payload.srcHeight, payload.featuredWidth)
-  const baseFilter = `scale=${payload.featuredWidth}:${targetHeight}:flags=lanczos`
+  const baseFilter = `scale=${payload.featuredWidth}:${targetHeight}:flags=${SCALE_FLAGS}`
 
   const best = await searchBestEncode({
     inputName,

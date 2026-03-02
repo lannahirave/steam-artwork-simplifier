@@ -139,6 +139,17 @@ function getWorkerStageWeight(stage: string): number {
   return 0.45
 }
 
+function formatElapsed(ms: number): string {
+  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
+  const hours = Math.floor(totalSeconds / 3600)
+  const minutes = Math.floor((totalSeconds % 3600) / 60)
+  const seconds = totalSeconds % 60
+  if (hours > 0) {
+    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+  }
+  return `${minutes}:${String(seconds).padStart(2, '0')}`
+}
+
 function App() {
   const isolationState = useMemo(() => getIsolationState(), [])
   const [tab, setTab] = useState<TabKey>('convert')
@@ -163,6 +174,8 @@ function App() {
   const [artifactViews, setArtifactViews] = useState<ArtifactView[]>([])
   const [progressPercent, setProgressPercent] = useState(0)
   const [progressLabel, setProgressLabel] = useState('')
+  const [elapsedMs, setElapsedMs] = useState(0)
+  const [lastElapsedMs, setLastElapsedMs] = useState<number | null>(null)
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
 
@@ -184,6 +197,7 @@ function App() {
   const poolRef = useRef<FFmpegWorkerPool | null>(null)
   const totalJobsRef = useRef(1)
   const workerWeightsRef = useRef<Record<number, number>>({})
+  const conversionStartMsRef = useRef<number | null>(null)
 
   useEffect(() => {
     return () => {
@@ -218,6 +232,24 @@ function App() {
     }
   }, [artifactViews])
 
+  useEffect(() => {
+    if (!busy) {
+      return
+    }
+
+    const timer = window.setInterval(() => {
+      const startedAt = conversionStartMsRef.current
+      if (!startedAt) {
+        return
+      }
+      setElapsedMs(Date.now() - startedAt)
+    }, 200)
+
+    return () => {
+      window.clearInterval(timer)
+    }
+  }, [busy])
+
   const convertDisabled = busy || !sourceFile
   const isWorkshopStrip =
     artifactViews.length === 5 &&
@@ -231,7 +263,10 @@ function App() {
     setFpsEstimateInfo('')
     setProgressPercent(0)
     setProgressLabel('')
+    setElapsedMs(0)
+    setLastElapsedMs(null)
     workerWeightsRef.current = {}
+    conversionStartMsRef.current = null
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
   }
@@ -307,10 +342,14 @@ function App() {
 
     totalJobsRef.current = requestedJobs
     workerWeightsRef.current = {}
-    setBusy(true)
     resetConvertState()
+    const startedAt = Date.now()
+    conversionStartMsRef.current = startedAt
+    setBusy(true)
     setProgressPercent(2)
     setProgressLabel('Starting conversion...')
+    setElapsedMs(0)
+    setLastElapsedMs(null)
 
     try {
       const pool = ensurePool(runtimeConfig.workerCount)
@@ -338,21 +377,35 @@ function App() {
       setWarnings([...extraWarnings, ...result.warnings])
       setArtifactViews(toArtifactViews(result.artifacts))
       setProgressPercent(100)
-      setProgressLabel('Conversion complete.')
+      const totalMs = Date.now() - startedAt
+      setElapsedMs(totalMs)
+      setLastElapsedMs(totalMs)
+      setProgressLabel(`Conversion complete in ${formatElapsed(totalMs)}.`)
     } catch (conversionError) {
       const message = conversionError instanceof Error ? conversionError.message : String(conversionError)
+      const totalMs = Date.now() - startedAt
+      setElapsedMs(totalMs)
+      setLastElapsedMs(totalMs)
       setError(message)
       setProgressLabel(`Failed: ${message}`)
     } finally {
       setBusy(false)
+      conversionStartMsRef.current = null
     }
   }
 
   function cancelConversion(): void {
+    const startedAt = conversionStartMsRef.current
+    if (startedAt) {
+      const totalMs = Date.now() - startedAt
+      setElapsedMs(totalMs)
+      setLastElapsedMs(totalMs)
+    }
     poolRef.current?.cancelAll()
     setBusy(false)
     setError('Conversion cancelled.')
     setProgressLabel('Conversion cancelled.')
+    conversionStartMsRef.current = null
   }
 
   async function downloadZip(): Promise<void> {
@@ -874,6 +927,11 @@ function App() {
                 <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
               </div>
               {progressLabel && <p className="progress-label">{progressLabel}</p>}
+              {(busy || lastElapsedMs !== null) && (
+                <p className="progress-time">
+                  Time: {busy ? formatElapsed(elapsedMs) : formatElapsed(lastElapsedMs ?? 0)}
+                </p>
+              )}
             </div>
           )}
 
@@ -905,34 +963,39 @@ function App() {
           )}
 
           {artifactViews.length > 0 && (
-            <section className={isWorkshopStrip ? 'results-grid workshop-strip' : 'results-grid'}>
-              {artifactViews.map((item) => (
-                <article className="result-card" key={item.artifact.name}>
-                  {!isWorkshopStrip && (
-                    <>
-                      <h3>{item.artifact.name}</h3>
-                      <p>
-                        {item.artifact.width}x{item.artifact.height} | {item.artifact.status}
-                      </p>
-                    </>
-                  )}
-                  <img src={item.url} alt={item.artifact.name} loading="lazy" />
-                  <div className={isWorkshopStrip ? 'gif-meta compact' : 'gif-meta'}>
-                    <span>FPS: {item.artifact.finalFps}</span>
-                    <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
-                  </div>
-                  <div className={isWorkshopStrip ? 'download-row compact' : 'download-row'}>
-                    <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
-                    <button
-                      className={isWorkshopStrip ? 'compact-download' : ''}
-                      onClick={() => downloadBlob(item.artifact.name, item.artifact.blob)}
-                    >
-                      {isWorkshopStrip ? 'DL' : 'Download'}
-                    </button>
-                  </div>
-                </article>
-              ))}
-            </section>
+            <>
+              {lastElapsedMs !== null && (
+                <p className="result-timing">Output ready in {formatElapsed(lastElapsedMs)}.</p>
+              )}
+              <section className={isWorkshopStrip ? 'results-grid workshop-strip' : 'results-grid'}>
+                {artifactViews.map((item) => (
+                  <article className="result-card" key={item.artifact.name}>
+                    {!isWorkshopStrip && (
+                      <>
+                        <h3>{item.artifact.name}</h3>
+                        <p>
+                          {item.artifact.width}x{item.artifact.height} | {item.artifact.status}
+                        </p>
+                      </>
+                    )}
+                    <img src={item.url} alt={item.artifact.name} loading="lazy" />
+                    <div className={isWorkshopStrip ? 'gif-meta compact' : 'gif-meta'}>
+                      <span>FPS: {item.artifact.finalFps}</span>
+                      <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
+                    </div>
+                    <div className={isWorkshopStrip ? 'download-row compact' : 'download-row'}>
+                      <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
+                      <button
+                        className={isWorkshopStrip ? 'compact-download' : ''}
+                        onClick={() => downloadBlob(item.artifact.name, item.artifact.blob)}
+                      >
+                        {isWorkshopStrip ? 'DL' : 'Download'}
+                      </button>
+                    </div>
+                  </article>
+                ))}
+              </section>
+            </>
           )}
         </section>
       )}
