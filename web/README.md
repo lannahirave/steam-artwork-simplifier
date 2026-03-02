@@ -57,3 +57,13 @@ npm run test:e2e
 - This app is intentionally browser-only: no backend required.
 - Existing Python scripts in the repo remain available for side-by-side migration.
 - Add `?noiso=1` to the URL to simulate the isolation-blocking screen for smoke tests.
+
+## Deep Docs
+
+- `../docs/README.md`
+- `../docs/PROJECT_OVERVIEW.md`
+- `../docs/TECHNICAL_ARCHITECTURE.md`
+- `../docs/CONVERSION_PIPELINE.md`
+- `../docs/DEPLOYMENT_RUNBOOK.md`
+- `../docs/TROUBLESHOOTING.md`
+- `../docs/CHROME_MCP_TESTING.md`

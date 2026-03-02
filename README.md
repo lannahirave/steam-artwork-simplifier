@@ -105,6 +105,13 @@ Performance notes:
 - `information/workshop_showcase.md`
 - `information/featured_artwork.md`
 - `information/hex_edit_header.md`
+- `docs/README.md`
+- `docs/PROJECT_OVERVIEW.md`
+- `docs/TECHNICAL_ARCHITECTURE.md`
+- `docs/CONVERSION_PIPELINE.md`
+- `docs/DEPLOYMENT_RUNBOOK.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/CHROME_MCP_TESTING.md`
 
 ## License
 
