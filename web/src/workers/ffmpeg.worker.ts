@@ -183,6 +183,8 @@ interface EncodeOptions {
   statsMode?: 'single' | 'diff'
 }
 
+const SUSPICIOUS_ABORT_GIF_MAX_BYTES = 8 * 1024
+
 function hasGifSignature(bytes: Uint8Array): boolean {
   if (bytes.length < 6) {
     return false
@@ -198,17 +200,28 @@ function hasGifSignature(bytes: Uint8Array): boolean {
   return head === 'GIF87a' || head === 'GIF89a'
 }
 
+async function readGifIfValid(path: string): Promise<Uint8Array | null> {
+  try {
+    const bytes = (await ffmpeg.readFile(path)) as Uint8Array
+    return hasGifSignature(bytes) ? bytes : null
+  } catch {
+    return null
+  }
+}
+
 async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
   // Faster default than sierra2_4a with acceptable quality for Steam artwork.
   const dither = options.dither ?? 'bayer:bayer_scale=5'
   const statsMode = options.statsMode ?? 'single'
-  const filterGraph =
+  const singlePassGraph =
     `[0:v]${options.vf},split[v][p];` +
     `[p]palettegen=max_colors=${options.maxColors}:stats_mode=${statsMode}[palette];` +
     `[v][palette]paletteuse=dither=${dither}:diff_mode=rectangle`
+  const twoPassGraph = `${options.vf}[x];[x][1:v]paletteuse=dither=${dither}:diff_mode=rectangle`
+  const paletteName = `${options.outputName}.palette.png`
 
   try {
-    const encodeResult = await execWithContext([
+    const singleResult = await execWithContext([
       '-hide_banner',
       '-loglevel',
       'error',
@@ -218,26 +231,137 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       '-i',
       options.inputName,
       '-filter_complex',
-      filterGraph,
+      singlePassGraph,
       options.outputName,
     ])
+    const singleBytes = await readGifIfValid(options.outputName)
+    const singleSuspiciousAbort =
+      singleResult.hasAbortLog &&
+      singleBytes !== null &&
+      singleBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES
 
-    if (encodeResult.ret !== 0) {
-      throw new Error(
-        `GIF encode failed (ret=${encodeResult.ret}).\n\nffmpeg output:\n${encodeResult.logTail}`,
+    if (
+      singleResult.ret === 0 &&
+      singleBytes !== null &&
+      !singleResult.hasAbortLog &&
+      !singleSuspiciousAbort
+    ) {
+      return singleBytes
+    }
+
+    if (currentRequestId) {
+      postProgress(
+        currentRequestId,
+        'convert',
+        'Primary GIF encode reported instability; retrying with compatibility palette pass...',
       )
     }
 
-    const bytes = (await ffmpeg.readFile(options.outputName)) as Uint8Array
-    if (!hasGifSignature(bytes)) {
-      throw new Error(
-        'GIF encode produced invalid output bytes.\n\n' +
-          `ffmpeg output:\n${encodeResult.logTail}` +
-          (encodeResult.hasAbortLog ? '\n\nDetected Aborted() in ffmpeg logs.' : ''),
+    const paletteResult = await execWithContext([
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-threads',
+      '1',
+      '-i',
+      options.inputName,
+      '-vf',
+      `${options.vf},palettegen=max_colors=${options.maxColors}:stats_mode=${statsMode}`,
+      '-frames:v',
+      '1',
+      '-update',
+      '1',
+      paletteName,
+    ])
+
+    const compatResult = await execWithContext([
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-threads',
+      '1',
+      '-i',
+      options.inputName,
+      '-i',
+      paletteName,
+      '-lavfi',
+      twoPassGraph,
+      options.outputName,
+    ])
+    const compatBytes = await readGifIfValid(options.outputName)
+
+    if (
+      compatResult.ret === 0 &&
+      compatBytes !== null &&
+      !(compatResult.hasAbortLog && compatBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES)
+    ) {
+      return compatBytes
+    }
+
+    if (currentRequestId) {
+      postProgress(
+        currentRequestId,
+        'convert',
+        'Palette encode still unstable; retrying with direct GIF encoder fallback...',
       )
     }
-    return bytes
+
+    const directResult = await execWithContext([
+      '-hide_banner',
+      '-loglevel',
+      'error',
+      '-y',
+      '-threads',
+      '1',
+      '-i',
+      options.inputName,
+      '-vf',
+      options.vf,
+      options.outputName,
+    ])
+    const directBytes = await readGifIfValid(options.outputName)
+
+    if (
+      directResult.ret === 0 &&
+      directBytes !== null &&
+      !(directResult.hasAbortLog && directBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES)
+    ) {
+      return directBytes
+    }
+
+    if (singleResult.ret === 0 && singleBytes !== null && !singleSuspiciousAbort) {
+      return singleBytes
+    }
+
+    const reasons = [
+      `single-pass ret=${singleResult.ret}${singleResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
+      `compat-palette ret=${compatResult.ret}${compatResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
+      `palette-pass ret=${paletteResult.ret}${paletteResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
+      `direct-gif ret=${directResult.ret}${directResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
+    ].join('\n')
+
+    const details = [
+      `single-pass tail:\n${singleResult.logTail}`,
+      `compat-palette tail:\n${compatResult.logTail}`,
+      `palette-pass tail:\n${paletteResult.logTail}`,
+      `direct-gif tail:\n${directResult.logTail}`,
+    ].join('\n\n')
+
+    if (singleBytes === null && compatBytes === null && directBytes === null) {
+      throw new Error(
+        `GIF encode failed.\n\n${reasons}\n\n${details}`,
+      )
+    }
+
+    throw new Error(
+      'GIF encode produced suspicious output after fallback.\n\n' +
+        `${reasons}\n\n` +
+        `${details}`,
+    )
   } finally {
+    await safeDelete(paletteName)
     await safeDelete(options.outputName)
   }
 }

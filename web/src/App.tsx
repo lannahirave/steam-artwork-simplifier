@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
+import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
 import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
 import { convertVideo, type ConversionProgress } from './lib/conversion'
@@ -7,7 +7,7 @@ import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, STEAM_HELPER_NOTES } from './lib/st
 import type { ConversionArtifact, ConversionConfig, PatchResult } from './lib/types'
 import { createZip } from './lib/zip'
 import { FFmpegWorkerPool } from './lib/workerPool'
-import { parseHexByte } from './lib/validation'
+import { isSupportedConversionSource, parseHexByte } from './lib/validation'
 
 type TabKey = 'convert' | 'patch' | 'steam'
 const MAX_SAFE_WASM_WORKERS = 3
@@ -325,6 +325,24 @@ function App() {
     })
   }
 
+  function handleSourceFileChange(event: ChangeEvent<HTMLInputElement>): void {
+    const file = event.target.files?.[0] ?? null
+    if (!file) {
+      setSourceFile(null)
+      return
+    }
+
+    if (!isSupportedConversionSource(file)) {
+      setSourceFile(null)
+      setError('Unsupported source file. Use a video file or .gif.')
+      event.target.value = ''
+      return
+    }
+
+    setSourceFile(file)
+    setError('')
+  }
+
   async function runEofPatch(): Promise<void> {
     setEofError('')
     setEofOutputs([])
@@ -425,7 +443,7 @@ function App() {
 
       {tab === 'convert' && (
         <section className="panel">
-          <h2>Video to GIF</h2>
+          <h2>Media to GIF</h2>
 
           <div className="form-grid">
             <label title="Select output mode: workshop creates 5 slices, featured creates one wide GIF.">
@@ -436,12 +454,12 @@ function App() {
               </select>
             </label>
 
-            <label title="Choose the input video file to convert to GIF.">
-              Source Video
+            <label title="Choose a source video or GIF file to convert to GIF output.">
+              Source File
               <input
                 type="file"
-                accept="video/*"
-                onChange={(event) => setSourceFile(event.target.files?.[0] ?? null)}
+                accept="video/*,.gif,image/gif"
+                onChange={handleSourceFileChange}
               />
             </label>
 
