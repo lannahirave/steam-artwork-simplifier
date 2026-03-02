@@ -14,12 +14,13 @@
 
 1. UI layer (`web/src/App.tsx`, `web/src/App.css`)
 2. Domain/config modules (`web/src/lib/defaults.ts`, `web/src/lib/types.ts`)
-3. Conversion orchestration (`web/src/lib/conversion.ts`)
-4. Worker pool / protocol (`web/src/lib/workerPool.ts`, `web/src/lib/ffmpegProtocol.ts`)
-5. ffmpeg worker runtime (`web/src/workers/ffmpeg.worker.ts`)
-6. Patch utilities (`web/src/lib/patch.ts`)
-7. Zip export utility (`web/src/lib/zip.ts`)
-8. Deployment worker (`web/cloudflare/worker.ts`)
+3. Validation and precheck modules (`web/src/lib/validation.ts`, `web/src/lib/precheck.ts`)
+4. Conversion orchestration (`web/src/lib/conversion.ts`)
+5. Worker pool / protocol (`web/src/lib/workerPool.ts`, `web/src/lib/ffmpegProtocol.ts`)
+6. ffmpeg worker runtime (`web/src/workers/ffmpeg.worker.ts`)
+7. Patch utilities (`web/src/lib/patch.ts`)
+8. Zip export utility (`web/src/lib/zip.ts`)
+9. Deployment worker (`web/cloudflare/worker.ts`)
 
 ## UI Architecture
 
@@ -35,6 +36,7 @@ Primary state domains:
 - progress/log state
 - artifact preview/download state
 - patch tool inputs/results
+- UI mode state (tab + theme mode)
 
 The conversion section maintains a worker pool instance via `useRef`, allowing cancellation and reuse.
 
@@ -90,21 +92,24 @@ Worker response events:
 1. pool warmup
 2. source load
 3. source probe
-4. optional precheck
-5. parallel conversion jobs
-6. deterministic artifact sort
-7. optional post-patching
-8. max-size enforcement
+4. still-image detection (for static image inputs)
+5. optional precheck
+6. parallel conversion jobs
+7. deterministic artifact sort
+8. optional post-patching
+9. max-size enforcement
 
 ## ffmpeg Worker Runtime
 
 `web/src/workers/ffmpeg.worker.ts` responsibilities:
 
 - load ffmpeg core lazily per worker
-- probe dimensions/duration by extracting one frame and parsing logs
-- run encode/retry ladders
+- probe dimensions/duration
+- run preset geometry transforms (split vs featured resize)
+- run encode/retry ladders (standard, FPS-fit, lossy)
 - emit stage progress lines
 - return byte payloads with transferables
+- return output metadata (`finalFps`, `finalColors`)
 
 Stability hardening includes:
 

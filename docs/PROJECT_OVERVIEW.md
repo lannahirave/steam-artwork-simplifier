@@ -21,20 +21,25 @@ The browser app is the primary modern workflow. Legacy scripts remain available 
 
 ## Product Capabilities
 
-1. Convert source media (video and `.gif`) to Steam-compatible GIF outputs.
-2. Workshop preset:
+1. Convert source media (video + images) to Steam-compatible GIF outputs.
+2. Supported conversion sources:
+   - Video files (`video/*` + common extensions)
+   - Image files (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+3. Workshop preset:
    - 5 horizontal slices
    - 150px width per slice by default
    - output names `part_01.gif` to `part_05.gif`
-3. Featured preset:
+4. Featured preset:
    - single `featured.gif`
    - 630px width by default
-4. Optional output patching:
+5. Optional output patching:
    - EOF byte patch
    - GIF header width/height patch
-5. Standalone patch tools for existing files.
-6. Steam helper snippet copy/paste workflow.
-7. In-app previews + per-file download + ZIP export.
+6. Standalone patch tools for existing files.
+7. Steam helper snippet copy/paste workflow.
+8. In-app previews + per-file download + ZIP export.
+9. Live progress panel with worker-stage logs and progress bar.
+10. Output metadata shown per GIF (size, final FPS, color reduction).
 
 ## Runtime Model
 

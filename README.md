@@ -11,7 +11,7 @@ This repository now includes two paths:
 
 ## What is included
 
-- `web/`: browser-only toolkit (React 19 + TypeScript + ffmpeg.wasm) with conversion UI, patch tools, preview, and ZIP export.
+- `web/`: browser-only toolkit (React 19 + TypeScript + ffmpeg.wasm) with media/image conversion UI, patch tools, preview, and ZIP export.
 - `video_parts_pipeline.py`: builds GIFs from a source video using `ffmpeg`/`ffprobe`, with size checks and optional EOF-byte patching.
 - `steam_hex_patch.py`: patches the last byte of target files (default `0x21`), with backup and dry-run support.
 - `steam_hex_edit_header.py`: edits GIF header width/height bytes (`6-9`) and optional EOF byte.
@@ -32,6 +32,18 @@ Notes:
   - `Cross-Origin-Opener-Policy: same-origin`
   - `Cross-Origin-Embedder-Policy: require-corp`
 - Full web app docs: `web/README.md`
+
+Supported conversion sources in the web app:
+- Video files (`video/*` + common extensions)
+- Image files (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+
+Web app highlights:
+- Workshop preset (`part_01.gif` .. `part_05.gif`) and featured preset (`featured.gif`)
+- Live conversion progress with worker-stage logs
+- Optional precheck and retry controls (both default off)
+- FPS estimate button that can auto-apply a practical FPS target
+- Output cards include size, final FPS, and color-reduction metadata
+- ZIP export and per-file downloads
 
 ## Requirements
 

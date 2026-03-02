@@ -19,18 +19,20 @@ Symptoms:
 
 - `Unable to parse source dimensions ...`
 - `ffmpeg probe failed ...`
+- `ffprobe failed to inspect input video ...`
 
 Checks:
 
-1. Confirm input file has a valid video stream.
-2. Retry with a hard refresh after a code change.
-3. Inspect `Live Progress` ffmpeg tail in UI for exact ffmpeg output.
+1. Confirm source file is readable and non-empty.
+2. Confirm source type is supported (`video/*`, `.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`).
+3. Retry with hard refresh after code changes.
+4. Inspect `Live Progress` ffmpeg tail in UI for exact probe output.
 
-## 6.1KB Black GIF Outputs
+## Tiny or Black GIF Outputs
 
 Historical symptom:
 
-- conversion reports success, but outputs are tiny black GIFs.
+- conversion reports success, but outputs are tiny black GIFs (for example near `6.1KB` each).
 
 Current mitigation:
 
@@ -43,8 +45,8 @@ Current mitigation:
 If issue returns:
 
 1. Capture full `Live Progress` and `Run Logs`.
-2. Note source filename and preset.
-3. Test with `workerCount=1` to isolate concurrency issues.
+2. Note source filename, preset, and worker count.
+3. Re-run with `workerCount=1` to isolate concurrency effects.
 
 ## `Aborted()` in Worker Logs
 
@@ -77,6 +79,7 @@ Checks:
 1. Ensure conversion has passed probe and started worker tasks.
 2. Confirm `workerCount` is not clamped too low for your current task.
 3. Watch `Live Progress` for `Starting initial encode...` lines.
+4. For static image sources, expected CPU load is lower than long video encodes.
 
 ## Second Run Behaves Differently
 
@@ -84,18 +87,18 @@ Sometimes stale wasm/dev cache affects behavior between runs.
 
 Recommended reset:
 
-1. stop dev server
-2. start `npm run dev -- --force`
-3. hard refresh browser
-4. rerun conversion
+1. Stop dev server.
+2. Start `npm run dev -- --force`.
+3. Hard refresh browser.
+4. Re-run conversion.
 
 ## Invalid Source File Message
 
 Symptom:
 
-- `Unsupported source file. Use a video file or .gif.`
+- `Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).`
 
 Fix:
 
-1. Use supported video container or `.gif`.
-2. If file MIME is missing, ensure extension is standard (`.mp4`, `.mov`, `.gif`, etc.).
+1. Use a supported source extension/MIME type.
+2. If MIME is empty, keep a standard extension in filename (`.mp4`, `.gif`, `.webp`, etc.).

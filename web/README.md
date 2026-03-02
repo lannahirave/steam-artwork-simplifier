@@ -4,11 +4,16 @@ React 19 + TypeScript + Vite browser app for Steam artwork workflows.
 
 ## Features
 
-- Video -> GIF conversion in browser via `ffmpeg.wasm` (`@ffmpeg/core-mt`)
+- Media/Image -> GIF conversion in browser via `ffmpeg.wasm` (`@ffmpeg/core-mt`)
 - Presets:
   - `workshop`: 5 sliced GIFs (`part_01.gif` .. `part_05.gif`)
   - `featured`: single `featured.gif`
-- Size enforcement with standard + lossy fallback ladders
+- Source support:
+  - video (`video/*` + common extensions)
+  - image (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+- Size enforcement with configurable standard + lossy fallback ladders
+- FPS estimate/apply button for quick practical FPS targeting
+- Output metadata on cards: size, final FPS, and color reduction
 - Optional EOF patch and optional GIF header patch during conversion
 - Standalone patch tools:
   - EOF byte patch
@@ -57,6 +62,8 @@ npm run test:e2e
 - This app is intentionally browser-only: no backend required.
 - Existing Python scripts in the repo remain available for side-by-side migration.
 - Add `?noiso=1` to the URL to simulate the isolation-blocking screen for smoke tests.
+- `Enable precheck` and `Enable standard retries` default to off.
+- Workshop preview is rendered as a compact single-row strip for quick visual checks.
 
 ## Deep Docs
 

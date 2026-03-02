@@ -11,7 +11,9 @@ import { FFmpegWorkerPool } from './lib/workerPool'
 import { isSupportedConversionSource, parseHexByte } from './lib/validation'
 
 type TabKey = 'convert' | 'patch' | 'steam'
+type ThemeMode = 'auto' | 'light' | 'dark'
 const MAX_SAFE_WASM_WORKERS = 3
+const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
 
 interface ArtifactView {
   artifact: ConversionArtifact
@@ -140,6 +142,16 @@ function getWorkerStageWeight(stage: string): number {
 function App() {
   const isolationState = useMemo(() => getIsolationState(), [])
   const [tab, setTab] = useState<TabKey>('convert')
+  const [themeMode, setThemeMode] = useState<ThemeMode>(() => {
+    if (typeof window === 'undefined') {
+      return 'auto'
+    }
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+    return stored === 'light' || stored === 'dark' || stored === 'auto' ? stored : 'auto'
+  })
+  const [systemPrefersDark, setSystemPrefersDark] = useState<boolean>(() =>
+    typeof window !== 'undefined' ? window.matchMedia('(prefers-color-scheme: dark)').matches : false,
+  )
 
   const [config, setConfig] = useState<ConversionConfig>(() => getDefaultConfig('workshop'))
   const [sourceFile, setSourceFile] = useState<File | null>(null)
@@ -180,6 +192,27 @@ function App() {
   }, [])
 
   useEffect(() => {
+    const media = window.matchMedia('(prefers-color-scheme: dark)')
+    const onChange = (event: MediaQueryListEvent): void => {
+      setSystemPrefersDark(event.matches)
+    }
+    media.addEventListener('change', onChange)
+    return () => {
+      media.removeEventListener('change', onChange)
+    }
+  }, [])
+
+  const effectiveTheme = themeMode === 'auto' ? (systemPrefersDark ? 'dark' : 'light') : themeMode
+
+  useEffect(() => {
+    document.documentElement.setAttribute('data-theme', effectiveTheme)
+  }, [effectiveTheme])
+
+  useEffect(() => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, themeMode)
+  }, [themeMode])
+
+  useEffect(() => {
     return () => {
       cleanupArtifactViews(artifactViews)
     }
@@ -201,6 +234,18 @@ function App() {
     workerWeightsRef.current = {}
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
+  }
+
+  function cycleThemeMode(): void {
+    setThemeMode((prev) => {
+      if (prev === 'auto') {
+        return 'dark'
+      }
+      if (prev === 'dark') {
+        return 'light'
+      }
+      return 'auto'
+    })
   }
 
   function updateProgressView(entry: ConversionProgress): void {
@@ -509,8 +554,13 @@ function App() {
   return (
     <main className="shell">
       <header className="masthead">
-        <h1>Steam Artwork Toolkit WASM</h1>
-        <p>React 19 + TypeScript + FFmpeg WASM multithread pipeline.</p>
+        <div className="masthead-top">
+          <h1>Steam Artwork Studio</h1>
+          <button type="button" className="theme-switch" onClick={cycleThemeMode}>
+            Theme: {themeMode === 'auto' ? `Auto (${effectiveTheme})` : themeMode}
+          </button>
+        </div>
+        <p>Turn videos and images into Steam-ready artwork in your browser, with fast multithreaded processing.</p>
       </header>
 
       <nav className="tabs" aria-label="Sections">

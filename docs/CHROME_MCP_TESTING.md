@@ -46,6 +46,9 @@ Use these fixtures to cover typical edge cases:
 6. `fixture06_highfps_854x480_60fps_6s.mp4`
 7. `fixture07_dark_640x360_24fps_10s.mp4`
 8. `fixture08_large_square_1024x1024_30fps_5s.mp4`
+9. `fixture09_static_png_1024x1024.png`
+10. `fixture10_webp_animated_720x720.webp`
+11. `fixture11_jpg_photo_1200x800.jpg`
 
 ## What To Assert
 
@@ -54,6 +57,7 @@ Use these fixtures to cover typical edge cases:
 1. Probe starts and completes.
 2. Convert starts with expected job count.
 3. Outputs are real GIFs and not tiny black placeholders.
+4. GIF cards show `FPS` and `Color reduction` metadata.
 
 ### UI/UX path
 
@@ -61,6 +65,7 @@ Use these fixtures to cover typical edge cases:
 2. `Live Progress` updates continuously.
 3. Artifact sizes show near download buttons.
 4. ZIP download button enables after success.
+5. Workshop preview strip shows five outputs in one row on desktop.
 
 ### Stability path
 
