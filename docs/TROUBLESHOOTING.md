@@ -48,6 +48,23 @@ If issue returns:
 2. Note source filename, preset, and worker count.
 3. Re-run with `workerCount=1` to isolate concurrency effects.
 
+## Output Looks Bad Due To Color Reduction
+
+Symptom:
+
+- output quality drops because palette/colors are reduced too early.
+
+Current behavior:
+
+1. Pipeline now prioritizes FPS reduction first.
+2. If still oversize, it runs an explicit FPS-priority sweep (colors fixed at `256`) before color-reduction ladders.
+
+Checks:
+
+1. Keep `Allow FPS reduction` enabled.
+2. Raise `Max GIF KB` if platform limits allow it.
+3. Lower initial `GIF FPS` so fewer aggressive fallback steps are needed.
+
 ## `Aborted()` in Worker Logs
 
 Important:

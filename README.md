@@ -40,8 +40,11 @@ Supported conversion sources in the web app:
 Web app highlights:
 - Workshop preset (`part_01.gif` .. `part_05.gif`) and featured preset (`featured.gif`)
 - Live conversion progress with worker-stage logs
+- Elapsed conversion timing (`Time: ...` and `Output ready in ...`)
 - Optional precheck and retry controls (both default off)
 - FPS estimate button that can auto-apply a practical FPS target
+- FPS-first size strategy to preserve color quality as long as possible
+- Built-in Guides tab with step-by-step workflows
 - Output cards include size, final FPS, and color-reduction metadata
 - ZIP export and per-file downloads
 

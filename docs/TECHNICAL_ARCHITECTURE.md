@@ -34,6 +34,7 @@ Primary state domains:
 
 - conversion config and source file
 - progress/log state
+- elapsed timing state for active/last conversion
 - artifact preview/download state
 - patch tool inputs/results
 - UI mode state (tab + theme mode)
@@ -105,8 +106,8 @@ Worker response events:
 
 - load ffmpeg core lazily per worker
 - probe dimensions/duration
-- run preset geometry transforms (split vs featured resize)
-- run encode/retry ladders (standard, FPS-fit, lossy)
+- run preset geometry transforms (split vs featured resize, fast `bicubic` scale mode)
+- run encode/retry ladders (standard, FPS-fit, FPS-priority sweep, lossy)
 - emit stage progress lines
 - return byte payloads with transferables
 - return output metadata (`finalFps`, `finalColors`)
@@ -115,6 +116,7 @@ Stability hardening includes:
 
 - log-tail capture for detailed errors
 - suspicious tiny GIF detection when `Aborted()` appears
+- acceptance of valid non-tiny primary outputs even when `Aborted()` noise appears in logs
 - fallback encoding chain:
   1. single-pass palette graph
   2. compatibility two-pass palette

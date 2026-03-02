@@ -10,10 +10,85 @@ import { createZip } from './lib/zip'
 import { FFmpegWorkerPool } from './lib/workerPool'
 import { isSupportedConversionSource, parseHexByte } from './lib/validation'
 
-type TabKey = 'convert' | 'patch' | 'steam'
+type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
 type ThemeMode = 'auto' | 'light' | 'dark'
 const MAX_SAFE_WASM_WORKERS = 3
 const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
+
+interface GuideSection {
+  key: string
+  title: string
+  badge: string
+  steps: string[]
+  tip?: string
+}
+
+const GUIDE_SECTIONS: GuideSection[] = [
+  {
+    key: 'workshop',
+    title: 'Workshop GIFs (5 parts)',
+    badge: 'Convert',
+    steps: [
+      'Open Convert tab and keep preset as Workshop (5x150 slices).',
+      'Upload your source media file.',
+      'Set GIF FPS and Min GIF FPS, or click Estimate for auto FPS.',
+      'Click Run Conversion and wait for Output ready in...',
+      'Review all 5 previews, then download single files or ZIP.',
+    ],
+    tip: 'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction.',
+  },
+  {
+    key: 'featured',
+    title: 'Featured GIF (single wide)',
+    badge: 'Convert',
+    steps: [
+      'Switch preset to Featured (single 630px).',
+      'Upload source media (video, gif, png, webp, jpg, jpeg, bmp).',
+      'Tune Featured Width and FPS if needed.',
+      'Run conversion and check size/FPS/color metadata under output.',
+      'Download featured.gif directly or as part of ZIP.',
+    ],
+    tip: 'Start with lower FPS before increasing lossy settings for better visual quality.',
+  },
+  {
+    key: 'tuning',
+    title: 'Fix size or quality issues',
+    badge: 'Tuning',
+    steps: [
+      'Keep Allow FPS reduction enabled.',
+      'Set realistic Max GIF KB and Target GIF KB.',
+      'Leave standard retries off for speed-first behavior.',
+      'Enable standard retries if you want extra target-size chasing.',
+      'Use Worker Count 2-3 for speed, or 1 for stability debugging.',
+    ],
+    tip: 'Current pipeline prioritizes FPS drops first and only reduces colors later if still oversize.',
+  },
+  {
+    key: 'patch',
+    title: 'Patch existing files',
+    badge: 'Patch',
+    steps: [
+      'Open Patch Tools tab.',
+      'Use EOF Patch to rewrite last byte (default 0x21).',
+      'Use GIF Header Patch to set logical width/height bytes.',
+      'Optionally combine header + EOF in one run.',
+      'Download patched outputs from the result list.',
+    ],
+  },
+  {
+    key: 'steam',
+    title: 'Steam upload autofill',
+    badge: 'Upload',
+    steps: [
+      'Open Steam Helpers tab and click Copy for workshop or featured snippet.',
+      'Open the Steam upload page in your browser.',
+      'Open DevTools Console.',
+      'Paste snippet and run it.',
+      'Verify fields and finish upload.',
+    ],
+    tip: 'Snippets are intended for Steam upload pages only.',
+  },
+]
 
 interface ArtifactView {
   artifact: ConversionArtifact
@@ -626,6 +701,9 @@ function App() {
         <button className={tab === 'steam' ? 'tab active' : 'tab'} onClick={() => setTab('steam')}>
           Steam Helpers
         </button>
+        <button className={tab === 'guides' ? 'tab active' : 'tab'} onClick={() => setTab('guides')}>
+          Guides
+        </button>
       </nav>
 
       {tab === 'convert' && (
@@ -1099,6 +1177,32 @@ function App() {
           </article>
 
           {copyStatus && <p>{copyStatus}</p>}
+        </section>
+      )}
+
+      {tab === 'guides' && (
+        <section className="panel">
+          <h2>Guides</h2>
+          <p className="guides-intro">
+            Step-by-step workflows for common tasks in this toolkit.
+          </p>
+
+          <div className="guides-grid">
+            {GUIDE_SECTIONS.map((guide) => (
+              <article key={guide.key} className="guide-card">
+                <div className="guide-head">
+                  <span className="guide-badge">{guide.badge}</span>
+                  <h3>{guide.title}</h3>
+                </div>
+                <ol className="guide-steps">
+                  {guide.steps.map((step) => (
+                    <li key={step}>{step}</li>
+                  ))}
+                </ol>
+                {guide.tip && <p className="guide-tip">{guide.tip}</p>}
+              </article>
+            ))}
+          </div>
         </section>
       )}
     </main>

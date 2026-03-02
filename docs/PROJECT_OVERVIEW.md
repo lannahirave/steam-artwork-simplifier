@@ -40,6 +40,8 @@ The browser app is the primary modern workflow. Legacy scripts remain available 
 8. In-app previews + per-file download + ZIP export.
 9. Live progress panel with worker-stage logs and progress bar.
 10. Output metadata shown per GIF (size, final FPS, color reduction).
+11. Run-time visibility: elapsed conversion timer and completion timing summary.
+12. Size tuning prioritizes FPS reduction before color reduction for better visual fidelity.
 
 ## Runtime Model
 

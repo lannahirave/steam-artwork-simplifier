@@ -33,6 +33,7 @@ npm run dev -- --host 127.0.0.1 --port 5173 --force
    - 5 workshop outputs are generated
    - output previews render
    - progress log shows expected stages
+   - elapsed timing is shown (`Time:` and `Output ready in ...`)
 
 ## Recommended Fixture Matrix
 
@@ -58,6 +59,7 @@ Use these fixtures to cover typical edge cases:
 2. Convert starts with expected job count.
 3. Outputs are real GIFs and not tiny black placeholders.
 4. GIF cards show `FPS` and `Color reduction` metadata.
+5. For oversize cases, logs show FPS-priority behavior before color-reduction attempts.
 
 ### UI/UX path
 
@@ -66,6 +68,7 @@ Use these fixtures to cover typical edge cases:
 3. Artifact sizes show near download buttons.
 4. ZIP download button enables after success.
 5. Workshop preview strip shows five outputs in one row on desktop.
+6. Elapsed timer updates during run and remains visible after completion.
 
 ### Stability path
 
