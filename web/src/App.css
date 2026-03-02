@@ -162,6 +162,29 @@ input[type='file'] {
   overflow: hidden;
 }
 
+.field-input-row {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.field-input-row input {
+  flex: 1 1 auto;
+}
+
+.inline-action {
+  border-radius: 10px;
+  padding: 0.5rem 0.72rem;
+  white-space: nowrap;
+  min-width: fit-content;
+}
+
+.field-note {
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.35;
+}
+
 .toggle {
   display: flex;
   align-items: center;

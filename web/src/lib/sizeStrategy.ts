@@ -18,6 +18,27 @@ export interface StandardCandidateOptions {
   allowColorDrop?: boolean
 }
 
+export function estimateFpsForKbTarget(
+  currentFps: number,
+  currentSizeKb: number,
+  targetSizeKb: number,
+  minGifFps: number,
+): number {
+  const minFps = Math.max(1, minGifFps)
+  if (!Number.isFinite(currentFps) || currentFps <= 0) {
+    return minFps
+  }
+  if (!Number.isFinite(currentSizeKb) || currentSizeKb <= 0) {
+    return Math.max(minFps, Math.floor(currentFps))
+  }
+  if (!Number.isFinite(targetSizeKb) || targetSizeKb <= 0) {
+    return minFps
+  }
+
+  const scaled = Math.floor((currentFps * targetSizeKb) / currentSizeKb)
+  return Math.max(minFps, Math.min(Math.floor(currentFps), scaled))
+}
+
 export function buildStandardCandidates(
   baseFps: number,
   minGifFps: number,
@@ -31,36 +52,47 @@ export function buildStandardCandidates(
   }
 
   const fpsFloor = Math.max(1, minGifFps)
-  const fpsCandidates: number[] = []
+  const reducedFpsCandidates: number[] = []
   if (allowFpsDrop) {
-    for (let fps = baseFps; fps >= fpsFloor; fps -= 1) {
-      fpsCandidates.push(fps)
+    for (let fps = baseFps - 1; fps >= fpsFloor; fps -= 1) {
+      reducedFpsCandidates.push(fps)
     }
-    if (fpsCandidates.length === 0) {
-      fpsCandidates.push(baseFps)
-    }
-  } else {
-    fpsCandidates.push(baseFps)
   }
-
-  const colorsCandidates = allowColorDrop ? [...STANDARD_COLORS] : [256]
 
   const unique = new Set<string>()
   const out: StandardCandidate[] = []
-  for (const fps of fpsCandidates) {
-    for (const colors of colorsCandidates) {
-      if (fps === baseFps && colors === 256) {
-        // Initial encode already uses this combination.
-        continue
-      }
-      const key = `${fps}:${colors}`
-      if (unique.has(key)) {
-        continue
-      }
-      unique.add(key)
-      out.push({ fps, colors })
+  const pushCandidate = (fps: number, colors: number): void => {
+    if (fps === baseFps && colors === 256) {
+      // Initial encode already uses this combination.
+      return
+    }
+    const key = `${fps}:${colors}`
+    if (unique.has(key)) {
+      return
+    }
+    unique.add(key)
+    out.push({ fps, colors })
+  }
+
+  // Prefer FPS-only reduction before touching palette colors.
+  for (const fps of reducedFpsCandidates) {
+    pushCandidate(fps, 256)
+  }
+
+  if (allowColorDrop) {
+    for (const colors of STANDARD_COLORS) {
+      pushCandidate(baseFps, colors)
     }
   }
+
+  if (allowFpsDrop && allowColorDrop) {
+    for (const fps of reducedFpsCandidates) {
+      for (const colors of STANDARD_COLORS) {
+        pushCandidate(fps, colors)
+      }
+    }
+  }
+
   return out
 }
 

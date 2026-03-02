@@ -3,7 +3,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { computeTargetHeight } from '../lib/defaults'
-import { buildLossyCandidates, buildStandardCandidates } from '../lib/sizeStrategy'
+import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from '../lib/sizeStrategy'
 import type {
   AnyWorkerRequest,
   ArtifactStatus,
@@ -390,6 +390,7 @@ interface SearchEncodeOptions {
 
 async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncodeResult> {
   postProgress(options.requestId, 'convert', 'Starting initial encode...')
+  let bestFps = options.gifFps
   let bestBytes = await encodeGif({
     inputName: options.inputName,
     outputName: `initial-${options.requestId}.gif`,
@@ -431,11 +432,63 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       if (attemptSize < bestSize) {
         bestBytes = attemptBytes
         bestSize = attemptSize
+        bestFps = candidate.fps
         bestStatus = 'recompressed'
         postProgress(
           options.requestId,
           'standard',
           `Improved with fps=${candidate.fps}, colors=${candidate.colors}: ${bestSize.toFixed(1)}KB`,
+        )
+      }
+
+      if (bestSize <= options.targetGifKb) {
+        return {
+          bytes: bestBytes,
+          sizeKb: bestSize,
+          status: bestStatus,
+        }
+      }
+    }
+  }
+
+  if (options.retryAllowFpsDrop && bestSize > options.targetGifKb) {
+    const visitedFps = new Set<number>()
+    for (let i = 0; i < 3; i += 1) {
+      const targetKb = bestSize > options.maxGifKb ? options.maxGifKb : options.targetGifKb
+      const nextFps = estimateFpsForKbTarget(
+        bestFps,
+        bestSize,
+        targetKb,
+        options.minGifFps,
+      )
+      if (nextFps >= bestFps || visitedFps.has(nextFps)) {
+        break
+      }
+      visitedFps.add(nextFps)
+
+      const removedFrames = Math.max(0, bestFps - nextFps)
+      postProgress(
+        options.requestId,
+        'standard',
+        `FPS-fit: estimated ${removedFrames} FPS reduction needed to reach ${targetKb.toFixed(1)}KB (try fps=${nextFps}).`,
+      )
+
+      const attemptBytes = await encodeGif({
+        inputName: options.inputName,
+        outputName: `fpsfit-${nextFps}-${options.requestId}.gif`,
+        vf: `fps=${nextFps},${options.baseFilter}`,
+        maxColors: 256,
+      })
+      const attemptSize = attemptBytes.byteLength / 1024
+      if (attemptSize < bestSize) {
+        bestBytes = attemptBytes
+        bestSize = attemptSize
+        bestFps = nextFps
+        bestStatus = 'recompressed'
+        postProgress(
+          options.requestId,
+          'standard',
+          `FPS-fit improved output: ${bestSize.toFixed(1)}KB at ${nextFps}fps.`,
         )
       }
 
@@ -458,7 +511,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
   }
 
   const lossyCandidates = buildLossyCandidates(
-    options.gifFps,
+    bestFps,
     options.minGifFps,
     options.lossyLevel,
     options.lossyMaxAttempts,

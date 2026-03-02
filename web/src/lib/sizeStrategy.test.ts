@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
-import { buildLossyCandidates, buildStandardCandidates } from './sizeStrategy'
+import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from './sizeStrategy'
 
 describe('size strategy', () => {
-  it('builds standard candidates with descending fps and color ladder', () => {
+  it('prefers fps-only reduction before color ladder', () => {
     const candidates = buildStandardCandidates(15, 13)
-    expect(candidates[0]).toEqual({ fps: 15, colors: 224 })
+    expect(candidates[0]).toEqual({ fps: 14, colors: 256 })
+    expect(candidates[1]).toEqual({ fps: 13, colors: 256 })
+    expect(candidates.some((candidate) => candidate.fps === 15 && candidate.colors === 224)).toBe(true)
     expect(candidates.some((candidate) => candidate.fps === 13 && candidate.colors === 32)).toBe(true)
   })
 
@@ -35,5 +37,15 @@ describe('size strategy', () => {
     })
     expect(candidates.every((candidate) => candidate.colors === 256)).toBe(true)
     expect(candidates.some((candidate) => candidate.fps === 13)).toBe(true)
+  })
+
+  it('estimates fps needed to hit target size from current size', () => {
+    const fps = estimateFpsForKbTarget(34, 7830.1, 5000, 10)
+    expect(fps).toBe(21)
+  })
+
+  it('respects min fps while estimating fps target', () => {
+    const fps = estimateFpsForKbTarget(12, 12000, 1000, 8)
+    expect(fps).toBe(8)
   })
 })

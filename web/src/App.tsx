@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
-import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
+import { applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
 import { convertVideo, type ConversionProgress } from './lib/conversion'
 import { applyEofPatch, applyHeaderPatch } from './lib/patch'
+import { estimateFpsForTargetKb } from './lib/precheck'
 import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, STEAM_HELPER_NOTES } from './lib/steamSnippets'
 import type { ConversionArtifact, ConversionConfig, PatchResult } from './lib/types'
 import { createZip } from './lib/zip'
@@ -145,6 +146,8 @@ function App() {
   const [artifactViews, setArtifactViews] = useState<ArtifactView[]>([])
   const [progressPercent, setProgressPercent] = useState(0)
   const [progressLabel, setProgressLabel] = useState('')
+  const [estimatingFps, setEstimatingFps] = useState(false)
+  const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
 
   const [eofFiles, setEofFiles] = useState<File[]>([])
   const [eofByteInput, setEofByteInput] = useState('21')
@@ -187,6 +190,7 @@ function App() {
     setLogs([])
     setWarnings([])
     setError('')
+    setFpsEstimateInfo('')
     setProgressPercent(0)
     setProgressLabel('')
     workerWeightsRef.current = {}
@@ -329,18 +333,93 @@ function App() {
     const file = event.target.files?.[0] ?? null
     if (!file) {
       setSourceFile(null)
+      setFpsEstimateInfo('')
       return
     }
 
     if (!isSupportedConversionSource(file)) {
       setSourceFile(null)
+      setFpsEstimateInfo('')
       setError('Unsupported source file. Use a video file or .gif.')
       event.target.value = ''
       return
     }
 
     setSourceFile(file)
+    setFpsEstimateInfo('')
     setError('')
+  }
+
+  async function estimateAndApplyFps(): Promise<void> {
+    if (!sourceFile || busy || estimatingFps) {
+      return
+    }
+
+    setError('')
+    setFpsEstimateInfo('')
+    setEstimatingFps(true)
+    try {
+      const requestedJobs = config.preset === 'featured' ? 1 : config.parts
+      const effectiveWorkerCount =
+        config.preset === 'featured'
+          ? 1
+          : Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
+
+      const pool = ensurePool(effectiveWorkerCount)
+      const sourceBytes = new Uint8Array(await sourceFile.arrayBuffer())
+      const probe = await pool.runTask('probe', {
+        fileName: sourceFile.name,
+        fileBytes: sourceBytes.slice(),
+      }, {
+        timeoutMs: 45_000,
+      })
+
+      const parts = config.preset === 'featured' ? 1 : config.parts
+      const perGifWidth = config.preset === 'featured' ? config.featuredWidth : config.partWidth
+      const totalTargetWidth = parts * perGifWidth
+      const targetHeight = computeTargetHeight(probe.width, probe.height, totalTargetWidth)
+      const duration = Math.max(0.1, probe.duration)
+
+      const estimatedFromTarget = estimateFpsForTargetKb(
+        perGifWidth,
+        targetHeight,
+        duration,
+        config.targetGifKb,
+        config.precheckBppf,
+      )
+      const estimatedFromMax = estimateFpsForTargetKb(
+        perGifWidth,
+        targetHeight,
+        duration,
+        config.maxGifKb,
+        config.precheckBppf,
+      )
+
+      const cappedByLimit = Math.max(1, Math.min(estimatedFromTarget, estimatedFromMax))
+      const autoFps = Math.max(1, Math.min(60, cappedByLimit))
+      const minWasReduced = config.minGifFps > autoFps
+
+      setConfig((prev) => ({
+        ...prev,
+        gifFps: autoFps,
+        minGifFps: Math.min(prev.minGifFps, autoFps),
+      }))
+
+      const sizeCapNote =
+        cappedByLimit !== estimatedFromTarget
+          ? ` Capped by max GIF limit (${config.maxGifKb}KB).`
+          : ''
+      const safetyCapNote = autoFps !== cappedByLimit ? ' Capped to 60 FPS safety limit.' : ''
+      const minNote = minWasReduced ? ' Min GIF FPS was lowered to match.' : ''
+      setFpsEstimateInfo(
+        `Auto-set GIF FPS to ${autoFps} using ${perGifWidth}x${targetHeight} @ ${duration.toFixed(2)}s for ~${config.targetGifKb}KB target.${sizeCapNote}${safetyCapNote}${minNote}`,
+      )
+    } catch (estimateError) {
+      const message = estimateError instanceof Error ? estimateError.message : String(estimateError)
+      setError(message)
+    } finally {
+      setEstimatingFps(false)
+    }
   }
 
   async function runEofPatch(): Promise<void> {
@@ -465,12 +544,24 @@ function App() {
 
             <label title="Starting frame rate for the first encode pass.">
               GIF FPS
-              <input
-                type="number"
-                min={1}
-                value={config.gifFps}
-                onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
-              />
+              <div className="field-input-row">
+                <input
+                  type="number"
+                  min={1}
+                  value={config.gifFps}
+                  onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
+                />
+                <button
+                  type="button"
+                  className="inline-action"
+                  title="Estimate and apply a practical GIF FPS from source resolution, duration, and current size target."
+                  disabled={!sourceFile || busy || estimatingFps}
+                  onClick={() => void estimateAndApplyFps()}
+                >
+                  {estimatingFps ? 'Estimating...' : 'Estimate'}
+                </button>
+              </div>
+              {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
             </label>
 
             <label title="Lowest FPS allowed during recompression attempts.">

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { estimateGifKb, runPrecheck } from './precheck'
+import { estimateFpsForTargetKb, estimateGifKb, runPrecheck } from './precheck'
 
 describe('precheck math', () => {
   it('estimates gif size from pixel frames', () => {
@@ -38,5 +38,15 @@ describe('precheck math', () => {
     })
 
     expect(result.shouldBlock).toBe(false)
+  })
+
+  it('estimates fps from size target and dimensions', () => {
+    const fps = estimateFpsForTargetKb(150, 150, 10, 4500, 0.1)
+    expect(fps).toBe(204)
+  })
+
+  it('returns minimum fps of 1 for invalid denominator', () => {
+    const fps = estimateFpsForTargetKb(0, 150, 10, 4500, 0.1)
+    expect(fps).toBe(1)
   })
 })

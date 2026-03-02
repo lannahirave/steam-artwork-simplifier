@@ -31,6 +31,24 @@ export function estimateGifKb(
   return (pixelFrames * bppf) / 1024
 }
 
+export function estimateFpsForTargetKb(
+  width: number,
+  height: number,
+  duration: number,
+  targetKb: number,
+  bppf: number,
+): number {
+  const denominator = width * height * duration * bppf
+  if (!Number.isFinite(denominator) || denominator <= 0) {
+    return 1
+  }
+  const raw = (targetKb * 1024) / denominator
+  if (!Number.isFinite(raw) || raw <= 0) {
+    return 1
+  }
+  return Math.max(1, Math.floor(raw))
+}
+
 export function runPrecheck(input: PrecheckInput): PrecheckResult {
   const totalTargetWidth = input.parts * input.partWidth
   const targetHeight = computeTargetHeight(input.srcWidth, input.srcHeight, totalTargetWidth)
