@@ -45,6 +45,8 @@ export interface ConversionArtifact {
   width: number
   height: number
   status: ArtifactStatus
+  finalFps: number
+  finalColors: number
 }
 
 export interface ConversionResult {
@@ -95,6 +97,7 @@ export interface ProbePayload {
 export interface ConvertPayloadBase {
   fileName: string
   fileBytes: Uint8Array
+  isStillImage: boolean
   srcWidth: number
   srcHeight: number
   duration: number
@@ -133,6 +136,8 @@ export interface WorkerArtifactData {
   width: number
   height: number
   status: ArtifactStatus
+  finalFps: number
+  finalColors: number
 }
 
 export interface WorkerProgressData {

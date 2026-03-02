@@ -62,6 +62,8 @@ class FakeWorker {
               width: message.payload.partWidth,
               height: 100,
               status: 'original',
+              finalFps: message.payload.gifFps,
+              finalColors: 256,
             },
           },
         })
@@ -82,6 +84,8 @@ class FakeWorker {
             width: 630,
             height: 100,
             status: 'original',
+            finalFps: message.payload.gifFps,
+            finalColors: 256,
           },
         },
       })
@@ -113,6 +117,7 @@ describe('worker pool', () => {
       pool.runTask('convertPart', {
         fileName: 'a.mp4',
         fileBytes: new Uint8Array([1]),
+        isStillImage: false,
         srcWidth: 1280,
         srcHeight: 720,
         duration: 2,
@@ -133,6 +138,7 @@ describe('worker pool', () => {
       pool.runTask('convertPart', {
         fileName: 'a.mp4',
         fileBytes: new Uint8Array([1]),
+        isStillImage: false,
         srcWidth: 1280,
         srcHeight: 720,
         duration: 2,
@@ -167,6 +173,7 @@ describe('worker pool', () => {
     const promise = pool.runTask('convertPart', {
       fileName: 'a.mp4',
       fileBytes: new Uint8Array([1]),
+      isStillImage: false,
       srcWidth: 1280,
       srcHeight: 720,
       duration: 2,

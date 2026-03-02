@@ -35,9 +35,27 @@ const VIDEO_EXTENSIONS = new Set([
   'flv',
 ])
 
-export function isSupportedConversionSource(file: File): boolean {
+const IMAGE_EXTENSIONS = new Set([
+  'gif',
+  'png',
+  'webp',
+  'jpg',
+  'jpeg',
+  'bmp',
+])
+
+const IMAGE_MIME_TYPES = new Set([
+  'image/gif',
+  'image/png',
+  'image/webp',
+  'image/jpeg',
+  'image/jpg',
+  'image/bmp',
+])
+
+export function isLikelyImageSource(file: File): boolean {
   const mime = file.type.trim().toLowerCase()
-  if (mime === 'image/gif' || mime.startsWith('video/')) {
+  if (IMAGE_MIME_TYPES.has(mime)) {
     return true
   }
 
@@ -48,5 +66,21 @@ export function isSupportedConversionSource(file: File): boolean {
   }
 
   const ext = lowerName.slice(dot + 1)
-  return ext === 'gif' || VIDEO_EXTENSIONS.has(ext)
+  return IMAGE_EXTENSIONS.has(ext)
+}
+
+export function isSupportedConversionSource(file: File): boolean {
+  const mime = file.type.trim().toLowerCase()
+  if (mime.startsWith('video/') || IMAGE_MIME_TYPES.has(mime)) {
+    return true
+  }
+
+  const lowerName = file.name.trim().toLowerCase()
+  const dot = lowerName.lastIndexOf('.')
+  if (dot < 0 || dot === lowerName.length - 1) {
+    return false
+  }
+
+  const ext = lowerName.slice(dot + 1)
+  return VIDEO_EXTENSIONS.has(ext) || IMAGE_EXTENSIONS.has(ext)
 }

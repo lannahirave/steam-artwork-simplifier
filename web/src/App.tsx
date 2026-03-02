@@ -78,6 +78,11 @@ function cleanupArtifactViews(items: ArtifactView[]): void {
   }
 }
 
+function getColorReductionPercent(finalColors: number): number {
+  const clamped = Math.min(256, Math.max(0, finalColors))
+  return Math.max(0, Math.round((1 - clamped / 256) * 100))
+}
+
 interface WorkerStageEvent {
   workerIndex: number
   stage: string
@@ -340,7 +345,7 @@ function App() {
     if (!isSupportedConversionSource(file)) {
       setSourceFile(null)
       setFpsEstimateInfo('')
-      setError('Unsupported source file. Use a video file or .gif.')
+      setError('Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).')
       event.target.value = ''
       return
     }
@@ -533,11 +538,11 @@ function App() {
               </select>
             </label>
 
-            <label title="Choose a source video or GIF file to convert to GIF output.">
+            <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
               Source File
               <input
                 type="file"
-                accept="video/*,.gif,image/gif"
+                accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
                 onChange={handleSourceFileChange}
               />
             </label>
@@ -862,6 +867,10 @@ function App() {
                     </>
                   )}
                   <img src={item.url} alt={item.artifact.name} loading="lazy" />
+                  <div className={isWorkshopStrip ? 'gif-meta compact' : 'gif-meta'}>
+                    <span>FPS: {item.artifact.finalFps}</span>
+                    <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
+                  </div>
                   <div className={isWorkshopStrip ? 'download-row compact' : 'download-row'}>
                     <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
                     <button

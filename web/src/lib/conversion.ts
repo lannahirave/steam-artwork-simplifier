@@ -9,6 +9,7 @@ import type {
   SourceProbe,
   WorkerArtifactData,
 } from './types'
+import { isLikelyImageSource } from './validation'
 
 export interface ConversionProgress {
   stage: string
@@ -42,6 +43,8 @@ function toArtifact(data: WorkerArtifactData): ConversionArtifact {
     width: data.width,
     height: data.height,
     status: data.status,
+    finalFps: data.finalFps,
+    finalColors: data.finalColors,
   }
 }
 
@@ -100,6 +103,7 @@ export async function convertVideo(
 
   emit('input', `Loading file ${input.file.name}.`)
   const sourceBytes = new Uint8Array(await input.file.arrayBuffer())
+  const imageLikeSource = isLikelyImageSource(input.file)
 
   emit('probe', 'Probing source dimensions and duration.')
   const probe = await pool.runTask('probe', {
@@ -108,6 +112,7 @@ export async function convertVideo(
   }, {
     timeoutMs: 45_000,
   })
+  const isStillImage = imageLikeSource && probe.duration <= 0.001
 
   const parts = config.preset === 'featured' ? 1 : config.parts
   const partWidth = config.preset === 'featured' ? config.featuredWidth : config.partWidth
@@ -148,6 +153,7 @@ export async function convertVideo(
             {
               fileName: input.file.name,
               fileBytes: sourceBytes.slice(),
+              isStillImage,
               srcWidth: probe.width,
               srcHeight: probe.height,
               duration: probe.duration,
@@ -176,6 +182,7 @@ export async function convertVideo(
               {
                 fileName: input.file.name,
                 fileBytes: sourceBytes.slice(),
+                isStillImage,
                 srcWidth: probe.width,
                 srcHeight: probe.height,
                 duration: probe.duration,

@@ -370,11 +370,14 @@ interface BestEncodeResult {
   bytes: Uint8Array
   sizeKb: number
   status: ArtifactStatus
+  finalFps: number
+  finalColors: number
 }
 
 interface SearchEncodeOptions {
   inputName: string
   baseFilter: string
+  isStillImage: boolean
   gifFps: number
   minGifFps: number
   maxGifKb: number
@@ -389,8 +392,27 @@ interface SearchEncodeOptions {
 }
 
 async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncodeResult> {
+  if (options.isStillImage) {
+    postProgress(options.requestId, 'convert', 'Static image source detected: resize-only encode.')
+    const bytes = await encodeGif({
+      inputName: options.inputName,
+      outputName: `still-${options.requestId}.gif`,
+      vf: options.baseFilter,
+      maxColors: 256,
+    })
+    const sizeKb = bytes.byteLength / 1024
+    return {
+      bytes,
+      sizeKb,
+      status: 'original',
+      finalFps: 1,
+      finalColors: 256,
+    }
+  }
+
   postProgress(options.requestId, 'convert', 'Starting initial encode...')
   let bestFps = options.gifFps
+  let bestColors = 256
   let bestBytes = await encodeGif({
     inputName: options.inputName,
     outputName: `initial-${options.requestId}.gif`,
@@ -407,6 +429,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       bytes: bestBytes,
       sizeKb: bestSize,
       status: bestStatus,
+      finalFps: bestFps,
+      finalColors: bestColors,
     }
   }
 
@@ -433,6 +457,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         bestBytes = attemptBytes
         bestSize = attemptSize
         bestFps = candidate.fps
+        bestColors = candidate.colors
         bestStatus = 'recompressed'
         postProgress(
           options.requestId,
@@ -446,6 +471,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
           bytes: bestBytes,
           sizeKb: bestSize,
           status: bestStatus,
+          finalFps: bestFps,
+          finalColors: bestColors,
         }
       }
     }
@@ -484,6 +511,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         bestBytes = attemptBytes
         bestSize = attemptSize
         bestFps = nextFps
+        bestColors = 256
         bestStatus = 'recompressed'
         postProgress(
           options.requestId,
@@ -497,6 +525,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
           bytes: bestBytes,
           sizeKb: bestSize,
           status: bestStatus,
+          finalFps: bestFps,
+          finalColors: bestColors,
         }
       }
     }
@@ -507,6 +537,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       bytes: bestBytes,
       sizeKb: bestSize,
       status: bestStatus,
+      finalFps: bestFps,
+      finalColors: bestColors,
     }
   }
 
@@ -543,6 +575,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
     if (attemptSize < bestSize) {
       bestBytes = attemptBytes
       bestSize = attemptSize
+      bestFps = candidate.fps
+      bestColors = candidate.colors
       bestStatus = 'lossy'
       postProgress(
         options.requestId,
@@ -556,6 +590,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         bytes: bestBytes,
         sizeKb: bestSize,
         status: bestStatus,
+        finalFps: bestFps,
+        finalColors: bestColors,
       }
     }
   }
@@ -564,6 +600,8 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
     bytes: bestBytes,
     sizeKb: bestSize,
     status: bestStatus,
+    finalFps: bestFps,
+    finalColors: bestColors,
   }
 }
 
@@ -647,6 +685,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
   const best = await searchBestEncode({
     inputName,
     baseFilter,
+    isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
     minGifFps: payload.minGifFps,
     maxGifKb: payload.maxGifKb,
@@ -675,6 +714,8 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
     width: payload.partWidth,
     height: targetHeight,
     status: best.status,
+    finalFps: best.finalFps,
+    finalColors: best.finalColors,
   }
 }
 
@@ -693,6 +734,7 @@ async function runConvertFeatured(
   const best = await searchBestEncode({
     inputName,
     baseFilter,
+    isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
     minGifFps: payload.minGifFps,
     maxGifKb: payload.maxGifKb,
@@ -719,6 +761,8 @@ async function runConvertFeatured(
     width: payload.featuredWidth,
     height: targetHeight,
     status: best.status,
+    finalFps: best.finalFps,
+    finalColors: best.finalColors,
   }
 }
 
