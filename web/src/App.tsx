@@ -411,9 +411,9 @@ function App() {
       return
     }
 
-    const requestedJobs = config.preset === 'featured' ? 1 : config.parts
+    const requestedJobs = config.preset === 'workshop' ? config.parts : 1
     const effectiveWorkerCount =
-      config.preset === 'featured'
+      config.preset !== 'workshop'
         ? 1
         : Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
     const runtimeConfig: ConversionConfig = {
@@ -509,7 +509,7 @@ function App() {
       const next = applyPreset(prev, nextPreset)
       return {
         ...next,
-        workerCount: getDefaultWorkerCount(nextPreset === 'featured' ? 1 : next.parts),
+        workerCount: getDefaultWorkerCount(nextPreset === 'workshop' ? next.parts : 1),
       }
     })
   }
@@ -544,9 +544,9 @@ function App() {
     setFpsEstimateInfo('')
     setEstimatingFps(true)
     try {
-      const requestedJobs = config.preset === 'featured' ? 1 : config.parts
+      const requestedJobs = config.preset === 'workshop' ? config.parts : 1
       const effectiveWorkerCount =
-        config.preset === 'featured'
+        config.preset !== 'workshop'
           ? 1
           : Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
 
@@ -559,8 +559,9 @@ function App() {
         timeoutMs: 45_000,
       })
 
-      const parts = config.preset === 'featured' ? 1 : config.parts
-      const perGifWidth = config.preset === 'featured' ? config.featuredWidth : config.partWidth
+      const parts = config.preset === 'workshop' ? config.parts : 1
+      const perGifWidth =
+        config.preset === 'featured' ? config.featuredWidth : config.preset === 'guide' ? 150 : config.partWidth
       const totalTargetWidth = parts * perGifWidth
       const targetHeight = computeTargetHeight(probe.width, probe.height, totalTargetWidth)
       const duration = Math.max(0.1, probe.duration)
@@ -723,9 +724,10 @@ function App() {
               <div className="form-grid">
                 <label title="Select output mode: workshop creates 5 slices, featured creates one wide GIF.">
                   Preset
-                  <select value={config.preset} onChange={(event) => updatePreset(event.target.value as 'workshop' | 'featured')}>
+                  <select value={config.preset} onChange={(event) => updatePreset(event.target.value as ConversionConfig['preset'])}>
                     <option value="workshop">Workshop (5x150 slices)</option>
                     <option value="featured">Featured (single 630px)</option>
+                    <option value="guide">Guide (single 150x150)</option>
                   </select>
                 </label>
 
@@ -781,6 +783,13 @@ function App() {
                         setConfig((prev) => ({ ...prev, featuredWidth: Number.parseInt(event.target.value, 10) || 1 }))
                       }
                     />
+                  </label>
+                )}
+
+                {config.preset === 'guide' && (
+                  <label title="Guide preset outputs a centered square GIF at 150x150.">
+                    Guide Size
+                    <input value="150x150 (fixed)" disabled />
                   </label>
                 )}
               </div>

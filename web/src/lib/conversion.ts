@@ -114,8 +114,15 @@ export async function convertVideo(
   })
   const isStillImage = imageLikeSource && probe.duration <= 0.001
 
-  const parts = config.preset === 'featured' ? 1 : config.parts
-  const partWidth = config.preset === 'featured' ? config.featuredWidth : config.partWidth
+  const isSingleOutputPreset = config.preset === 'featured' || config.preset === 'guide'
+  const guideSize = 150
+  const parts = isSingleOutputPreset ? 1 : config.parts
+  const partWidth =
+    config.preset === 'featured'
+      ? config.featuredWidth
+      : config.preset === 'guide'
+        ? guideSize
+        : config.partWidth
 
   if (config.disableOptimizations) {
     const message =
@@ -181,7 +188,37 @@ export async function convertVideo(
             },
           ),
         ]
-      : await Promise.all(
+      : config.preset === 'guide'
+        ? [
+            await pool.runTask(
+              'convertGuide',
+              {
+                fileName: input.file.name,
+                fileBytes: sourceBytes.slice(),
+                isStillImage,
+                srcWidth: probe.width,
+                srcHeight: probe.height,
+                duration: probe.duration,
+                gifFps: config.gifFps,
+                minGifFps: config.minGifFps,
+                disableOptimizations: config.disableOptimizations,
+                maxGifKb: config.maxGifKb,
+                targetGifKb: config.targetGifKb,
+                standardRetriesEnabled: config.standardRetriesEnabled,
+                retryAllowFpsDrop: config.retryAllowFpsDrop,
+                retryAllowColorDrop: config.retryAllowColorDrop,
+                lossyOversize: config.lossyOversize,
+                lossyLevel: config.lossyLevel,
+                lossyMaxAttempts: config.lossyMaxAttempts,
+                guideSize,
+              },
+              {
+                onProgress: workerProgress(0),
+                timeoutMs: 6 * 60_000,
+              },
+            ),
+          ]
+        : await Promise.all(
           Array.from({ length: parts }, (_, index) =>
             pool.runTask(
               'convertPart',

@@ -1,4 +1,4 @@
-export type Preset = 'workshop' | 'featured'
+export type Preset = 'workshop' | 'featured' | 'guide'
 
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
 
@@ -83,7 +83,7 @@ export interface ResolvedPresetSettings {
   targetGifKb: number
 }
 
-export type WorkerCommand = 'init' | 'probe' | 'convertPart' | 'convertFeatured'
+export type WorkerCommand = 'init' | 'probe' | 'convertPart' | 'convertFeatured' | 'convertGuide'
 export type WorkerEvent = 'ready' | 'progress' | 'result' | 'error'
 
 export interface InitPayload {
@@ -125,6 +125,10 @@ export interface ConvertFeaturedPayload extends ConvertPayloadBase {
   featuredWidth: number
 }
 
+export interface ConvertGuidePayload extends ConvertPayloadBase {
+  guideSize: number
+}
+
 export interface ProbeResultData {
   width: number
   height: number
@@ -157,6 +161,7 @@ export type WorkerRequestPayloadMap = {
   probe: ProbePayload
   convertPart: ConvertPartPayload
   convertFeatured: ConvertFeaturedPayload
+  convertGuide: ConvertGuidePayload
 }
 
 export type WorkerResultDataMap = {
@@ -164,6 +169,7 @@ export type WorkerResultDataMap = {
   probe: ProbeResultData
   convertPart: WorkerArtifactData
   convertFeatured: WorkerArtifactData
+  convertGuide: WorkerArtifactData
 }
 
 export interface WorkerRequest<T extends WorkerCommand = WorkerCommand> {

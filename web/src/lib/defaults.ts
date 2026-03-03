@@ -14,6 +14,11 @@ export const DEFAULTS = {
     maxGifKb: 4500,
     targetGifKb: 4500,
   },
+  guide: {
+    size: 150,
+    maxGifKb: 3000,
+    targetGifKb: 2600,
+  },
   disableOptimizations: false,
   standardRetriesEnabled: false,
   retryAllowFpsDrop: true,
@@ -48,6 +53,15 @@ export function resolvePresetSettings(config: ConversionConfig): ResolvedPresetS
     }
   }
 
+  if (config.preset === 'guide') {
+    return {
+      parts: 1,
+      partWidth: DEFAULTS.guide.size,
+      maxGifKb: DEFAULTS.guide.maxGifKb,
+      targetGifKb: DEFAULTS.guide.targetGifKb,
+    }
+  }
+
   return {
     parts: config.parts,
     partWidth: config.partWidth,
@@ -57,7 +71,7 @@ export function resolvePresetSettings(config: ConversionConfig): ResolvedPresetS
 }
 
 export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig {
-  const parts = preset === 'featured' ? 1 : DEFAULTS.workshop.parts
+  const parts = preset === 'workshop' ? DEFAULTS.workshop.parts : 1
 
   return {
     preset,
@@ -67,9 +81,18 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     partWidth: DEFAULTS.workshop.partWidth,
     featuredWidth: DEFAULTS.featured.width,
     disableOptimizations: DEFAULTS.disableOptimizations,
-    maxGifKb: preset === 'featured' ? DEFAULTS.featured.maxGifKb : DEFAULTS.workshop.maxGifKb,
+    maxGifKb:
+      preset === 'featured'
+        ? DEFAULTS.featured.maxGifKb
+        : preset === 'guide'
+          ? DEFAULTS.guide.maxGifKb
+          : DEFAULTS.workshop.maxGifKb,
     targetGifKb:
-      preset === 'featured' ? DEFAULTS.featured.targetGifKb : DEFAULTS.workshop.targetGifKb,
+      preset === 'featured'
+        ? DEFAULTS.featured.targetGifKb
+        : preset === 'guide'
+          ? DEFAULTS.guide.targetGifKb
+          : DEFAULTS.workshop.targetGifKb,
     standardRetriesEnabled: DEFAULTS.standardRetriesEnabled,
     retryAllowFpsDrop: DEFAULTS.retryAllowFpsDrop,
     retryAllowColorDrop: DEFAULTS.retryAllowColorDrop,
@@ -96,6 +119,15 @@ export function applyPreset(config: ConversionConfig, preset: Preset): Conversio
       workerCount: getDefaultWorkerCount(1),
       maxGifKb: DEFAULTS.featured.maxGifKb,
       targetGifKb: DEFAULTS.featured.targetGifKb,
+    }
+  }
+
+  if (preset === 'guide') {
+    return {
+      ...next,
+      workerCount: getDefaultWorkerCount(1),
+      maxGifKb: DEFAULTS.guide.maxGifKb,
+      targetGifKb: DEFAULTS.guide.targetGifKb,
     }
   }
 

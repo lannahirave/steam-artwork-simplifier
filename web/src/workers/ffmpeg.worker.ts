@@ -8,6 +8,7 @@ import type {
   AnyWorkerRequest,
   ArtifactStatus,
   ConvertFeaturedPayload,
+  ConvertGuidePayload,
   ConvertPartPayload,
   ProbePayload,
   ProbeResultData,
@@ -842,6 +843,56 @@ async function runConvertFeatured(
   }
 }
 
+async function runConvertGuide(
+  requestId: string,
+  payload: ConvertGuidePayload,
+): Promise<WorkerArtifactData> {
+  const inputName = `${requestId}.${extensionOf(payload.fileName)}`
+  ffmpegLogBuffer.length = 0
+  postProgress(requestId, 'convert', 'Guide: preparing input...')
+  await ffmpeg.writeFile(inputName, payload.fileBytes)
+
+  // Keep aspect ratio, then center-crop to exact square size.
+  const baseFilter =
+    `scale=${payload.guideSize}:${payload.guideSize}:flags=${SCALE_FLAGS}:force_original_aspect_ratio=increase,` +
+    `crop=${payload.guideSize}:${payload.guideSize}`
+
+  const best = await searchBestEncode({
+    inputName,
+    baseFilter,
+    isStillImage: payload.isStillImage,
+    gifFps: payload.gifFps,
+    minGifFps: payload.minGifFps,
+    disableOptimizations: payload.disableOptimizations,
+    maxGifKb: payload.maxGifKb,
+    targetGifKb: payload.targetGifKb,
+    standardRetriesEnabled: payload.standardRetriesEnabled,
+    retryAllowFpsDrop: payload.retryAllowFpsDrop,
+    retryAllowColorDrop: payload.retryAllowColorDrop,
+    lossyOversize: payload.lossyOversize,
+    lossyLevel: payload.lossyLevel,
+    lossyMaxAttempts: payload.lossyMaxAttempts,
+    requestId,
+  })
+
+  await safeDelete(inputName)
+
+  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
+    throw new Error(`guide.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`)
+  }
+
+  return {
+    name: 'guide.gif',
+    fileBytes: best.bytes,
+    sizeKb: best.sizeKb,
+    width: payload.guideSize,
+    height: payload.guideSize,
+    status: best.status,
+    finalFps: best.finalFps,
+    finalColors: best.finalColors,
+  }
+}
+
 self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
   const request = event.data
   currentRequestId = request.id
@@ -868,6 +919,12 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
 
     if (request.command === 'convertFeatured') {
       const data = await runConvertFeatured(request.id, request.payload)
+      postResult(request.id, request.command, data)
+      return
+    }
+
+    if (request.command === 'convertGuide') {
+      const data = await runConvertGuide(request.id, request.payload)
       postResult(request.id, request.command, data)
     }
   } catch (error) {
