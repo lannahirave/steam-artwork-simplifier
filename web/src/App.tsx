@@ -1,275 +1,43 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
-import { DEFAULTS, applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
+import { applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
 import { convertVideo, type ConversionProgress } from './lib/conversion'
 import { applyEofPatch, applyHeaderPatch } from './lib/patch'
 import { estimateFpsForTargetKb, estimateGifKb } from './lib/precheck'
-import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, SCREENSHOT_SNIPPET, STEAM_HELPER_NOTES } from './lib/steamSnippets'
-import type { ConversionArtifact, ConversionConfig, PatchResult } from './lib/types'
+import { FEATURED_SNIPPET, SCREENSHOT_SNIPPET, WORKSHOP_SNIPPET } from './lib/steamSnippets'
+import type { ConversionConfig, PatchResult } from './lib/types'
 import { createZip } from './lib/zip'
 import { FFmpegWorkerPool } from './lib/workerPool'
 import { isSupportedConversionSource, parseHexByte } from './lib/validation'
+import {
+  GUIDE_SECTIONS,
+  GUIDE_SIZE,
+  MAX_SAFE_WASM_WORKERS,
+  THEME_STORAGE_KEY,
+  cleanupArtifactViews,
+  downloadBlob,
+  formatElapsed,
+  getBaseProgress,
+  getColorReductionPercent,
+  getIsolationState,
+  getPresetJobCount,
+  getPresetSplitWidths,
+  getWorkerStageWeight,
+  parseWorkerStage,
+  resolveEstimateBppf,
+  toArtifactViews,
+  toFiles,
+  type ArtifactView,
+  type OutputItem,
+  type TabKey,
+  type ThemeMode,
+} from './agents/appAgents'
+import { ConvertPanel } from './components/panels/ConvertPanel'
+import { PatchToolsPanel } from './components/panels/PatchToolsPanel'
+import { SteamHelpersPanel } from './components/panels/SteamHelpersPanel'
+import { GuidesPanel } from './components/panels/GuidesPanel'
 
-type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
-type ThemeMode = 'auto' | 'light' | 'dark'
-const MAX_SAFE_WASM_WORKERS = 3
-const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
-const GUIDE_SIZE = 195
 const APP_VERSION = __APP_VERSION__
-
-const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
-  workshop: 0.16,
-  featured: 0.18,
-  guide: 0.21,
-  showcase: 0.16,
-}
-
-interface GuideSection {
-  key: string
-  title: string
-  badge: string
-  steps: string[]
-  tip?: string
-}
-
-const GUIDE_SECTIONS: GuideSection[] = [
-  {
-    key: 'workshop',
-    title: 'Workshop GIFs (5 parts)',
-    badge: 'Convert',
-    steps: [
-      'Open Convert tab and keep preset as Workshop (5x150 slices).',
-      'Upload your source media file.',
-      'Set GIF FPS and Min GIF FPS, or click Estimate for auto FPS.',
-      'Click Run Conversion and wait for Output ready in...',
-      'Review all 5 previews, then download single files or ZIP.',
-    ],
-    tip: 'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction.',
-  },
-  {
-    key: 'featured',
-    title: 'Featured GIF (single wide)',
-    badge: 'Convert',
-    steps: [
-      'Switch preset to Featured (single 630px).',
-      'Upload source media (video, gif, png, webp, jpg, jpeg, bmp).',
-      'Tune Featured Width and FPS if needed.',
-      'Run conversion and check size/FPS/color metadata under output.',
-      'Download featured.gif directly or as part of ZIP.',
-    ],
-    tip: 'Start with lower FPS before increasing lossy settings for better visual quality.',
-  },
-  {
-    key: 'showcase',
-    title: 'Artwork Showcase (506 + 100)',
-    badge: 'Convert',
-    steps: [
-      'Switch preset to Artwork Showcase (fixed 506px + 100px split).',
-      'Upload source media and tune FPS/size limits as needed.',
-      'Run conversion and verify both split outputs in preview.',
-      'Open Steam Helpers tab and copy either Artwork/Featured or Screenshot snippet (only one).',
-      'Run one snippet in Steam Console to prefill invisible title and agreement checkbox.',
-    ],
-    tip: 'Use this flow only for the 506 + 100 showcase preset.',
-  },
-  {
-    key: 'tuning',
-    title: 'Fix size or quality issues',
-    badge: 'Tuning',
-    steps: [
-      'Keep Allow FPS reduction enabled.',
-      'Set realistic Max GIF KB and Target GIF KB.',
-      'Leave standard retries off for speed-first behavior.',
-      'Enable standard retries if you want extra target-size chasing.',
-      'Use Worker Count 2-3 for speed, or 1 for stability debugging.',
-    ],
-    tip: 'Current pipeline prioritizes FPS drops first and only reduces colors later if still oversize.',
-  },
-  {
-    key: 'patch',
-    title: 'Patch existing files',
-    badge: 'Patch',
-    steps: [
-      'Open Patch Tools tab.',
-      'Use EOF Patch to rewrite last byte (default 0x21).',
-      'Use GIF Header Patch to set logical width/height bytes.',
-      'Optionally combine header + EOF in one run.',
-      'Download patched outputs from the result list.',
-    ],
-  },
-  {
-    key: 'steam',
-    title: 'Steam upload autofill',
-    badge: 'Upload',
-    steps: [
-      'Open Steam Helpers tab and click Copy for workshop, artwork/featured, or screenshot snippet.',
-      'Open the Steam upload page in your browser.',
-      'Open DevTools Console.',
-      'Paste one snippet and run it.',
-      'Verify fields and finish upload.',
-    ],
-    tip: 'Snippets are intended for Steam upload pages only.',
-  },
-]
-
-interface ArtifactView {
-  artifact: ConversionArtifact
-  url: string
-}
-
-interface OutputItem {
-  name: string
-  blob: Blob
-  note: string
-}
-
-interface IsolationState {
-  ok: boolean
-  reason?: string
-}
-
-function getIsolationState(): IsolationState {
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('noiso') === '1') {
-    return {
-      ok: false,
-      reason: 'Simulation mode enabled via ?noiso=1.',
-    }
-  }
-
-  if (window.isSecureContext && window.crossOriginIsolated) {
-    return { ok: true }
-  }
-
-  return {
-    ok: false,
-    reason:
-      'This app requires cross-origin isolation to run ffmpeg.wasm multithread core (SharedArrayBuffer).',
-  }
-}
-
-function downloadBlob(name: string, blob: Blob): void {
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = name
-  anchor.click()
-  URL.revokeObjectURL(url)
-}
-
-function toFiles(fileList: FileList | null): File[] {
-  if (!fileList) {
-    return []
-  }
-  return Array.from(fileList)
-}
-
-function toArtifactViews(artifacts: ConversionArtifact[]): ArtifactView[] {
-  return artifacts.map((artifact) => ({
-    artifact,
-    url: URL.createObjectURL(artifact.blob),
-  }))
-}
-
-function cleanupArtifactViews(items: ArtifactView[]): void {
-  for (const item of items) {
-    URL.revokeObjectURL(item.url)
-  }
-}
-
-function getColorReductionPercent(finalColors: number): number {
-  const clamped = Math.min(256, Math.max(0, finalColors))
-  return Math.max(0, Math.round((1 - clamped / 256) * 100))
-}
-
-function resolveEstimateBppf(config: ConversionConfig): number {
-  return Math.max(config.precheckBppf, ESTIMATE_BPPF_BASELINES[config.preset])
-}
-
-function getPresetSplitWidths(config: ConversionConfig): number[] {
-  if (config.preset === 'showcase') {
-    return [...DEFAULTS.showcase.splitWidths]
-  }
-  if (config.preset === 'workshop') {
-    return Array.from({ length: config.parts }, () => config.partWidth)
-  }
-  if (config.preset === 'featured') {
-    return [config.featuredWidth]
-  }
-  return [GUIDE_SIZE]
-}
-
-function getPresetJobCount(config: ConversionConfig): number {
-  if (config.preset === 'workshop' || config.preset === 'showcase') {
-    return getPresetSplitWidths(config).length
-  }
-  return 1
-}
-
-interface WorkerStageEvent {
-  workerIndex: number
-  stage: string
-}
-
-function parseWorkerStage(stage: string): WorkerStageEvent | null {
-  const match = /^worker-(\d+):(.+)$/.exec(stage)
-  if (!match) {
-    return null
-  }
-  return {
-    workerIndex: Number.parseInt(match[1], 10),
-    stage: match[2],
-  }
-}
-
-function getBaseProgress(stage: string): number {
-  if (stage === 'init') {
-    return 4
-  }
-  if (stage === 'input') {
-    return 10
-  }
-  if (stage === 'probe') {
-    return 18
-  }
-  if (stage === 'precheck') {
-    return 24
-  }
-  if (stage === 'convert') {
-    return 30
-  }
-  if (stage === 'done') {
-    return 100
-  }
-  return 0
-}
-
-function getWorkerStageWeight(stage: string): number {
-  if (stage === 'ffmpeg') {
-    return 0.35
-  }
-  if (stage === 'convert') {
-    return 0.5
-  }
-  if (stage === 'standard') {
-    return 0.75
-  }
-  if (stage === 'lossy') {
-    return 0.92
-  }
-  return 0.45
-}
-
-function formatElapsed(ms: number): string {
-  const totalSeconds = Math.max(0, Math.floor(ms / 1000))
-  const hours = Math.floor(totalSeconds / 3600)
-  const minutes = Math.floor((totalSeconds % 3600) / 60)
-  const seconds = totalSeconds % 60
-  if (hours > 0) {
-    return `${hours}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
-  }
-  return `${minutes}:${String(seconds).padStart(2, '0')}`
-}
 
 function App() {
   const isolationState = useMemo(() => getIsolationState(), [])
@@ -739,12 +507,12 @@ function App() {
   }
 
   async function copySnippet(label: 'workshop' | 'featured' | 'screenshot'): Promise<void> {
-    const snippets = {
-      workshop: WORKSHOP_SNIPPET,
-      featured: FEATURED_SNIPPET,
-      screenshot: SCREENSHOT_SNIPPET,
-    } as const
-    const text = snippets[label]
+    const text =
+      label === 'workshop'
+        ? WORKSHOP_SNIPPET
+        : label === 'featured'
+          ? FEATURED_SNIPPET
+          : SCREENSHOT_SNIPPET
     try {
       await navigator.clipboard.writeText(text)
       setCopyStatus(`${label} snippet copied.`)
@@ -803,628 +571,78 @@ function App() {
       </nav>
 
       {tab === 'convert' && (
-        <section className="panel">
-          <h2>Media to GIF</h2>
-
-          <div className="config-groups">
-            <section className="config-group">
-              <h3>Source and Layout</h3>
-              <div className="form-grid">
-                <label title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF.">
-                  Preset
-                  <select value={config.preset} onChange={(event) => updatePreset(event.target.value as ConversionConfig['preset'])}>
-                    <option value="workshop">Workshop (5x150 slices)</option>
-                    <option value="showcase">Artwork Showcase (506 + 100 split)</option>
-                    <option value="featured">Featured (single 630px)</option>
-                    <option value="guide">Guide (single 195x195)</option>
-                  </select>
-                </label>
-
-                <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
-                  Source File
-                  <input
-                    type="file"
-                    accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
-                    onChange={handleSourceFileChange}
-                  />
-                </label>
-
-                {config.preset === 'workshop' && (
-                  <>
-                    <label title="Number of output slices for workshop preset.">
-                      Parts
-                      <input
-                        type="number"
-                        min={1}
-                        max={12}
-                        value={config.parts}
-                        onChange={(event) =>
-                          setConfig((prev) => ({
-                            ...prev,
-                            parts: Number.parseInt(event.target.value, 10) || 1,
-                            workerCount: getDefaultWorkerCount(Number.parseInt(event.target.value, 10) || 1),
-                          }))
-                        }
-                      />
-                    </label>
-                    <label title="Width in pixels of each workshop slice.">
-                      Part Width
-                      <input
-                        type="number"
-                        min={1}
-                        value={config.partWidth}
-                        onChange={(event) =>
-                          setConfig((prev) => ({ ...prev, partWidth: Number.parseInt(event.target.value, 10) || 1 }))
-                        }
-                      />
-                    </label>
-                  </>
-                )}
-
-                {config.preset === 'featured' && (
-                  <label title="Width in pixels of the featured output GIF.">
-                    Featured Width
-                    <input
-                      type="number"
-                      min={1}
-                      value={config.featuredWidth}
-                      onChange={(event) =>
-                        setConfig((prev) => ({ ...prev, featuredWidth: Number.parseInt(event.target.value, 10) || 1 }))
-                      }
-                    />
-                  </label>
-                )}
-
-                {config.preset === 'guide' && (
-                  <label title="Guide preset outputs a centered square GIF at 195x195.">
-                    Guide Size
-                    <input value="195x195 (fixed)" disabled />
-                  </label>
-                )}
-
-                {config.preset === 'showcase' && (
-                  <>
-                    <label title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
-                      Showcase Split
-                      <input value="506px + 100px (fixed)" disabled />
-                    </label>
-                    <label title="Total target width used before splitting the showcase output.">
-                      Showcase Total Width
-                      <input value="606px (fixed)" disabled />
-                    </label>
-                  </>
-                )}
-              </div>
-            </section>
-
-            <section className="config-group">
-              <h3>Frame Rate and Size</h3>
-              <div className="form-grid">
-                <label title="Starting frame rate for the first encode pass.">
-                  GIF FPS
-                  <div className="field-input-row">
-                    <input
-                      type="number"
-                      min={1}
-                      value={config.gifFps}
-                      onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
-                    />
-                    <button
-                      type="button"
-                      className="inline-action"
-                      title="Estimate and apply a practical GIF FPS from source resolution, duration, and current size target."
-                      disabled={!sourceFile || busy || estimatingFps}
-                      onClick={() => void estimateAndApplyFps()}
-                    >
-                      {estimatingFps ? 'Estimating...' : 'Estimate'}
-                    </button>
-                  </div>
-                  {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
-                </label>
-
-                <label title="Lowest FPS allowed during recompression attempts.">
-                  Min GIF FPS
-                  <input
-                    type="number"
-                    min={1}
-                    value={config.minGifFps}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, minGifFps: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
-                  />
-                </label>
-
-                <label title="Hard output size limit per GIF in kilobytes. Ignored when Disable Optimizations is enabled.">
-                  Max GIF KB
-                  <input
-                    type="number"
-                    min={1}
-                    disabled={optimizationDisabled}
-                    value={config.maxGifKb}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, maxGifKb: Number.parseInt(event.target.value, 10) || 1 }))}
-                  />
-                </label>
-
-                <label title="Preferred output size target used by recompression attempts. Ignored when Disable Optimizations is enabled.">
-                  Target GIF KB
-                  <input
-                    type="number"
-                    min={1}
-                    disabled={optimizationDisabled}
-                    value={config.targetGifKb}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, targetGifKb: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
-                  />
-                </label>
-
-                <label title="Estimate output size before encoding and stop early if likely too large.">
-                  <span className="toggle-row">
-                    <input
-                      type="checkbox"
-                      checked={precheckEffective}
-                      disabled={optimizationDisabled}
-                      onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
-                    />
-                    Enable precheck
-                  </span>
-                </label>
-              </div>
-            </section>
-
-            <section className="config-group">
-              <h3>Performance and Optimization</h3>
-              <div className="form-grid">
-                <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
-                  Worker Count
-                  <input
-                    type="number"
-                    min={1}
-                    max={3}
-                    value={config.workerCount}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, workerCount: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
-                  />
-                </label>
-
-                <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
-                  <button
-                    type="button"
-                    className={optimizationDisabled ? 'raw-mode-btn active' : 'raw-mode-btn'}
-                    onClick={() =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        disableOptimizations: !prev.disableOptimizations,
-                      }))
-                    }
-                  >
-                    {optimizationDisabled ? 'Enable Optimizations' : 'Disable Optimizations'}
-                  </button>
-                  <small className="field-note">
-                    {optimizationDisabled
-                      ? 'Raw mode active: FPS/color retries and max-size limit are ignored.'
-                      : 'Use raw mode when you want original encode behavior without optimization constraints.'}
-                  </small>
-                </div>
-
-                <label className="toggle" title="Enable standard recompression retries after initial encode.">
-                  <input
-                    type="checkbox"
-                    checked={standardRetriesEffective}
-                    disabled={optimizationDisabled}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
-                    }
-                  />
-                  Enable standard retries
-                </label>
-
-                <label
-                  className="toggle"
-                  title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
-                >
-                  <input
-                    type="checkbox"
-                    checked={retryFpsEffective}
-                    disabled={retryControlsDisabled}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
-                    }
-                  />
-                  Allow FPS reduction
-                </label>
-
-                <label
-                  className="toggle"
-                  title="Allow standard retries to reduce palette colors for smaller output."
-                >
-                  <input
-                    type="checkbox"
-                    checked={retryColorEffective}
-                    disabled={retryControlsDisabled}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
-                    }
-                  />
-                  Allow color reduction
-                </label>
-
-                {optimizationDisabled && (
-                  <p className="config-note">
-                    Optimization controls are inactive because Disable Optimizations is on.
-                  </p>
-                )}
-                {!optimizationDisabled && !config.standardRetriesEnabled && (
-                  <p className="config-note">
-                    FPS/Color reduction toggles activate after enabling standard retries.
-                  </p>
-                )}
-
-                <div
-                  className="lossy-group"
-                  title="Extra lossy profiles used only when output is still above max GIF size."
-                >
-                  <label className="toggle lossy-group-toggle" title="Enable extra lossy profiles when GIF is still above max size.">
-                    <input
-                      type="checkbox"
-                      checked={lossyEffective}
-                      disabled={optimizationDisabled}
-                      onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
-                    />
-                    Enable lossy oversize fallback
-                  </label>
-                  <small className="field-note lossy-group-note">
-                    {lossyEffective
-                      ? 'Lossy mode can reduce palette and apply extra compression passes after standard optimization.'
-                      : 'Lossy mode is off. Only standard optimization passes will run.'}
-                  </small>
-                  <div className="lossy-group-fields">
-                    <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
-                      Lossy Level
-                      <input
-                        type="number"
-                        min={1}
-                        max={3}
-                        disabled={optimizationDisabled || !lossyEffective}
-                        value={config.lossyLevel}
-                        onChange={(event) => setConfig((prev) => ({ ...prev, lossyLevel: Number.parseInt(event.target.value, 10) || 1 }))}
-                      />
-                    </label>
-
-                    <label title="Maximum lossy attempts when output is still above max GIF size.">
-                      Lossy Attempts
-                      <input
-                        type="number"
-                        min={1}
-                        disabled={optimizationDisabled || !lossyEffective}
-                        value={config.lossyMaxAttempts}
-                        onChange={(event) =>
-                          setConfig((prev) => ({ ...prev, lossyMaxAttempts: Number.parseInt(event.target.value, 10) || 1 }))
-                        }
-                      />
-                    </label>
-                  </div>
-                </div>
-              </div>
-            </section>
-
-            <section className="config-group">
-              <h3>Output Patching</h3>
-              <div className="form-grid">
-                <label title="Hex byte value used for EOF patching (for example 21 = 0x21).">
-                  EOF Byte (hex)
-                  <input
-                    value={config.eofByte.toString(16).toUpperCase()}
-                    onChange={(event) => {
-                      try {
-                        const byte = parseHexByte(event.target.value)
-                        setConfig((prev) => ({ ...prev, eofByte: byte }))
-                      } catch {
-                        // ignore transient invalid text
-                      }
-                    }}
-                  />
-                </label>
-
-                <label className="toggle" title="Patch the last byte of each output file with the configured EOF byte.">
-                  <input
-                    type="checkbox"
-                    checked={config.eofPatchEnabled}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, eofPatchEnabled: event.target.checked }))}
-                  />
-                  Patch EOF byte on outputs
-                </label>
-
-                <label className="toggle" title="Rewrite GIF header logical width/height metadata on outputs.">
-                  <input
-                    type="checkbox"
-                    checked={config.headerPatchEnabled}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, headerPatchEnabled: event.target.checked }))}
-                  />
-                  Patch GIF header width/height
-                </label>
-
-                {config.headerPatchEnabled && (
-                  <>
-                    <label title="Width value written to GIF header bytes 6-7.">
-                      Header Width
-                      <input
-                        type="number"
-                        min={1}
-                        max={65535}
-                        value={config.headerWidth}
-                        onChange={(event) =>
-                          setConfig((prev) => ({ ...prev, headerWidth: Number.parseInt(event.target.value, 10) || 1 }))
-                        }
-                      />
-                    </label>
-                    <label title="Height value written to GIF header bytes 8-9.">
-                      Header Height
-                      <input
-                        type="number"
-                        min={1}
-                        max={65535}
-                        value={config.headerHeight}
-                        onChange={(event) =>
-                          setConfig((prev) => ({ ...prev, headerHeight: Number.parseInt(event.target.value, 10) || 1 }))
-                        }
-                      />
-                    </label>
-                  </>
-                )}
-              </div>
-            </section>
-          </div>
-
-          <div className="actions">
-            <button disabled={convertDisabled} onClick={() => void runConversion()}>
-              Run Conversion
-            </button>
-            <button disabled={!busy} onClick={cancelConversion}>
-              Cancel
-            </button>
-            <button disabled={artifactViews.length === 0} onClick={() => void downloadZip()}>
-              Download ZIP
-            </button>
-            <button onClick={resetConvertState}>Reset Results</button>
-          </div>
-
-          {(busy || progressPercent > 0) && (
-            <div className="progress-panel">
-              <div className="progress-head">
-                <span>{busy ? 'Converting GIFs...' : 'Last conversion'}</span>
-                <strong>{Math.round(progressPercent)}%</strong>
-              </div>
-              <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)}>
-                <div className="progress-fill" style={{ width: `${progressPercent}%` }} />
-              </div>
-              {progressLabel && <p className="progress-label">{progressLabel}</p>}
-              {(busy || lastElapsedMs !== null) && (
-                <p className="progress-time">
-                  Time: {busy ? formatElapsed(elapsedMs) : formatElapsed(lastElapsedMs ?? 0)}
-                </p>
-              )}
-            </div>
-          )}
-
-          {error && <p className="error">{error}</p>}
-
-          {warnings.length > 0 && (
-            <div className="warn-box">
-              <h3>Warnings</h3>
-              <ul>
-                {warnings.map((warning) => (
-                  <li key={warning}>{warning}</li>
-                ))}
-              </ul>
-            </div>
-          )}
-
-          {progress.length > 0 && (
-            <div className="log-box">
-              <h3>Live Progress</h3>
-              <pre>{progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')}</pre>
-            </div>
-          )}
-
-          {logs.length > 0 && (
-            <div className="log-box">
-              <h3>Run Logs</h3>
-              <pre>{logs.join('\n')}</pre>
-            </div>
-          )}
-
-          {artifactViews.length > 0 && (
-            <>
-              {lastElapsedMs !== null && (
-                <p className="result-timing">Output ready in {formatElapsed(lastElapsedMs)}.</p>
-              )}
-              <section className={resultsGridClassName}>
-                {artifactViews.map((item) => (
-                  <article className="result-card" key={item.artifact.name}>
-                    {!isCompactStrip && (
-                      <>
-                        <h3>{item.artifact.name}</h3>
-                        <p>
-                          {item.artifact.width}x{item.artifact.height} | {item.artifact.status}
-                        </p>
-                      </>
-                    )}
-                    {isCompactStrip && (
-                      <p className="compact-caption">
-                        {item.artifact.name} | {item.artifact.width}x{item.artifact.height}
-                      </p>
-                    )}
-                    <img
-                      src={item.url}
-                      alt={item.artifact.name}
-                      loading="lazy"
-                      style={
-                        isCompactStrip
-                          ? {
-                              width: `${item.artifact.width}px`,
-                              height: `${item.artifact.height}px`,
-                            }
-                          : undefined
-                      }
-                    />
-                    <div className={isCompactStrip ? 'gif-meta compact' : 'gif-meta'}>
-                      <span>FPS: {item.artifact.finalFps}</span>
-                      <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
-                    </div>
-                    <div className={isCompactStrip ? 'download-row compact' : 'download-row'}>
-                      <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
-                      <button
-                        className={isCompactStrip ? 'compact-download' : ''}
-                        onClick={() => downloadBlob(item.artifact.name, item.artifact.blob)}
-                      >
-                        {isCompactStrip ? 'DL' : 'Download'}
-                      </button>
-                    </div>
-                  </article>
-                ))}
-              </section>
-            </>
-          )}
-        </section>
+        <ConvertPanel
+          config={config}
+          setConfig={setConfig}
+          sourceFile={sourceFile}
+          busy={busy}
+          estimatingFps={estimatingFps}
+          fpsEstimateInfo={fpsEstimateInfo}
+          convertDisabled={convertDisabled}
+          optimizationDisabled={optimizationDisabled}
+          standardRetriesEffective={standardRetriesEffective}
+          retryControlsDisabled={retryControlsDisabled}
+          precheckEffective={precheckEffective}
+          retryFpsEffective={retryFpsEffective}
+          retryColorEffective={retryColorEffective}
+          lossyEffective={lossyEffective}
+          progressPercent={progressPercent}
+          progressLabel={progressLabel}
+          elapsedMs={elapsedMs}
+          lastElapsedMs={lastElapsedMs}
+          warnings={warnings}
+          progress={progress}
+          logs={logs}
+          error={error}
+          artifactViews={artifactViews}
+          isCompactStrip={isCompactStrip}
+          resultsGridClassName={resultsGridClassName}
+          getColorReductionPercent={getColorReductionPercent}
+          onUpdatePreset={updatePreset}
+          onSourceFileChange={handleSourceFileChange}
+          onEstimateAndApplyFps={() => void estimateAndApplyFps()}
+          onRunConversion={() => void runConversion()}
+          onCancelConversion={cancelConversion}
+          onDownloadZip={() => void downloadZip()}
+          onResetConvertState={resetConvertState}
+          onDownloadBlob={downloadBlob}
+        />
       )}
 
       {tab === 'patch' && (
-        <section className="panel">
-          <h2>Patch Tools</h2>
-
-          <div className="patch-grid">
-            <article className="subpanel">
-              <h3>EOF Patch</h3>
-              <label title="Choose files for EOF patching.">
-                Files
-                <input type="file" multiple onChange={(event) => setEofFiles(toFiles(event.target.files))} />
-              </label>
-              <label title="Hex byte to write as the final file byte.">
-                EOF Byte (hex)
-                <input value={eofByteInput} onChange={(event) => setEofByteInput(event.target.value)} />
-              </label>
-              <button disabled={eofFiles.length === 0} onClick={() => void runEofPatch()}>
-                Apply EOF Patch
-              </button>
-              {eofError && <p className="error">{eofError}</p>}
-              <ul className="output-list">
-                {eofOutputs.map((item) => (
-                  <li key={`${item.name}-${item.note}`}>
-                    <span>{item.note}</span>
-                    <button onClick={() => downloadBlob(item.name, item.blob)}>Download</button>
-                  </li>
-                ))}
-              </ul>
-            </article>
-
-            <article className="subpanel">
-              <h3>GIF Header Patch</h3>
-              <label title="Choose GIF files for header width/height patching.">
-                GIF Files
-                <input type="file" accept=".gif,image/gif" multiple onChange={(event) => setHeaderFiles(toFiles(event.target.files))} />
-              </label>
-              <label title="Width value to write to GIF header bytes 6-7.">
-                Width
-                <input type="number" min={1} max={65535} value={headerWidth} onChange={(event) => setHeaderWidth(event.target.value)} />
-              </label>
-              <label title="Height value to write to GIF header bytes 8-9.">
-                Height
-                <input type="number" min={1} max={65535} value={headerHeight} onChange={(event) => setHeaderHeight(event.target.value)} />
-              </label>
-              <label title="Hex byte to use for optional EOF patch in header tool.">
-                EOF Byte (hex)
-                <input value={headerByteInput} onChange={(event) => setHeaderByteInput(event.target.value)} />
-              </label>
-              <label className="toggle" title="Also patch EOF byte while applying header width/height changes.">
-                <input
-                  type="checkbox"
-                  checked={headerEofEnabled}
-                  onChange={(event) => setHeaderEofEnabled(event.target.checked)}
-                />
-                Patch EOF byte
-              </label>
-              <button disabled={headerFiles.length === 0} onClick={() => void runHeaderPatch()}>
-                Apply Header Patch
-              </button>
-              {headerError && <p className="error">{headerError}</p>}
-              <ul className="output-list">
-                {headerOutputs.map((item) => (
-                  <li key={`${item.name}-${item.note}`}>
-                    <span>{item.note}</span>
-                    <button onClick={() => downloadBlob(item.name, item.blob)}>Download</button>
-                  </li>
-                ))}
-              </ul>
-            </article>
-          </div>
-        </section>
+        <PatchToolsPanel
+          eofFilesCount={eofFiles.length}
+          eofByteInput={eofByteInput}
+          eofOutputs={eofOutputs}
+          eofError={eofError}
+          headerFilesCount={headerFiles.length}
+          headerWidth={headerWidth}
+          headerHeight={headerHeight}
+          headerEofEnabled={headerEofEnabled}
+          headerByteInput={headerByteInput}
+          headerOutputs={headerOutputs}
+          headerError={headerError}
+          onEofFilesChange={(event) => setEofFiles(toFiles(event.target.files))}
+          onEofByteInputChange={setEofByteInput}
+          onRunEofPatch={() => void runEofPatch()}
+          onHeaderFilesChange={(event) => setHeaderFiles(toFiles(event.target.files))}
+          onHeaderWidthChange={setHeaderWidth}
+          onHeaderHeightChange={setHeaderHeight}
+          onHeaderEofEnabledChange={setHeaderEofEnabled}
+          onHeaderByteInputChange={setHeaderByteInput}
+          onRunHeaderPatch={() => void runHeaderPatch()}
+          onDownloadBlob={downloadBlob}
+        />
       )}
 
       {tab === 'steam' && (
-        <section className="panel">
-          <h2>Steam Upload Helpers</h2>
-          <p>Copy and run these snippets in Steam upload page DevTools Console.</p>
-          <ul>
-            {STEAM_HELPER_NOTES.map((note) => (
-              <li key={note}>{note}</li>
-            ))}
-          </ul>
-
-          <article className="subpanel">
-            <div className="snippet-head">
-              <h3>Workshop Snippet</h3>
-              <button onClick={() => void copySnippet('workshop')}>Copy</button>
-            </div>
-            <textarea readOnly value={WORKSHOP_SNIPPET} rows={14} />
-          </article>
-
-          <article className="subpanel">
-            <div className="snippet-head">
-              <h3>Artwork or Featured Artwork Snippet</h3>
-              <button onClick={() => void copySnippet('featured')}>Copy</button>
-            </div>
-            <textarea readOnly value={FEATURED_SNIPPET} rows={14} />
-          </article>
-
-          <article className="subpanel">
-            <div className="snippet-head">
-              <h3>Screenshot Snippet</h3>
-              <button onClick={() => void copySnippet('screenshot')}>Copy</button>
-            </div>
-            <textarea readOnly value={SCREENSHOT_SNIPPET} rows={16} />
-          </article>
-
-          {copyStatus && <p>{copyStatus}</p>}
-        </section>
+        <SteamHelpersPanel
+          copyStatus={copyStatus}
+          onCopySnippet={(label) => void copySnippet(label)}
+        />
       )}
 
-      {tab === 'guides' && (
-        <section className="panel">
-          <h2>Guides</h2>
-          <p className="guides-intro">
-            Step-by-step workflows for common tasks in this toolkit.
-          </p>
-
-          <div className="guides-grid">
-            {GUIDE_SECTIONS.map((guide) => (
-              <article key={guide.key} className="guide-card">
-                <div className="guide-head">
-                  <span className="guide-badge">{guide.badge}</span>
-                  <h3>{guide.title}</h3>
-                </div>
-                <ol className="guide-steps">
-                  {guide.steps.map((step) => (
-                    <li key={step}>{step}</li>
-                  ))}
-                </ol>
-                {guide.tip && <p className="guide-tip">{guide.tip}</p>}
-              </article>
-            ))}
-          </div>
-        </section>
-      )}
+      {tab === 'guides' && <GuidesPanel guides={GUIDE_SECTIONS} />}
     </main>
   )
 }
