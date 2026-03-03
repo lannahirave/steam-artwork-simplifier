@@ -380,6 +380,7 @@ interface SearchEncodeOptions {
   isStillImage: boolean
   gifFps: number
   minGifFps: number
+  disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
   standardRetriesEnabled: boolean
@@ -423,6 +424,21 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
   let bestStatus: ArtifactStatus = 'original'
 
   postProgress(options.requestId, 'convert', `Initial encode: ${bestSize.toFixed(1)}KB`)
+
+  if (options.disableOptimizations) {
+    postProgress(
+      options.requestId,
+      'convert',
+      'Disable optimizations enabled: using raw initial encode and skipping size/quality retries.',
+    )
+    return {
+      bytes: bestBytes,
+      sizeKb: bestSize,
+      status: bestStatus,
+      finalFps: bestFps,
+      finalColors: bestColors,
+    }
+  }
 
   if (bestSize <= options.targetGifKb) {
     return {
@@ -746,6 +762,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
     isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
     minGifFps: payload.minGifFps,
+    disableOptimizations: payload.disableOptimizations,
     maxGifKb: payload.maxGifKb,
     targetGifKb: payload.targetGifKb,
     standardRetriesEnabled: payload.standardRetriesEnabled,
@@ -759,7 +776,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
 
   await safeDelete(inputName)
 
-  if (best.sizeKb > payload.maxGifKb) {
+  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
     throw new Error(
       `part_${String(payload.partIndex + 1).padStart(2, '0')}.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`,
     )
@@ -795,6 +812,7 @@ async function runConvertFeatured(
     isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
     minGifFps: payload.minGifFps,
+    disableOptimizations: payload.disableOptimizations,
     maxGifKb: payload.maxGifKb,
     targetGifKb: payload.targetGifKb,
     standardRetriesEnabled: payload.standardRetriesEnabled,
@@ -808,7 +826,7 @@ async function runConvertFeatured(
 
   await safeDelete(inputName)
 
-  if (best.sizeKb > payload.maxGifKb) {
+  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
     throw new Error(`featured.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`)
   }
 

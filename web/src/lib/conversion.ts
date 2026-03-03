@@ -117,7 +117,12 @@ export async function convertVideo(
   const parts = config.preset === 'featured' ? 1 : config.parts
   const partWidth = config.preset === 'featured' ? config.featuredWidth : config.partWidth
 
-  if (config.precheckEnabled) {
+  if (config.disableOptimizations) {
+    const message =
+      'Optimizations disabled: max-size checks and retry ladders are bypassed (raw encode mode).'
+    warnings.push(message)
+    emit('precheck', message)
+  } else if (config.precheckEnabled) {
     const precheck = runPrecheck({
       srcWidth: probe.width,
       srcHeight: probe.height,
@@ -159,6 +164,7 @@ export async function convertVideo(
               duration: probe.duration,
               gifFps: config.gifFps,
               minGifFps: config.minGifFps,
+              disableOptimizations: config.disableOptimizations,
               maxGifKb: config.maxGifKb,
               targetGifKb: config.targetGifKb,
               standardRetriesEnabled: config.standardRetriesEnabled,
@@ -188,6 +194,7 @@ export async function convertVideo(
                 duration: probe.duration,
                 gifFps: config.gifFps,
                 minGifFps: config.minGifFps,
+                disableOptimizations: config.disableOptimizations,
                 maxGifKb: config.maxGifKb,
                 targetGifKb: config.targetGifKb,
                 standardRetriesEnabled: config.standardRetriesEnabled,
@@ -214,10 +221,12 @@ export async function convertVideo(
 
   const patched = await applyPostPatches(sorted, config)
 
-  const oversize = patched.filter((artifact) => artifact.sizeKb > config.maxGifKb)
-  if (oversize.length > 0) {
-    const first = oversize[0]
-    throw new Error(`Output exceeded max limit: ${first.name} is ${first.sizeKb.toFixed(1)}KB.`)
+  if (!config.disableOptimizations) {
+    const oversize = patched.filter((artifact) => artifact.sizeKb > config.maxGifKb)
+    if (oversize.length > 0) {
+      const first = oversize[0]
+      throw new Error(`Output exceeded max limit: ${first.name} is ${first.sizeKb.toFixed(1)}KB.`)
+    }
   }
 
   emit('done', 'Conversion completed successfully.')

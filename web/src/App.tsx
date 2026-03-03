@@ -329,6 +329,8 @@ function App() {
   const isWorkshopStrip =
     artifactViews.length === 5 &&
     artifactViews.every((item) => /^part_\d{2}\.gif$/i.test(item.artifact.name))
+  const optimizationDisabled = config.disableOptimizations
+  const retryControlsDisabled = optimizationDisabled || !config.standardRetriesEnabled
 
   function resetConvertState(): void {
     setProgress([])
@@ -710,276 +712,331 @@ function App() {
         <section className="panel">
           <h2>Media to GIF</h2>
 
-          <div className="form-grid">
-            <label title="Select output mode: workshop creates 5 slices, featured creates one wide GIF.">
-              Preset
-              <select value={config.preset} onChange={(event) => updatePreset(event.target.value as 'workshop' | 'featured')}>
-                <option value="workshop">Workshop (5x150 slices)</option>
-                <option value="featured">Featured (single 630px)</option>
-              </select>
-            </label>
+          <div className="config-groups">
+            <section className="config-group">
+              <h3>Source and Layout</h3>
+              <div className="form-grid">
+                <label title="Select output mode: workshop creates 5 slices, featured creates one wide GIF.">
+                  Preset
+                  <select value={config.preset} onChange={(event) => updatePreset(event.target.value as 'workshop' | 'featured')}>
+                    <option value="workshop">Workshop (5x150 slices)</option>
+                    <option value="featured">Featured (single 630px)</option>
+                  </select>
+                </label>
 
-            <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
-              Source File
-              <input
-                type="file"
-                accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
-                onChange={handleSourceFileChange}
-              />
-            </label>
+                <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
+                  Source File
+                  <input
+                    type="file"
+                    accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
+                    onChange={handleSourceFileChange}
+                  />
+                </label>
 
-            <label title="Starting frame rate for the first encode pass.">
-              GIF FPS
-              <div className="field-input-row">
-                <input
-                  type="number"
-                  min={1}
-                  value={config.gifFps}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
-                />
-                <button
-                  type="button"
-                  className="inline-action"
-                  title="Estimate and apply a practical GIF FPS from source resolution, duration, and current size target."
-                  disabled={!sourceFile || busy || estimatingFps}
-                  onClick={() => void estimateAndApplyFps()}
-                >
-                  {estimatingFps ? 'Estimating...' : 'Estimate'}
-                </button>
+                {config.preset === 'workshop' && (
+                  <>
+                    <label title="Number of output slices for workshop preset.">
+                      Parts
+                      <input
+                        type="number"
+                        min={1}
+                        max={12}
+                        value={config.parts}
+                        onChange={(event) =>
+                          setConfig((prev) => ({
+                            ...prev,
+                            parts: Number.parseInt(event.target.value, 10) || 1,
+                            workerCount: getDefaultWorkerCount(Number.parseInt(event.target.value, 10) || 1),
+                          }))
+                        }
+                      />
+                    </label>
+                    <label title="Width in pixels of each workshop slice.">
+                      Part Width
+                      <input
+                        type="number"
+                        min={1}
+                        value={config.partWidth}
+                        onChange={(event) =>
+                          setConfig((prev) => ({ ...prev, partWidth: Number.parseInt(event.target.value, 10) || 1 }))
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+
+                {config.preset === 'featured' && (
+                  <label title="Width in pixels of the featured output GIF.">
+                    Featured Width
+                    <input
+                      type="number"
+                      min={1}
+                      value={config.featuredWidth}
+                      onChange={(event) =>
+                        setConfig((prev) => ({ ...prev, featuredWidth: Number.parseInt(event.target.value, 10) || 1 }))
+                      }
+                    />
+                  </label>
+                )}
               </div>
-              {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
-            </label>
+            </section>
 
-            <label title="Lowest FPS allowed during recompression attempts.">
-              Min GIF FPS
-              <input
-                type="number"
-                min={1}
-                value={config.minGifFps}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, minGifFps: Number.parseInt(event.target.value, 10) || 1 }))
-                }
-              />
-            </label>
+            <section className="config-group">
+              <h3>Frame Rate and Size</h3>
+              <div className="form-grid">
+                <label title="Starting frame rate for the first encode pass.">
+                  GIF FPS
+                  <div className="field-input-row">
+                    <input
+                      type="number"
+                      min={1}
+                      value={config.gifFps}
+                      onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
+                    />
+                    <button
+                      type="button"
+                      className="inline-action"
+                      title="Estimate and apply a practical GIF FPS from source resolution, duration, and current size target."
+                      disabled={!sourceFile || busy || estimatingFps}
+                      onClick={() => void estimateAndApplyFps()}
+                    >
+                      {estimatingFps ? 'Estimating...' : 'Estimate'}
+                    </button>
+                  </div>
+                  {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
+                </label>
 
-            {config.preset === 'workshop' && (
-              <>
-                <label title="Number of output slices for workshop preset.">
-                  Parts
+                <label title="Lowest FPS allowed during recompression attempts.">
+                  Min GIF FPS
                   <input
                     type="number"
                     min={1}
-                    max={12}
-                    value={config.parts}
+                    value={config.minGifFps}
                     onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, minGifFps: Number.parseInt(event.target.value, 10) || 1 }))
+                    }
+                  />
+                </label>
+
+                <label title="Hard output size limit per GIF in kilobytes. Ignored when Disable Optimizations is enabled.">
+                  Max GIF KB
+                  <input
+                    type="number"
+                    min={1}
+                    disabled={optimizationDisabled}
+                    value={config.maxGifKb}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, maxGifKb: Number.parseInt(event.target.value, 10) || 1 }))}
+                  />
+                </label>
+
+                <label title="Preferred output size target used by recompression attempts. Ignored when Disable Optimizations is enabled.">
+                  Target GIF KB
+                  <input
+                    type="number"
+                    min={1}
+                    disabled={optimizationDisabled}
+                    value={config.targetGifKb}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, targetGifKb: Number.parseInt(event.target.value, 10) || 1 }))
+                    }
+                  />
+                </label>
+
+                <label title="Estimate output size before encoding and stop early if likely too large.">
+                  <span className="toggle-row">
+                    <input
+                      type="checkbox"
+                      checked={config.precheckEnabled}
+                      disabled={optimizationDisabled}
+                      onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
+                    />
+                    Enable precheck
+                  </span>
+                </label>
+              </div>
+            </section>
+
+            <section className="config-group">
+              <h3>Performance and Optimization</h3>
+              <div className="form-grid">
+                <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
+                  Worker Count
+                  <input
+                    type="number"
+                    min={1}
+                    max={3}
+                    value={config.workerCount}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, workerCount: Number.parseInt(event.target.value, 10) || 1 }))
+                    }
+                  />
+                </label>
+
+                <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
+                  <button
+                    type="button"
+                    className={optimizationDisabled ? 'raw-mode-btn active' : 'raw-mode-btn'}
+                    onClick={() =>
                       setConfig((prev) => ({
                         ...prev,
-                        parts: Number.parseInt(event.target.value, 10) || 1,
-                        workerCount: getDefaultWorkerCount(Number.parseInt(event.target.value, 10) || 1),
+                        disableOptimizations: !prev.disableOptimizations,
                       }))
                     }
+                  >
+                    {optimizationDisabled ? 'Enable Optimizations' : 'Disable Optimizations'}
+                  </button>
+                  <small className="field-note">
+                    {optimizationDisabled
+                      ? 'Raw mode active: FPS/color retries and max-size limit are ignored.'
+                      : 'Use raw mode when you want original encode behavior without optimization constraints.'}
+                  </small>
+                </div>
+
+                <label className="toggle" title="Enable standard recompression retries after initial encode.">
+                  <input
+                    type="checkbox"
+                    checked={config.standardRetriesEnabled}
+                    disabled={optimizationDisabled}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
+                    }
                   />
+                  Enable standard retries
                 </label>
-                <label title="Width in pixels of each workshop slice.">
-                  Part Width
+
+                <label
+                  className="toggle"
+                  title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
+                >
+                  <input
+                    type="checkbox"
+                    checked={config.retryAllowFpsDrop}
+                    disabled={retryControlsDisabled}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
+                    }
+                  />
+                  Allow FPS reduction
+                </label>
+
+                <label
+                  className="toggle"
+                  title="Allow standard retries to reduce palette colors for smaller output."
+                >
+                  <input
+                    type="checkbox"
+                    checked={config.retryAllowColorDrop}
+                    disabled={retryControlsDisabled}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
+                    }
+                  />
+                  Allow color reduction
+                </label>
+
+                <label className="toggle" title="Enable extra lossy profiles when GIF is still above max size.">
+                  <input
+                    type="checkbox"
+                    checked={config.lossyOversize}
+                    disabled={optimizationDisabled}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
+                  />
+                  Enable lossy oversize fallback
+                </label>
+
+                <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
+                  Lossy Level
                   <input
                     type="number"
                     min={1}
-                    value={config.partWidth}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, partWidth: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
+                    max={3}
+                    disabled={optimizationDisabled}
+                    value={config.lossyLevel}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, lossyLevel: Number.parseInt(event.target.value, 10) || 1 }))}
                   />
                 </label>
-              </>
-            )}
 
-            {config.preset === 'featured' && (
-              <label title="Width in pixels of the featured output GIF.">
-                Featured Width
-                <input
-                  type="number"
-                  min={1}
-                  value={config.featuredWidth}
-                  onChange={(event) =>
-                    setConfig((prev) => ({ ...prev, featuredWidth: Number.parseInt(event.target.value, 10) || 1 }))
-                  }
-                />
-              </label>
-            )}
-
-            <label title="Hard output size limit per GIF in kilobytes.">
-              Max GIF KB
-              <input
-                type="number"
-                min={1}
-                value={config.maxGifKb}
-                onChange={(event) => setConfig((prev) => ({ ...prev, maxGifKb: Number.parseInt(event.target.value, 10) || 1 }))}
-              />
-            </label>
-
-            <label title="Preferred output size target used by recompression attempts.">
-              Target GIF KB
-              <input
-                type="number"
-                min={1}
-                value={config.targetGifKb}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, targetGifKb: Number.parseInt(event.target.value, 10) || 1 }))
-                }
-              />
-            </label>
-
-            <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
-              Worker Count
-              <input
-                type="number"
-                min={1}
-                max={3}
-                value={config.workerCount}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, workerCount: Number.parseInt(event.target.value, 10) || 1 }))
-                }
-              />
-            </label>
-
-            <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
-              Lossy Level
-              <input
-                type="number"
-                min={1}
-                max={3}
-                value={config.lossyLevel}
-                onChange={(event) => setConfig((prev) => ({ ...prev, lossyLevel: Number.parseInt(event.target.value, 10) || 1 }))}
-              />
-            </label>
-
-            <label title="Maximum lossy attempts when output is still above max GIF size.">
-              Lossy Attempts
-              <input
-                type="number"
-                min={1}
-                value={config.lossyMaxAttempts}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, lossyMaxAttempts: Number.parseInt(event.target.value, 10) || 1 }))
-                }
-              />
-            </label>
-
-            <label title="Hex byte value used for EOF patching (for example 21 = 0x21).">
-              EOF Byte (hex)
-              <input
-                value={config.eofByte.toString(16).toUpperCase()}
-                onChange={(event) => {
-                  try {
-                    const byte = parseHexByte(event.target.value)
-                    setConfig((prev) => ({ ...prev, eofByte: byte }))
-                  } catch {
-                    // ignore transient invalid text
-                  }
-                }}
-              />
-            </label>
-
-            <label className="toggle" title="Estimate output size before encoding and stop early if likely too large.">
-              <input
-                type="checkbox"
-                checked={config.precheckEnabled}
-                onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
-              />
-              Enable precheck
-            </label>
-            <label className="toggle" title="Enable standard recompression retries after initial encode.">
-              <input
-                type="checkbox"
-                checked={config.standardRetriesEnabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
-                }
-              />
-              Enable standard retries
-            </label>
-            <label
-              className="toggle"
-              title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
-            >
-              <input
-                type="checkbox"
-                checked={config.retryAllowFpsDrop}
-                disabled={!config.standardRetriesEnabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
-                }
-              />
-              Allow FPS reduction
-            </label>
-            <label
-              className="toggle"
-              title="Allow standard retries to reduce palette colors for smaller output."
-            >
-              <input
-                type="checkbox"
-                checked={config.retryAllowColorDrop}
-                disabled={!config.standardRetriesEnabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
-                }
-              />
-              Allow color reduction
-            </label>
-            <label className="toggle" title="Enable extra lossy profiles when GIF is still above max size.">
-              <input
-                type="checkbox"
-                checked={config.lossyOversize}
-                onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
-              />
-              Enable lossy oversize fallback
-            </label>
-            <label className="toggle" title="Patch the last byte of each output file with the configured EOF byte.">
-              <input
-                type="checkbox"
-                checked={config.eofPatchEnabled}
-                onChange={(event) => setConfig((prev) => ({ ...prev, eofPatchEnabled: event.target.checked }))}
-              />
-              Patch EOF byte on outputs
-            </label>
-            <label className="toggle" title="Rewrite GIF header logical width/height metadata on outputs.">
-              <input
-                type="checkbox"
-                checked={config.headerPatchEnabled}
-                onChange={(event) => setConfig((prev) => ({ ...prev, headerPatchEnabled: event.target.checked }))}
-              />
-              Patch GIF header width/height
-            </label>
-
-            {config.headerPatchEnabled && (
-              <>
-                <label title="Width value written to GIF header bytes 6-7.">
-                  Header Width
+                <label title="Maximum lossy attempts when output is still above max GIF size.">
+                  Lossy Attempts
                   <input
                     type="number"
                     min={1}
-                    max={65535}
-                    value={config.headerWidth}
+                    disabled={optimizationDisabled}
+                    value={config.lossyMaxAttempts}
                     onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, headerWidth: Number.parseInt(event.target.value, 10) || 1 }))
+                      setConfig((prev) => ({ ...prev, lossyMaxAttempts: Number.parseInt(event.target.value, 10) || 1 }))
                     }
                   />
                 </label>
-                <label title="Height value written to GIF header bytes 8-9.">
-                  Header Height
+              </div>
+            </section>
+
+            <section className="config-group">
+              <h3>Output Patching</h3>
+              <div className="form-grid">
+                <label title="Hex byte value used for EOF patching (for example 21 = 0x21).">
+                  EOF Byte (hex)
                   <input
-                    type="number"
-                    min={1}
-                    max={65535}
-                    value={config.headerHeight}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, headerHeight: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
+                    value={config.eofByte.toString(16).toUpperCase()}
+                    onChange={(event) => {
+                      try {
+                        const byte = parseHexByte(event.target.value)
+                        setConfig((prev) => ({ ...prev, eofByte: byte }))
+                      } catch {
+                        // ignore transient invalid text
+                      }
+                    }}
                   />
                 </label>
-              </>
-            )}
+
+                <label className="toggle" title="Patch the last byte of each output file with the configured EOF byte.">
+                  <input
+                    type="checkbox"
+                    checked={config.eofPatchEnabled}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, eofPatchEnabled: event.target.checked }))}
+                  />
+                  Patch EOF byte on outputs
+                </label>
+
+                <label className="toggle" title="Rewrite GIF header logical width/height metadata on outputs.">
+                  <input
+                    type="checkbox"
+                    checked={config.headerPatchEnabled}
+                    onChange={(event) => setConfig((prev) => ({ ...prev, headerPatchEnabled: event.target.checked }))}
+                  />
+                  Patch GIF header width/height
+                </label>
+
+                {config.headerPatchEnabled && (
+                  <>
+                    <label title="Width value written to GIF header bytes 6-7.">
+                      Header Width
+                      <input
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={config.headerWidth}
+                        onChange={(event) =>
+                          setConfig((prev) => ({ ...prev, headerWidth: Number.parseInt(event.target.value, 10) || 1 }))
+                        }
+                      />
+                    </label>
+                    <label title="Height value written to GIF header bytes 8-9.">
+                      Header Height
+                      <input
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={config.headerHeight}
+                        onChange={(event) =>
+                          setConfig((prev) => ({ ...prev, headerHeight: Number.parseInt(event.target.value, 10) || 1 }))
+                        }
+                      />
+                    </label>
+                  </>
+                )}
+              </div>
+            </section>
           </div>
 
           <div className="actions">

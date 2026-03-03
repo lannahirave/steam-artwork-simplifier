@@ -167,6 +167,25 @@ textarea {
   margin-top: 0.35rem;
 }
 
+.config-groups {
+  display: grid;
+  gap: 0.9rem;
+}
+
+.config-group {
+  border: 1px solid var(--line);
+  border-radius: var(--radius-md);
+  background: var(--panel-strong);
+  padding: 0.8rem;
+}
+
+.config-group > h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--ink);
+}
+
 .form-grid > label,
 .patch-grid > label {
   padding: 0.66rem 0.72rem;
@@ -290,6 +309,14 @@ input[type='file']::file-selector-button:hover {
   line-height: 1.35;
 }
 
+.toggle-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.6rem;
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .toggle {
   display: flex;
   align-items: center;
@@ -394,6 +421,30 @@ button:disabled {
   font-size: 0.8rem;
   padding: 0.42rem 0.72rem;
   white-space: nowrap;
+}
+
+.raw-mode-card {
+  border: 1px dashed var(--line-strong);
+  border-radius: 12px;
+  background: var(--field-bg);
+  padding: 0.58rem;
+  display: grid;
+  gap: 0.46rem;
+}
+
+.raw-mode-btn {
+  border-radius: 10px;
+  padding: 0.48rem 0.7rem;
+  width: 100%;
+}
+
+.raw-mode-btn.active {
+  border-color: rgba(217, 95, 37, 0.7);
+  background: linear-gradient(120deg, rgba(217, 95, 37, 0.2), rgba(217, 95, 37, 0.08));
+}
+
+[data-theme='dark'] .raw-mode-btn.active {
+  background: linear-gradient(120deg, rgba(255, 138, 60, 0.28), rgba(255, 138, 60, 0.14));
 }
 
 .warn-box,

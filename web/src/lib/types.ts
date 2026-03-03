@@ -9,6 +9,7 @@ export interface ConversionConfig {
   parts: number
   partWidth: number
   featuredWidth: number
+  disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
   standardRetriesEnabled: boolean
@@ -103,6 +104,7 @@ export interface ConvertPayloadBase {
   duration: number
   gifFps: number
   minGifFps: number
+  disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
   standardRetriesEnabled: boolean

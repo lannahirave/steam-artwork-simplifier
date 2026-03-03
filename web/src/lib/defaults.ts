@@ -14,6 +14,7 @@ export const DEFAULTS = {
     maxGifKb: 4500,
     targetGifKb: 4500,
   },
+  disableOptimizations: false,
   standardRetriesEnabled: false,
   retryAllowFpsDrop: true,
   retryAllowColorDrop: true,
@@ -65,6 +66,7 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     parts: DEFAULTS.workshop.parts,
     partWidth: DEFAULTS.workshop.partWidth,
     featuredWidth: DEFAULTS.featured.width,
+    disableOptimizations: DEFAULTS.disableOptimizations,
     maxGifKb: preset === 'featured' ? DEFAULTS.featured.maxGifKb : DEFAULTS.workshop.maxGifKb,
     targetGifKb:
       preset === 'featured' ? DEFAULTS.featured.targetGifKb : DEFAULTS.workshop.targetGifKb,
