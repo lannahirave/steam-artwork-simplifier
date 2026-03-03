@@ -20,6 +20,12 @@ Input validation is implemented in `web/src/lib/validation.ts`.
 - single output `featured.gif`
 - `featuredWidth = 630`
 
+### Guide
+
+- single output `guide.gif`
+- fixed square size `195x195`
+- defaults: `maxGifKb = 5000`, `targetGifKb = 4500`
+
 Defaults are defined in `web/src/lib/defaults.ts`.
 
 ## End-to-End Flow
@@ -32,6 +38,7 @@ Defaults are defined in `web/src/lib/defaults.ts`.
 6. Conversion tasks run:
    - `convertPart` for workshop slices (parallel)
    - `convertFeatured` for featured output
+   - `convertGuide` for guide output
 7. Each task executes encode strategy and returns artifact bytes + metadata.
 8. Optional post-patches apply in main thread:
    - GIF header patch (if enabled)
@@ -68,6 +75,11 @@ Implementation note:
 
 1. Scale source to `featuredWidth`
 2. Preserve aspect ratio
+
+### Guide
+
+1. Scale source to `guideSize x guideSize` with `force_original_aspect_ratio=increase`
+2. Center-crop to exact square `guideSize x guideSize`
 
 ## Encode Strategy
 

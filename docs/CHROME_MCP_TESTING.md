@@ -26,7 +26,8 @@ npm run dev -- --host 127.0.0.1 --port 5173 --force
 2. Upload one fixture MP4.
 3. Run workshop conversion.
 4. Wait for either:
-   - `Conversion complete.`
+   - `Conversion complete in ...`
+   - `Output ready in ...`
    - `Failed: ...`
 5. Verify:
    - no tiny `6.1KB` false-success outputs

@@ -15,6 +15,7 @@ type ThemeMode = 'auto' | 'light' | 'dark'
 const MAX_SAFE_WASM_WORKERS = 3
 const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
 const GUIDE_SIZE = 195
+const APP_VERSION = __APP_VERSION__
 
 const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
   workshop: 0.16,
@@ -728,7 +729,9 @@ function App() {
     <main className="shell">
       <header className="masthead">
         <div className="masthead-top">
-          <h1>Steam Artwork Studio</h1>
+          <h1>
+            Steam Artwork Studio <span className="app-version">V{APP_VERSION}</span>
+          </h1>
           <button type="button" className="theme-switch" onClick={cycleThemeMode}>
             Theme: {themeMode === 'auto' ? `Auto (${effectiveTheme})` : themeMode}
           </button>

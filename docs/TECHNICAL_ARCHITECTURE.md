@@ -24,11 +24,12 @@
 
 ## UI Architecture
 
-`App.tsx` is a feature-shell with three sections:
+`App.tsx` is a feature-shell with four sections:
 
 1. Convert
 2. Patch Tools
 3. Steam Helpers
+4. Guides
 
 Primary state domains:
 
@@ -77,6 +78,7 @@ Worker commands:
 - `probe`
 - `convertPart`
 - `convertFeatured`
+- `convertGuide`
 
 Worker response events:
 

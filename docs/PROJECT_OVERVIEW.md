@@ -32,16 +32,20 @@ The browser app is the primary modern workflow. Legacy scripts remain available 
 4. Featured preset:
    - single `featured.gif`
    - 630px width by default
-5. Optional output patching:
+5. Guide preset:
+   - single centered square `guide.gif`
+   - fixed output size `195x195`
+6. Optional output patching:
    - EOF byte patch
    - GIF header width/height patch
-6. Standalone patch tools for existing files.
-7. Steam helper snippet copy/paste workflow.
-8. In-app previews + per-file download + ZIP export.
-9. Live progress panel with worker-stage logs and progress bar.
-10. Output metadata shown per GIF (size, final FPS, color reduction).
-11. Run-time visibility: elapsed conversion timer and completion timing summary.
-12. Size tuning prioritizes FPS reduction before color reduction for better visual fidelity.
+7. Standalone patch tools for existing files.
+8. Steam helper snippet copy/paste workflow.
+9. In-app previews + per-file download + ZIP export.
+10. Live progress panel with worker-stage logs and progress bar.
+11. Output metadata shown per GIF (size, final FPS, color reduction).
+12. Run-time visibility: elapsed conversion timer and completion timing summary.
+13. App header version is sourced from `web/package.json` and shown as `Steam Artwork Studio Vx.y.z`.
+14. Size tuning prioritizes FPS reduction before color reduction for better visual fidelity.
 
 ## Runtime Model
 

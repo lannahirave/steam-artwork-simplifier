@@ -8,6 +8,7 @@ React 19 + TypeScript + Vite browser app for Steam artwork workflows.
 - Presets:
   - `workshop`: 5 sliced GIFs (`part_01.gif` .. `part_05.gif`)
   - `featured`: single `featured.gif`
+  - `guide`: single centered square `guide.gif` (`195x195`)
 - Source support:
   - video (`video/*` + common extensions)
   - image (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
@@ -23,6 +24,7 @@ React 19 + TypeScript + Vite browser app for Steam artwork workflows.
 - Steam autofill snippets with copy buttons
 - Built-in Guides tab with workflow steps for convert/patch/upload use-cases
 - Preview grid, per-file download, and ZIP export
+- App header displays the running version from `package.json` (for example `Steam Artwork Studio V0.9.1`)
 
 ## Requirements
 

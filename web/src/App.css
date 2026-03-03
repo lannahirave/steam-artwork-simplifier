@@ -104,6 +104,13 @@ textarea {
   line-height: 1.05;
 }
 
+.app-version {
+  font-size: 0.56em;
+  letter-spacing: 0.08em;
+  opacity: 0.84;
+  vertical-align: super;
+}
+
 .masthead-top {
   display: flex;
   align-items: flex-start;
