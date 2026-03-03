@@ -19,6 +19,11 @@ export const DEFAULTS = {
     maxGifKb: 5000,
     targetGifKb: 4500,
   },
+  showcase: {
+    splitWidths: [506, 100],
+    maxGifKb: 5000,
+    targetGifKb: 4500,
+  },
   disableOptimizations: false,
   standardRetriesEnabled: false,
   retryAllowFpsDrop: true,
@@ -62,6 +67,15 @@ export function resolvePresetSettings(config: ConversionConfig): ResolvedPresetS
     }
   }
 
+  if (config.preset === 'showcase') {
+    return {
+      parts: DEFAULTS.showcase.splitWidths.length,
+      partWidth: DEFAULTS.showcase.splitWidths[0],
+      maxGifKb: DEFAULTS.showcase.maxGifKb,
+      targetGifKb: DEFAULTS.showcase.targetGifKb,
+    }
+  }
+
   return {
     parts: config.parts,
     partWidth: config.partWidth,
@@ -71,14 +85,19 @@ export function resolvePresetSettings(config: ConversionConfig): ResolvedPresetS
 }
 
 export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig {
-  const parts = preset === 'workshop' ? DEFAULTS.workshop.parts : 1
+  const parts =
+    preset === 'workshop'
+      ? DEFAULTS.workshop.parts
+      : preset === 'showcase'
+        ? DEFAULTS.showcase.splitWidths.length
+        : 1
 
   return {
     preset,
     gifFps: DEFAULTS.gifFps,
     minGifFps: DEFAULTS.minGifFps,
-    parts: DEFAULTS.workshop.parts,
-    partWidth: DEFAULTS.workshop.partWidth,
+    parts: preset === 'showcase' ? DEFAULTS.showcase.splitWidths.length : DEFAULTS.workshop.parts,
+    partWidth: preset === 'showcase' ? DEFAULTS.showcase.splitWidths[0] : DEFAULTS.workshop.partWidth,
     featuredWidth: DEFAULTS.featured.width,
     disableOptimizations: DEFAULTS.disableOptimizations,
     maxGifKb:
@@ -86,12 +105,16 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
         ? DEFAULTS.featured.maxGifKb
         : preset === 'guide'
           ? DEFAULTS.guide.maxGifKb
+          : preset === 'showcase'
+            ? DEFAULTS.showcase.maxGifKb
           : DEFAULTS.workshop.maxGifKb,
     targetGifKb:
       preset === 'featured'
         ? DEFAULTS.featured.targetGifKb
         : preset === 'guide'
           ? DEFAULTS.guide.targetGifKb
+          : preset === 'showcase'
+            ? DEFAULTS.showcase.targetGifKb
           : DEFAULTS.workshop.targetGifKb,
     standardRetriesEnabled: DEFAULTS.standardRetriesEnabled,
     retryAllowFpsDrop: DEFAULTS.retryAllowFpsDrop,
@@ -128,6 +151,17 @@ export function applyPreset(config: ConversionConfig, preset: Preset): Conversio
       workerCount: getDefaultWorkerCount(1),
       maxGifKb: DEFAULTS.guide.maxGifKb,
       targetGifKb: DEFAULTS.guide.targetGifKb,
+    }
+  }
+
+  if (preset === 'showcase') {
+    return {
+      ...next,
+      parts: DEFAULTS.showcase.splitWidths.length,
+      partWidth: DEFAULTS.showcase.splitWidths[0],
+      workerCount: getDefaultWorkerCount(DEFAULTS.showcase.splitWidths.length),
+      maxGifKb: DEFAULTS.showcase.maxGifKb,
+      targetGifKb: DEFAULTS.showcase.targetGifKb,
     }
   }
 

@@ -26,6 +26,11 @@ const ffmpegLogBuffer: string[] = []
 let loaded = false
 let currentRequestId = ''
 const SCALE_FLAGS = 'bicubic'
+const INTRO_SAMPLE_FRAMES = 12
+const INTRO_DARK_YAVG_THRESHOLD = 20
+const INTRO_BRIGHT_YAVG_MIN = 24
+const INTRO_BRIGHT_DELTA_MIN = 8
+const INTRO_MAX_OFFSET_SECONDS = 1
 
 ffmpeg.on('log', ({ message }) => {
   ffmpegLogBuffer.push(message)
@@ -125,6 +130,50 @@ function parseSourceFpsFromLogs(logs: string[]): number {
   return 0
 }
 
+function parseSignalYAvgSeries(logs: string[]): number[] {
+  const out: number[] = []
+  for (const line of logs) {
+    const match = line.match(/lavfi\.signalstats\.YAVG=(\d+(?:\.\d+)?)/)
+    if (!match) {
+      continue
+    }
+    const value = Number.parseFloat(match[1])
+    if (Number.isFinite(value)) {
+      out.push(value)
+    }
+  }
+  return out
+}
+
+function estimateDarkIntroOffsetSeconds(logs: string[], sourceFps: number): number {
+  const ySeries = parseSignalYAvgSeries(logs)
+  if (ySeries.length < 2 || sourceFps <= 0) {
+    return 0
+  }
+
+  const first = ySeries[0]
+  if (first > INTRO_DARK_YAVG_THRESHOLD) {
+    return 0
+  }
+
+  for (let index = 1; index < ySeries.length; index += 1) {
+    const value = ySeries[index]
+    if (value < INTRO_BRIGHT_YAVG_MIN) {
+      continue
+    }
+    if (value < first + INTRO_BRIGHT_DELTA_MIN) {
+      continue
+    }
+    const seconds = index / sourceFps
+    if (seconds > 0 && seconds <= INTRO_MAX_OFFSET_SECONDS) {
+      return Number(seconds.toFixed(3))
+    }
+    return 0
+  }
+
+  return 0
+}
+
 function parsePngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
   if (bytes.length < 24) {
     return null
@@ -202,6 +251,7 @@ interface EncodeOptions {
   maxColors: number
   dither?: string
   statsMode?: 'single' | 'diff'
+  startOffsetSec?: number
 }
 
 const SUSPICIOUS_ABORT_GIF_MAX_BYTES = 8 * 1024
@@ -240,6 +290,10 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
     `[v][palette]paletteuse=dither=${dither}:diff_mode=rectangle`
   const twoPassGraph = `${options.vf}[x];[x][1:v]paletteuse=dither=${dither}:diff_mode=rectangle`
   const paletteName = `${options.outputName}.palette.png`
+  const seekArgs =
+    options.startOffsetSec && options.startOffsetSec > 0
+      ? ['-ss', options.startOffsetSec.toFixed(3)]
+      : []
 
   try {
     const singleResult = await execWithContext([
@@ -249,6 +303,7 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       '-y',
       '-threads',
       '1',
+      ...seekArgs,
       '-i',
       options.inputName,
       '-filter_complex',
@@ -260,12 +315,13 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       singleResult.hasAbortLog &&
       singleBytes !== null &&
       singleBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES
-
-    if (
+    const singleLooksStable =
       singleResult.ret === 0 &&
       singleBytes !== null &&
       !singleSuspiciousAbort
-    ) {
+    const singleNeedsVerification = singleLooksStable && singleResult.hasAbortLog
+
+    if (singleLooksStable && !singleNeedsVerification) {
       return singleBytes
     }
 
@@ -273,7 +329,9 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       postProgress(
         currentRequestId,
         'convert',
-        'Primary GIF encode reported instability; retrying with compatibility palette pass...',
+        singleNeedsVerification
+          ? 'Primary GIF encode returned with Aborted() logs; validating with compatibility palette pass...'
+          : 'Primary GIF encode reported instability; retrying with compatibility palette pass...',
       )
     }
 
@@ -284,12 +342,11 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       '-y',
       '-threads',
       '1',
+      ...seekArgs,
       '-i',
       options.inputName,
       '-vf',
-      `${options.vf},palettegen=max_colors=${options.maxColors}:stats_mode=${statsMode}`,
-      '-frames:v',
-      '1',
+      `${options.vf},palettegen=max_colors=${options.maxColors}:stats_mode=full`,
       '-update',
       '1',
       paletteName,
@@ -302,6 +359,7 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       '-y',
       '-threads',
       '1',
+      ...seekArgs,
       '-i',
       options.inputName,
       '-i',
@@ -335,6 +393,7 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       '-y',
       '-threads',
       '1',
+      ...seekArgs,
       '-i',
       options.inputName,
       '-vf',
@@ -351,7 +410,7 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       return directBytes
     }
 
-    if (singleResult.ret === 0 && singleBytes !== null && !singleSuspiciousAbort) {
+    if (singleLooksStable) {
       return singleBytes
     }
 
@@ -409,6 +468,7 @@ interface SearchEncodeOptions {
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
+  startOffsetSec: number
   requestId: string
 }
 
@@ -420,6 +480,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       outputName: `still-${options.requestId}.gif`,
       vf: options.baseFilter,
       maxColors: 256,
+      startOffsetSec: options.startOffsetSec,
     })
     const sizeKb = bytes.byteLength / 1024
     return {
@@ -439,6 +500,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
     outputName: `initial-${options.requestId}.gif`,
     vf: `fps=${options.gifFps},${options.baseFilter}`,
     maxColors: 256,
+    startOffsetSec: options.startOffsetSec,
   })
   let bestSize = bestBytes.byteLength / 1024
   let bestStatus: ArtifactStatus = 'original'
@@ -487,6 +549,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         outputName: `standard-${candidate.fps}-${candidate.colors}-${options.requestId}.gif`,
         vf: `fps=${candidate.fps},${options.baseFilter}`,
         maxColors: candidate.colors,
+        startOffsetSec: options.startOffsetSec,
       })
       const attemptSize = attemptBytes.byteLength / 1024
       if (attemptSize < bestSize) {
@@ -541,6 +604,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         outputName: `fpsfit-${nextFps}-${options.requestId}.gif`,
         vf: `fps=${nextFps},${options.baseFilter}`,
         maxColors: 256,
+        startOffsetSec: options.startOffsetSec,
       })
       const attemptSize = attemptBytes.byteLength / 1024
       if (attemptSize < bestSize) {
@@ -605,6 +669,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
         outputName: `fps-priority-${fps}-${options.requestId}.gif`,
         vf: `fps=${fps},${options.baseFilter}`,
         maxColors: 256,
+        startOffsetSec: options.startOffsetSec,
       })
       const attemptSize = attemptBytes.byteLength / 1024
       if (attemptSize < bestSize) {
@@ -664,6 +729,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       maxColors: candidate.colors,
       dither: candidate.dither,
       statsMode: candidate.statsMode,
+      startOffsetSec: options.startOffsetSec,
     })
 
     const attemptSize = attemptBytes.byteLength / 1024
@@ -741,12 +807,35 @@ async function runProbe(requestId: string, payload: ProbePayload): Promise<Probe
 
     const duration = parseDurationFromLogs(ffmpegLogBuffer)
     const fps = parseSourceFpsFromLogs(ffmpegLogBuffer)
+    let startOffsetSec = 0
+
+    const introAnalysisStart = ffmpegLogBuffer.length
+    const introRet = await ffmpeg.exec([
+      '-hide_banner',
+      '-loglevel',
+      'info',
+      '-y',
+      '-i',
+      inputName,
+      '-vf',
+      'signalstats,metadata=print',
+      '-frames:v',
+      String(INTRO_SAMPLE_FRAMES),
+      '-f',
+      'null',
+      '-',
+    ])
+    if (introRet === 0 && fps > 0) {
+      const introLogs = ffmpegLogBuffer.slice(introAnalysisStart)
+      startOffsetSec = estimateDarkIntroOffsetSeconds(introLogs, fps)
+    }
 
     return {
       width: dims.width,
       height: dims.height,
       duration: Number.isFinite(duration) ? Math.max(0, duration) : 0,
       fps: Number.isFinite(fps) ? Math.max(0, fps) : 0,
+      startOffsetSec,
     }
   } catch (error) {
     const base = error instanceof Error ? error.message : String(error)
@@ -772,12 +861,20 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
   )
   await ffmpeg.writeFile(inputName, payload.fileBytes)
 
-  const totalTargetWidth = payload.parts * payload.partWidth
+  const requestedSplitWidths = payload.splitWidths
+  const splitWidths =
+    requestedSplitWidths && requestedSplitWidths.length === payload.parts
+      ? requestedSplitWidths.map((width) => Math.max(1, Math.floor(width)))
+      : Array.from({ length: payload.parts }, () => payload.partWidth)
+  const totalTargetWidth = splitWidths.reduce((sum, width) => sum + width, 0)
   const targetHeight = computeTargetHeight(payload.srcWidth, payload.srcHeight, totalTargetWidth)
-  const cropX = payload.partIndex * payload.partWidth
+  const outputWidth = splitWidths[payload.partIndex] ?? payload.partWidth
+  const cropX = splitWidths
+    .slice(0, payload.partIndex)
+    .reduce((sum, width) => sum + width, 0)
   const baseFilter =
     `scale=${totalTargetWidth}:${targetHeight}:flags=${SCALE_FLAGS},` +
-    `crop=${payload.partWidth}:${targetHeight}:${cropX}:0`
+    `crop=${outputWidth}:${targetHeight}:${cropX}:0`
 
   const best = await searchBestEncode({
     inputName,
@@ -794,22 +891,28 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
     lossyOversize: payload.lossyOversize,
     lossyLevel: payload.lossyLevel,
     lossyMaxAttempts: payload.lossyMaxAttempts,
+    startOffsetSec: payload.startOffsetSec ?? 0,
     requestId,
   })
 
   await safeDelete(inputName)
 
+  const outputPrefix = payload.outputPrefix && payload.outputPrefix.trim().length > 0
+    ? payload.outputPrefix.trim().toLowerCase()
+    : 'part'
+  const outputName = `${outputPrefix}_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
+
   if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
     throw new Error(
-      `part_${String(payload.partIndex + 1).padStart(2, '0')}.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`,
+      `${outputName} still exceeds max size (${best.sizeKb.toFixed(1)}KB).`,
     )
   }
 
   return {
-    name: `part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`,
+    name: outputName,
     fileBytes: best.bytes,
     sizeKb: best.sizeKb,
-    width: payload.partWidth,
+    width: outputWidth,
     height: targetHeight,
     status: best.status,
     finalFps: best.finalFps,
@@ -844,6 +947,7 @@ async function runConvertFeatured(
     lossyOversize: payload.lossyOversize,
     lossyLevel: payload.lossyLevel,
     lossyMaxAttempts: payload.lossyMaxAttempts,
+    startOffsetSec: payload.startOffsetSec ?? 0,
     requestId,
   })
 
@@ -894,6 +998,7 @@ async function runConvertGuide(
     lossyOversize: payload.lossyOversize,
     lossyLevel: payload.lossyLevel,
     lossyMaxAttempts: payload.lossyMaxAttempts,
+    startOffsetSec: payload.startOffsetSec ?? 0,
     requestId,
   })
 

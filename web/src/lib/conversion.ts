@@ -115,17 +115,32 @@ export async function convertVideo(
   }, {
     timeoutMs: 45_000,
   })
+  if (probe.startOffsetSec > 0) {
+    emit('probe', `Detected dark intro; encoding starts at ${probe.startOffsetSec.toFixed(2)}s.`)
+  }
   const isStillImage = imageLikeSource && probe.duration <= 0.001
 
   const isSingleOutputPreset = config.preset === 'featured' || config.preset === 'guide'
+  const isSplitPreset = config.preset === 'workshop' || config.preset === 'showcase'
+  const splitWidths = config.preset === 'showcase' ? [...DEFAULTS.showcase.splitWidths] : undefined
   const guideSize = DEFAULTS.guide.size
-  const parts = isSingleOutputPreset ? 1 : config.parts
+  const parts = isSingleOutputPreset
+    ? 1
+    : config.preset === 'showcase'
+      ? DEFAULTS.showcase.splitWidths.length
+      : config.parts
   const partWidth =
     config.preset === 'featured'
       ? config.featuredWidth
       : config.preset === 'guide'
         ? guideSize
-        : config.partWidth
+        : config.preset === 'showcase'
+          ? DEFAULTS.showcase.splitWidths[0]
+          : config.partWidth
+  const totalTargetWidth = splitWidths
+    ? splitWidths.reduce((sum, width) => sum + width, 0)
+    : parts * partWidth
+  const sampleGifWidth = splitWidths ? Math.max(...splitWidths) : partWidth
 
   if (config.disableOptimizations) {
     const message =
@@ -139,6 +154,8 @@ export async function convertVideo(
       duration: probe.duration,
       parts,
       partWidth,
+      totalTargetWidth,
+      sampleGifWidth,
       minGifFps: config.minGifFps,
       maxGifKb: config.maxGifKb,
       precheckBppf: config.precheckBppf,
@@ -195,12 +212,15 @@ export async function convertVideo(
     lossyOversize: overrides.lossyOversize ?? config.lossyOversize,
     lossyLevel: config.lossyLevel,
     lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
+    startOffsetSec: probe.startOffsetSec,
     partIndex,
     parts,
     partWidth,
+    splitWidths,
+    outputPrefix: config.preset === 'showcase' ? 'showcase' : 'part',
   })
 
-  const runWorkshopBatch = async (
+  const runSplitBatch = async (
     batchGifFps: number,
     batchRetryAllowFpsDrop: boolean,
     label: string,
@@ -261,6 +281,7 @@ export async function convertVideo(
           lossyOversize: config.lossyOversize,
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
+          startOffsetSec: probe.startOffsetSec,
           featuredWidth: config.featuredWidth,
         },
         {
@@ -291,6 +312,7 @@ export async function convertVideo(
           lossyOversize: config.lossyOversize,
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
+          startOffsetSec: probe.startOffsetSec,
           guideSize,
         },
         {
@@ -300,26 +322,30 @@ export async function convertVideo(
       ),
     ]
   } else {
+    if (!isSplitPreset) {
+      throw new Error(`Unsupported split preset: ${config.preset}`)
+    }
+    const splitPresetLabel = config.preset === 'showcase' ? 'Showcase' : 'Workshop'
     const canRunSharedFpsPass =
       config.retryAllowFpsDrop &&
       !config.disableOptimizations &&
       !isStillImage
 
     if (!canRunSharedFpsPass) {
-      const firstPass = await runWorkshopBatch(
+      const firstPass = await runSplitBatch(
         config.gifFps,
         config.retryAllowFpsDrop,
-        `Workshop single pass: running full conversion at fps=${config.gifFps}.`,
+        `${splitPresetLabel} single pass: running full conversion at fps=${config.gifFps}.`,
       )
       if (!config.retryAllowFpsDrop) {
-        emit('convert', 'Workshop shared-FPS adjustment skipped: FPS reduction is disabled.')
+        emit('convert', `${splitPresetLabel} shared-FPS adjustment skipped: FPS reduction is disabled.`)
       }
       resultData = firstPass
     } else {
-      const sizingPass = await runWorkshopBatch(
+      const sizingPass = await runSplitBatch(
         config.gifFps,
         false,
-        `Workshop pass 1/2: sizing run at fps=${config.gifFps} (no retries).`,
+        `${splitPresetLabel} pass 1/2: sizing run at fps=${config.gifFps} (no retries).`,
         {
           disableOptimizations: true,
           standardRetriesEnabled: false,
@@ -348,7 +374,7 @@ export async function convertVideo(
       ) {
         emit(
           'convert',
-          `Workshop pass 1 satisfied max-size limits without FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
+          `${splitPresetLabel} pass 1 satisfied max-size limits without FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
         )
         resultData = sizingPass
       } else {
@@ -359,22 +385,22 @@ export async function convertVideo(
         if (finalFps < config.gifFps) {
           emit(
             'convert',
-            `Workshop largest slice ${largest.name} is ${largest.sizeKb.toFixed(1)}KB; re-encoding all parts at shared fps=${finalFps}.`,
+            `${splitPresetLabel} largest slice ${largest.name} is ${largest.sizeKb.toFixed(1)}KB; re-encoding all parts at shared fps=${finalFps}.`,
           )
         } else {
           emit(
             'convert',
-            `Workshop pass 1 shows no required shared FPS drop; running final full pass at fps=${finalFps}.`,
+            `${splitPresetLabel} pass 1 shows no required shared FPS drop; running final full pass at fps=${finalFps}.`,
           )
         }
         emit(
           'convert',
-          `Workshop pass 2/2: enforcing shared fps=${finalFps} for all ${parts} parts.`,
+          `${splitPresetLabel} pass 2/2: enforcing shared fps=${finalFps} for all ${parts} parts.`,
         )
-        resultData = await runWorkshopBatch(
+        resultData = await runSplitBatch(
           finalFps,
           false,
-          `Workshop pass 2/2: final conversion at shared fps=${finalFps}.`,
+          `${splitPresetLabel} pass 2/2: final conversion at shared fps=${finalFps}.`,
         )
       }
     }

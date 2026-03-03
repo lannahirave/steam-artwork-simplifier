@@ -1,4 +1,4 @@
-export type Preset = 'workshop' | 'featured' | 'guide'
+export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
 
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
 
@@ -38,6 +38,7 @@ export interface SourceProbe {
   height: number
   duration: number
   fps: number
+  startOffsetSec: number
 }
 
 export interface ConversionArtifact {
@@ -114,12 +115,15 @@ export interface ConvertPayloadBase {
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
+  startOffsetSec?: number
 }
 
 export interface ConvertPartPayload extends ConvertPayloadBase {
   partIndex: number
   parts: number
   partWidth: number
+  splitWidths?: number[]
+  outputPrefix?: string
 }
 
 export interface ConvertFeaturedPayload extends ConvertPayloadBase {
@@ -135,6 +139,7 @@ export interface ProbeResultData {
   height: number
   duration: number
   fps: number
+  startOffsetSec: number
 }
 
 export interface WorkerArtifactData {

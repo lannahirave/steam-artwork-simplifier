@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef, useState, type ChangeEvent } from 'react'
 import './App.css'
-import { applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
+import { DEFAULTS, applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
 import { convertVideo, type ConversionProgress } from './lib/conversion'
 import { applyEofPatch, applyHeaderPatch } from './lib/patch'
 import { estimateFpsForTargetKb, estimateGifKb } from './lib/precheck'
-import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, STEAM_HELPER_NOTES } from './lib/steamSnippets'
+import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, SCREENSHOT_SNIPPET, STEAM_HELPER_NOTES } from './lib/steamSnippets'
 import type { ConversionArtifact, ConversionConfig, PatchResult } from './lib/types'
 import { createZip } from './lib/zip'
 import { FFmpegWorkerPool } from './lib/workerPool'
@@ -21,6 +21,7 @@ const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
   workshop: 0.16,
   featured: 0.18,
   guide: 0.21,
+  showcase: 0.16,
 }
 
 interface GuideSection {
@@ -59,6 +60,19 @@ const GUIDE_SECTIONS: GuideSection[] = [
     tip: 'Start with lower FPS before increasing lossy settings for better visual quality.',
   },
   {
+    key: 'showcase',
+    title: 'Artwork Showcase (506 + 100)',
+    badge: 'Convert',
+    steps: [
+      'Switch preset to Artwork Showcase (fixed 506px + 100px split).',
+      'Upload source media and tune FPS/size limits as needed.',
+      'Run conversion and verify both split outputs in preview.',
+      'Open Steam Helpers tab and copy either Artwork/Featured or Screenshot snippet (only one).',
+      'Run one snippet in Steam Console to prefill invisible title and agreement checkbox.',
+    ],
+    tip: 'Use this flow only for the 506 + 100 showcase preset.',
+  },
+  {
     key: 'tuning',
     title: 'Fix size or quality issues',
     badge: 'Tuning',
@@ -88,10 +102,10 @@ const GUIDE_SECTIONS: GuideSection[] = [
     title: 'Steam upload autofill',
     badge: 'Upload',
     steps: [
-      'Open Steam Helpers tab and click Copy for workshop or featured snippet.',
+      'Open Steam Helpers tab and click Copy for workshop, artwork/featured, or screenshot snippet.',
       'Open the Steam upload page in your browser.',
       'Open DevTools Console.',
-      'Paste snippet and run it.',
+      'Paste one snippet and run it.',
       'Verify fields and finish upload.',
     ],
     tip: 'Snippets are intended for Steam upload pages only.',
@@ -170,6 +184,26 @@ function getColorReductionPercent(finalColors: number): number {
 
 function resolveEstimateBppf(config: ConversionConfig): number {
   return Math.max(config.precheckBppf, ESTIMATE_BPPF_BASELINES[config.preset])
+}
+
+function getPresetSplitWidths(config: ConversionConfig): number[] {
+  if (config.preset === 'showcase') {
+    return [...DEFAULTS.showcase.splitWidths]
+  }
+  if (config.preset === 'workshop') {
+    return Array.from({ length: config.parts }, () => config.partWidth)
+  }
+  if (config.preset === 'featured') {
+    return [config.featuredWidth]
+  }
+  return [GUIDE_SIZE]
+}
+
+function getPresetJobCount(config: ConversionConfig): number {
+  if (config.preset === 'workshop' || config.preset === 'showcase') {
+    return getPresetSplitWidths(config).length
+  }
+  return 1
 }
 
 interface WorkerStageEvent {
@@ -341,6 +375,15 @@ function App() {
   const isWorkshopStrip =
     artifactViews.length === 5 &&
     artifactViews.every((item) => /^part_\d{2}\.gif$/i.test(item.artifact.name))
+  const isShowcaseStrip =
+    artifactViews.length === 2 &&
+    artifactViews.every((item) => /^showcase_\d{2}\.gif$/i.test(item.artifact.name))
+  const isCompactStrip = isWorkshopStrip || isShowcaseStrip
+  const resultsGridClassName = isWorkshopStrip
+    ? 'results-grid workshop-strip'
+    : isShowcaseStrip
+      ? 'results-grid showcase-strip'
+      : 'results-grid'
   const optimizationDisabled = config.disableOptimizations
   const standardRetriesEffective = !optimizationDisabled && config.standardRetriesEnabled
   const retryControlsDisabled = optimizationDisabled || !config.standardRetriesEnabled
@@ -423,9 +466,10 @@ function App() {
       return
     }
 
-    const requestedJobs = config.preset === 'workshop' ? config.parts : 1
+    const requestedJobs = getPresetJobCount(config)
+    const splitPreset = config.preset === 'workshop' || config.preset === 'showcase'
     const effectiveWorkerCount =
-      config.preset !== 'workshop'
+      !splitPreset
         ? 1
         : Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
     const runtimeConfig: ConversionConfig = {
@@ -521,7 +565,7 @@ function App() {
       const next = applyPreset(prev, nextPreset)
       return {
         ...next,
-        workerCount: getDefaultWorkerCount(nextPreset === 'workshop' ? next.parts : 1),
+        workerCount: getDefaultWorkerCount(getPresetJobCount(next)),
       }
     })
   }
@@ -556,9 +600,10 @@ function App() {
     setFpsEstimateInfo('')
     setEstimatingFps(true)
     try {
-      const requestedJobs = config.preset === 'workshop' ? config.parts : 1
+      const requestedJobs = getPresetJobCount(config)
+      const splitPreset = config.preset === 'workshop' || config.preset === 'showcase'
       const effectiveWorkerCount =
-        config.preset !== 'workshop'
+        !splitPreset
           ? 1
           : Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
 
@@ -571,14 +616,12 @@ function App() {
         timeoutMs: 45_000,
       })
 
-      const parts = config.preset === 'workshop' ? config.parts : 1
+      const splitWidths = getPresetSplitWidths(config)
       const perGifWidth =
-        config.preset === 'featured'
-          ? config.featuredWidth
-          : config.preset === 'guide'
-            ? GUIDE_SIZE
-            : config.partWidth
-      const totalTargetWidth = parts * perGifWidth
+        config.preset === 'guide'
+          ? GUIDE_SIZE
+          : Math.max(...splitWidths)
+      const totalTargetWidth = splitWidths.reduce((sum, width) => sum + width, 0)
       const targetHeight =
         config.preset === 'guide'
           ? GUIDE_SIZE
@@ -695,8 +738,13 @@ function App() {
     }
   }
 
-  async function copySnippet(label: 'workshop' | 'featured'): Promise<void> {
-    const text = label === 'workshop' ? WORKSHOP_SNIPPET : FEATURED_SNIPPET
+  async function copySnippet(label: 'workshop' | 'featured' | 'screenshot'): Promise<void> {
+    const snippets = {
+      workshop: WORKSHOP_SNIPPET,
+      featured: FEATURED_SNIPPET,
+      screenshot: SCREENSHOT_SNIPPET,
+    } as const
+    const text = snippets[label]
     try {
       await navigator.clipboard.writeText(text)
       setCopyStatus(`${label} snippet copied.`)
@@ -762,10 +810,11 @@ function App() {
             <section className="config-group">
               <h3>Source and Layout</h3>
               <div className="form-grid">
-                <label title="Select output mode: workshop creates 5 slices, featured creates one wide GIF.">
+                <label title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF.">
                   Preset
                   <select value={config.preset} onChange={(event) => updatePreset(event.target.value as ConversionConfig['preset'])}>
                     <option value="workshop">Workshop (5x150 slices)</option>
+                    <option value="showcase">Artwork Showcase (506 + 100 split)</option>
                     <option value="featured">Featured (single 630px)</option>
                     <option value="guide">Guide (single 195x195)</option>
                   </select>
@@ -831,6 +880,19 @@ function App() {
                     Guide Size
                     <input value="195x195 (fixed)" disabled />
                   </label>
+                )}
+
+                {config.preset === 'showcase' && (
+                  <>
+                    <label title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
+                      Showcase Split
+                      <input value="506px + 100px (fixed)" disabled />
+                    </label>
+                    <label title="Total target width used before splitting the showcase output.">
+                      Showcase Total Width
+                      <input value="606px (fixed)" disabled />
+                    </label>
+                  </>
                 )}
               </div>
             </section>
@@ -1178,10 +1240,10 @@ function App() {
               {lastElapsedMs !== null && (
                 <p className="result-timing">Output ready in {formatElapsed(lastElapsedMs)}.</p>
               )}
-              <section className={isWorkshopStrip ? 'results-grid workshop-strip' : 'results-grid'}>
+              <section className={resultsGridClassName}>
                 {artifactViews.map((item) => (
                   <article className="result-card" key={item.artifact.name}>
-                    {!isWorkshopStrip && (
+                    {!isCompactStrip && (
                       <>
                         <h3>{item.artifact.name}</h3>
                         <p>
@@ -1189,18 +1251,35 @@ function App() {
                         </p>
                       </>
                     )}
-                    <img src={item.url} alt={item.artifact.name} loading="lazy" />
-                    <div className={isWorkshopStrip ? 'gif-meta compact' : 'gif-meta'}>
+                    {isCompactStrip && (
+                      <p className="compact-caption">
+                        {item.artifact.name} | {item.artifact.width}x{item.artifact.height}
+                      </p>
+                    )}
+                    <img
+                      src={item.url}
+                      alt={item.artifact.name}
+                      loading="lazy"
+                      style={
+                        isCompactStrip
+                          ? {
+                              width: `${item.artifact.width}px`,
+                              height: `${item.artifact.height}px`,
+                            }
+                          : undefined
+                      }
+                    />
+                    <div className={isCompactStrip ? 'gif-meta compact' : 'gif-meta'}>
                       <span>FPS: {item.artifact.finalFps}</span>
                       <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
                     </div>
-                    <div className={isWorkshopStrip ? 'download-row compact' : 'download-row'}>
+                    <div className={isCompactStrip ? 'download-row compact' : 'download-row'}>
                       <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
                       <button
-                        className={isWorkshopStrip ? 'compact-download' : ''}
+                        className={isCompactStrip ? 'compact-download' : ''}
                         onClick={() => downloadBlob(item.artifact.name, item.artifact.blob)}
                       >
-                        {isWorkshopStrip ? 'DL' : 'Download'}
+                        {isCompactStrip ? 'DL' : 'Download'}
                       </button>
                     </div>
                   </article>
@@ -1303,10 +1382,18 @@ function App() {
 
           <article className="subpanel">
             <div className="snippet-head">
-              <h3>Featured Snippet</h3>
+              <h3>Artwork or Featured Artwork Snippet</h3>
               <button onClick={() => void copySnippet('featured')}>Copy</button>
             </div>
             <textarea readOnly value={FEATURED_SNIPPET} rows={14} />
+          </article>
+
+          <article className="subpanel">
+            <div className="snippet-head">
+              <h3>Screenshot Snippet</h3>
+              <button onClick={() => void copySnippet('screenshot')}>Copy</button>
+            </div>
+            <textarea readOnly value={SCREENSHOT_SNIPPET} rows={16} />
           </article>
 
           {copyStatus && <p>{copyStatus}</p>}

@@ -17,4 +17,5 @@ test('shows steam helper snippets', async ({ page }) => {
   await page.getByRole('button', { name: 'Steam Helpers' }).click()
   await expect(page.getByRole('heading', { name: 'Workshop Snippet' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Featured Snippet' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Screenshot Snippet' })).toBeVisible()
 })
