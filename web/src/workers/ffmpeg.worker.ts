@@ -106,6 +106,25 @@ function parseDurationFromLogs(logs: string[]): number {
   return 0
 }
 
+function parseSourceFpsFromLogs(logs: string[]): number {
+  for (const line of logs) {
+    if (!line.includes('Stream #') || !line.includes('Video:')) {
+      continue
+    }
+
+    const match = line.match(/(\d+(?:\.\d+)?)\s*fps/i)
+    if (!match) {
+      continue
+    }
+
+    const fps = Number.parseFloat(match[1])
+    if (Number.isFinite(fps) && fps > 0) {
+      return fps
+    }
+  }
+  return 0
+}
+
 function parsePngDimensions(bytes: Uint8Array): { width: number; height: number } | null {
   if (bytes.length < 24) {
     return null
@@ -720,11 +739,13 @@ async function runProbe(requestId: string, payload: ProbePayload): Promise<Probe
     }
 
     const duration = parseDurationFromLogs(ffmpegLogBuffer)
+    const fps = parseSourceFpsFromLogs(ffmpegLogBuffer)
 
     return {
       width: dims.width,
       height: dims.height,
       duration: Number.isFinite(duration) ? Math.max(0, duration) : 0,
+      fps: Number.isFinite(fps) ? Math.max(0, fps) : 0,
     }
   } catch (error) {
     const base = error instanceof Error ? error.message : String(error)

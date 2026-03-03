@@ -3,7 +3,7 @@ import './App.css'
 import { applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from './lib/defaults'
 import { convertVideo, type ConversionProgress } from './lib/conversion'
 import { applyEofPatch, applyHeaderPatch } from './lib/patch'
-import { estimateFpsForTargetKb } from './lib/precheck'
+import { estimateFpsForTargetKb, estimateGifKb } from './lib/precheck'
 import { WORKSHOP_SNIPPET, FEATURED_SNIPPET, STEAM_HELPER_NOTES } from './lib/steamSnippets'
 import type { ConversionArtifact, ConversionConfig, PatchResult } from './lib/types'
 import { createZip } from './lib/zip'
@@ -14,6 +14,13 @@ type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
 type ThemeMode = 'auto' | 'light' | 'dark'
 const MAX_SAFE_WASM_WORKERS = 3
 const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
+const GUIDE_SIZE = 150
+
+const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
+  workshop: 0.16,
+  featured: 0.18,
+  guide: 0.21,
+}
 
 interface GuideSection {
   key: string
@@ -158,6 +165,10 @@ function cleanupArtifactViews(items: ArtifactView[]): void {
 function getColorReductionPercent(finalColors: number): number {
   const clamped = Math.min(256, Math.max(0, finalColors))
   return Math.max(0, Math.round((1 - clamped / 256) * 100))
+}
+
+function resolveEstimateBppf(config: ConversionConfig): number {
+  return Math.max(config.precheckBppf, ESTIMATE_BPPF_BASELINES[config.preset])
 }
 
 interface WorkerStageEvent {
@@ -561,29 +572,46 @@ function App() {
 
       const parts = config.preset === 'workshop' ? config.parts : 1
       const perGifWidth =
-        config.preset === 'featured' ? config.featuredWidth : config.preset === 'guide' ? 150 : config.partWidth
+        config.preset === 'featured'
+          ? config.featuredWidth
+          : config.preset === 'guide'
+            ? GUIDE_SIZE
+            : config.partWidth
       const totalTargetWidth = parts * perGifWidth
-      const targetHeight = computeTargetHeight(probe.width, probe.height, totalTargetWidth)
+      const targetHeight =
+        config.preset === 'guide'
+          ? GUIDE_SIZE
+          : computeTargetHeight(probe.width, probe.height, totalTargetWidth)
       const duration = Math.max(0.1, probe.duration)
+      const estimateBppf = resolveEstimateBppf(config)
 
       const estimatedFromTarget = estimateFpsForTargetKb(
         perGifWidth,
         targetHeight,
         duration,
         config.targetGifKb,
-        config.precheckBppf,
+        estimateBppf,
       )
       const estimatedFromMax = estimateFpsForTargetKb(
         perGifWidth,
         targetHeight,
         duration,
         config.maxGifKb,
-        config.precheckBppf,
+        estimateBppf,
       )
 
       const cappedByLimit = Math.max(1, Math.min(estimatedFromTarget, estimatedFromMax))
-      const autoFps = Math.max(1, Math.min(60, cappedByLimit))
+      const sourceFpsCap = probe.fps > 0 ? Math.max(1, Math.floor(probe.fps)) : 60
+      const safetyLimitedFps = Math.max(1, Math.min(60, cappedByLimit))
+      const autoFps = Math.max(1, Math.min(sourceFpsCap, safetyLimitedFps))
       const minWasReduced = config.minGifFps > autoFps
+      const estimatedSizeAtAuto = estimateGifKb(
+        perGifWidth,
+        targetHeight,
+        autoFps,
+        duration,
+        estimateBppf,
+      )
 
       setConfig((prev) => ({
         ...prev,
@@ -595,10 +623,19 @@ function App() {
         cappedByLimit !== estimatedFromTarget
           ? ` Capped by max GIF limit (${config.maxGifKb}KB).`
           : ''
-      const safetyCapNote = autoFps !== cappedByLimit ? ' Capped to 60 FPS safety limit.' : ''
+      const safetyCapNote = safetyLimitedFps < cappedByLimit ? ' Capped to 60 FPS safety limit.' : ''
+      const sourceCapNote =
+        probe.fps > 0 && autoFps === sourceFpsCap
+          ? ` Capped by source video FPS (${probe.fps.toFixed(2)}).`
+          : ''
+      const sourceLimitWarning =
+        probe.fps > 0 && cappedByLimit > sourceFpsCap
+          ? ' Source FPS is a hard upper bound; output size may still need optimization retries.'
+          : ''
       const minNote = minWasReduced ? ' Min GIF FPS was lowered to match.' : ''
+      const bppfNote = ` Using estimate BPPF ${estimateBppf.toFixed(3)} (~${estimatedSizeAtAuto.toFixed(0)}KB).`
       setFpsEstimateInfo(
-        `Auto-set GIF FPS to ${autoFps} using ${perGifWidth}x${targetHeight} @ ${duration.toFixed(2)}s for ~${config.targetGifKb}KB target.${sizeCapNote}${safetyCapNote}${minNote}`,
+        `Auto-set GIF FPS to ${autoFps} using ${perGifWidth}x${targetHeight} @ ${duration.toFixed(2)}s for ~${config.targetGifKb}KB target.${sizeCapNote}${safetyCapNote}${sourceCapNote}${sourceLimitWarning}${minNote}${bppfNote}`,
       )
     } catch (estimateError) {
       const message = estimateError instanceof Error ? estimateError.message : String(estimateError)

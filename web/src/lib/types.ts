@@ -37,6 +37,7 @@ export interface SourceProbe {
   width: number
   height: number
   duration: number
+  fps: number
 }
 
 export interface ConversionArtifact {
@@ -133,6 +134,7 @@ export interface ProbeResultData {
   width: number
   height: number
   duration: number
+  fps: number
 }
 
 export interface WorkerArtifactData {

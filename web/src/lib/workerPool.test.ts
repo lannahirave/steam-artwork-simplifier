@@ -41,7 +41,7 @@ class FakeWorker {
           event: 'result',
           payload: {
             command: 'probe',
-            data: { width: 1280, height: 720, duration: 3.5 },
+            data: { width: 1280, height: 720, duration: 3.5, fps: 30 },
           },
         })
       }, 0)
