@@ -161,7 +161,21 @@ export async function convertVideo(
 
   const buildPartPayload = (
     partIndex: number,
-    overrides: Partial<Pick<ConvertPartPayload, 'gifFps' | 'minGifFps' | 'retryAllowFpsDrop'>> = {},
+    overrides: Partial<
+      Pick<
+        ConvertPartPayload,
+        | 'gifFps'
+        | 'minGifFps'
+        | 'retryAllowFpsDrop'
+        | 'disableOptimizations'
+        | 'standardRetriesEnabled'
+        | 'retryAllowColorDrop'
+        | 'lossyOversize'
+        | 'lossyMaxAttempts'
+        | 'maxGifKb'
+        | 'targetGifKb'
+      >
+    > = {},
   ): ConvertPartPayload => ({
     fileName: input.file.name,
     fileBytes: sourceBytes.slice(),
@@ -171,15 +185,15 @@ export async function convertVideo(
     duration: probe.duration,
     gifFps: overrides.gifFps ?? config.gifFps,
     minGifFps: overrides.minGifFps ?? config.minGifFps,
-    disableOptimizations: config.disableOptimizations,
-    maxGifKb: config.maxGifKb,
-    targetGifKb: config.targetGifKb,
-    standardRetriesEnabled: config.standardRetriesEnabled,
+    disableOptimizations: overrides.disableOptimizations ?? config.disableOptimizations,
+    maxGifKb: overrides.maxGifKb ?? config.maxGifKb,
+    targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
+    standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
-    retryAllowColorDrop: config.retryAllowColorDrop,
-    lossyOversize: config.lossyOversize,
+    retryAllowColorDrop: overrides.retryAllowColorDrop ?? config.retryAllowColorDrop,
+    lossyOversize: overrides.lossyOversize ?? config.lossyOversize,
     lossyLevel: config.lossyLevel,
-    lossyMaxAttempts: config.lossyMaxAttempts,
+    lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
     partIndex,
     parts,
     partWidth,
@@ -189,6 +203,18 @@ export async function convertVideo(
     batchGifFps: number,
     batchRetryAllowFpsDrop: boolean,
     label: string,
+    batchOverrides: Partial<
+      Pick<
+        ConvertPartPayload,
+        | 'disableOptimizations'
+        | 'standardRetriesEnabled'
+        | 'retryAllowColorDrop'
+        | 'lossyOversize'
+        | 'lossyMaxAttempts'
+        | 'maxGifKb'
+        | 'targetGifKb'
+      >
+    > = {},
   ): Promise<WorkerArtifactData[]> => {
     emit('convert', label)
     const batchMinFps = Math.min(config.minGifFps, Math.max(1, Math.floor(batchGifFps)))
@@ -200,6 +226,7 @@ export async function convertVideo(
             gifFps: batchGifFps,
             minGifFps: batchMinFps,
             retryAllowFpsDrop: batchRetryAllowFpsDrop,
+            ...batchOverrides,
           }),
           {
             onProgress: workerProgress(index),
@@ -272,24 +299,40 @@ export async function convertVideo(
       ),
     ]
   } else {
-    const firstPass = await runWorkshopBatch(
-      config.gifFps,
-      false,
-      `Workshop pass 1/2: baseline run at fps=${config.gifFps}.`,
-    )
     const canRunSharedFpsPass =
       config.retryAllowFpsDrop &&
       !config.disableOptimizations &&
       !isStillImage
 
     if (!canRunSharedFpsPass) {
+      const firstPass = await runWorkshopBatch(
+        config.gifFps,
+        config.retryAllowFpsDrop,
+        `Workshop single pass: running full conversion at fps=${config.gifFps}.`,
+      )
       if (!config.retryAllowFpsDrop) {
         emit('convert', 'Workshop shared-FPS adjustment skipped: FPS reduction is disabled.')
       }
       resultData = firstPass
     } else {
-      const largest = firstPass.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
-      const fpsTargetKb = largest.sizeKb > config.maxGifKb ? config.maxGifKb : config.targetGifKb
+      const sizingPass = await runWorkshopBatch(
+        config.gifFps,
+        false,
+        `Workshop pass 1/2: sizing run at fps=${config.gifFps} (no retries).`,
+        {
+          disableOptimizations: true,
+          standardRetriesEnabled: false,
+          retryAllowColorDrop: false,
+          lossyOversize: false,
+          lossyMaxAttempts: 1,
+          maxGifKb: Number.MAX_SAFE_INTEGER,
+          targetGifKb: Number.MAX_SAFE_INTEGER,
+        },
+      )
+      const largest = sizingPass.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
+      const fpsTargetKb = config.standardRetriesEnabled
+        ? (largest.sizeKb > config.maxGifKb ? config.maxGifKb : config.targetGifKb)
+        : config.maxGifKb
       const sharedFps = estimateFpsForKbTarget(
         config.gifFps,
         largest.sizeKb,
@@ -297,21 +340,40 @@ export async function convertVideo(
         config.minGifFps,
       )
 
-      if (sharedFps >= config.gifFps || largest.sizeKb <= fpsTargetKb) {
+      if (
+        sharedFps >= config.gifFps &&
+        !config.standardRetriesEnabled &&
+        largest.sizeKb <= config.maxGifKb
+      ) {
         emit(
           'convert',
-          `Workshop pass 1 settled without shared FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
+          `Workshop pass 1 satisfied max-size limits without FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
         )
-        resultData = firstPass
+        resultData = sizingPass
       } else {
+        const finalFps =
+          sharedFps < config.gifFps && largest.sizeKb > fpsTargetKb
+            ? sharedFps
+            : config.gifFps
+        if (finalFps < config.gifFps) {
+          emit(
+            'convert',
+            `Workshop largest slice ${largest.name} is ${largest.sizeKb.toFixed(1)}KB; re-encoding all parts at shared fps=${finalFps}.`,
+          )
+        } else {
+          emit(
+            'convert',
+            `Workshop pass 1 shows no required shared FPS drop; running final full pass at fps=${finalFps}.`,
+          )
+        }
         emit(
           'convert',
-          `Workshop largest slice ${largest.name} is ${largest.sizeKb.toFixed(1)}KB; re-encoding all parts at shared fps=${sharedFps}.`,
+          `Workshop pass 2/2: enforcing shared fps=${finalFps} for all ${parts} parts.`,
         )
         resultData = await runWorkshopBatch(
-          sharedFps,
+          finalFps,
           false,
-          `Workshop pass 2/2: enforcing shared fps=${sharedFps} for all ${parts} parts.`,
+          `Workshop pass 2/2: final conversion at shared fps=${finalFps}.`,
         )
       }
     }

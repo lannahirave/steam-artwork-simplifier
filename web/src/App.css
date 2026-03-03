@@ -19,6 +19,11 @@
   --field-bg: #fffdf8;
   --card-bg: #fffdf8;
   --surface-contrast: rgba(255, 255, 255, 0.8);
+  --disabled-field-bg: #e7dfd2;
+  --disabled-field-line: rgba(16, 33, 47, 0.32);
+  --disabled-field-ink: #677b8d;
+  --disabled-stripe: rgba(16, 33, 47, 0.08);
+  --disabled-label-bg: rgba(16, 33, 47, 0.04);
 }
 
 [data-theme='dark'] {
@@ -38,6 +43,11 @@
   --field-bg: rgba(11, 23, 35, 0.94);
   --card-bg: rgba(10, 21, 33, 0.95);
   --surface-contrast: rgba(8, 16, 25, 0.8);
+  --disabled-field-bg: rgba(18, 34, 49, 0.96);
+  --disabled-field-line: rgba(165, 195, 224, 0.45);
+  --disabled-field-ink: #8fa8c0;
+  --disabled-stripe: rgba(165, 195, 224, 0.08);
+  --disabled-label-bg: rgba(165, 195, 224, 0.06);
 }
 
 * {
@@ -201,6 +211,22 @@ textarea {
   background: var(--panel-strong);
 }
 
+.form-grid > label:has(input:disabled),
+.form-grid > label:has(select:disabled),
+.form-grid > label:has(textarea:disabled),
+.patch-grid > label:has(input:disabled),
+.patch-grid > label:has(select:disabled),
+.patch-grid > label:has(textarea:disabled),
+.lossy-group-fields > label:has(input:disabled),
+.lossy-group-fields > label:has(select:disabled),
+.lossy-group-fields > label:has(textarea:disabled) {
+  border-style: dashed;
+  border-color: var(--disabled-field-line);
+  background:
+    linear-gradient(150deg, var(--disabled-label-bg), transparent 68%),
+    var(--panel-strong);
+}
+
 label {
   display: grid;
   gap: 0.5rem;
@@ -225,6 +251,22 @@ textarea {
   color: var(--ink);
   padding: 0.58rem 0.68rem;
   transition: border-color 150ms ease, box-shadow 150ms ease;
+}
+
+input:disabled,
+select:disabled,
+textarea:disabled {
+  border-color: var(--disabled-field-line);
+  color: var(--disabled-field-ink);
+  background:
+    repeating-linear-gradient(-45deg, transparent 0 10px, var(--disabled-stripe) 10px 20px),
+    var(--disabled-field-bg);
+  cursor: not-allowed;
+}
+
+input:disabled::placeholder,
+textarea:disabled::placeholder {
+  color: var(--disabled-field-ink);
 }
 
 select {
