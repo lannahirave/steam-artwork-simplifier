@@ -1,4 +1,5 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
+import { DEFAULTS } from './defaults'
 import { runPrecheck } from './precheck'
 import { estimateFpsForKbTarget } from './sizeStrategy'
 import { FFmpegWorkerPool } from './workerPool'
@@ -117,7 +118,7 @@ export async function convertVideo(
   const isStillImage = imageLikeSource && probe.duration <= 0.001
 
   const isSingleOutputPreset = config.preset === 'featured' || config.preset === 'guide'
-  const guideSize = 150
+  const guideSize = DEFAULTS.guide.size
   const parts = isSingleOutputPreset ? 1 : config.parts
   const partWidth =
     config.preset === 'featured'

@@ -14,7 +14,7 @@ type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
 type ThemeMode = 'auto' | 'light' | 'dark'
 const MAX_SAFE_WASM_WORKERS = 3
 const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
-const GUIDE_SIZE = 150
+const GUIDE_SIZE = 195
 
 const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
   workshop: 0.16,
@@ -764,7 +764,7 @@ function App() {
                   <select value={config.preset} onChange={(event) => updatePreset(event.target.value as ConversionConfig['preset'])}>
                     <option value="workshop">Workshop (5x150 slices)</option>
                     <option value="featured">Featured (single 630px)</option>
-                    <option value="guide">Guide (single 150x150)</option>
+                    <option value="guide">Guide (single 195x195)</option>
                   </select>
                 </label>
 
@@ -824,9 +824,9 @@ function App() {
                 )}
 
                 {config.preset === 'guide' && (
-                  <label title="Guide preset outputs a centered square GIF at 150x150.">
+                  <label title="Guide preset outputs a centered square GIF at 195x195.">
                     Guide Size
-                    <input value="150x150 (fixed)" disabled />
+                    <input value="195x195 (fixed)" disabled />
                   </label>
                 )}
               </div>
