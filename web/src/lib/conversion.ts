@@ -1,7 +1,9 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
+import { estimateFpsForKbTarget } from './sizeStrategy'
 import { FFmpegWorkerPool } from './workerPool'
 import type {
+  ConvertPartPayload,
   ConversionArtifact,
   ConversionConfig,
   ConversionInput,
@@ -157,100 +159,163 @@ export async function convertVideo(
 
   emit('convert', `Starting ${parts} conversion task(s).`)
 
-  const resultData =
-    config.preset === 'featured'
-      ? [
-          await pool.runTask(
-            'convertFeatured',
-            {
-              fileName: input.file.name,
-              fileBytes: sourceBytes.slice(),
-              isStillImage,
-              srcWidth: probe.width,
-              srcHeight: probe.height,
-              duration: probe.duration,
-              gifFps: config.gifFps,
-              minGifFps: config.minGifFps,
-              disableOptimizations: config.disableOptimizations,
-              maxGifKb: config.maxGifKb,
-              targetGifKb: config.targetGifKb,
-              standardRetriesEnabled: config.standardRetriesEnabled,
-              retryAllowFpsDrop: config.retryAllowFpsDrop,
-              retryAllowColorDrop: config.retryAllowColorDrop,
-              lossyOversize: config.lossyOversize,
-              lossyLevel: config.lossyLevel,
-              lossyMaxAttempts: config.lossyMaxAttempts,
-              featuredWidth: config.featuredWidth,
-            },
-            {
-              onProgress: workerProgress(0),
-              timeoutMs: 6 * 60_000,
-            },
-          ),
-        ]
-      : config.preset === 'guide'
-        ? [
-            await pool.runTask(
-              'convertGuide',
-              {
-                fileName: input.file.name,
-                fileBytes: sourceBytes.slice(),
-                isStillImage,
-                srcWidth: probe.width,
-                srcHeight: probe.height,
-                duration: probe.duration,
-                gifFps: config.gifFps,
-                minGifFps: config.minGifFps,
-                disableOptimizations: config.disableOptimizations,
-                maxGifKb: config.maxGifKb,
-                targetGifKb: config.targetGifKb,
-                standardRetriesEnabled: config.standardRetriesEnabled,
-                retryAllowFpsDrop: config.retryAllowFpsDrop,
-                retryAllowColorDrop: config.retryAllowColorDrop,
-                lossyOversize: config.lossyOversize,
-                lossyLevel: config.lossyLevel,
-                lossyMaxAttempts: config.lossyMaxAttempts,
-                guideSize,
-              },
-              {
-                onProgress: workerProgress(0),
-                timeoutMs: 6 * 60_000,
-              },
-            ),
-          ]
-        : await Promise.all(
-          Array.from({ length: parts }, (_, index) =>
-            pool.runTask(
-              'convertPart',
-              {
-                fileName: input.file.name,
-                fileBytes: sourceBytes.slice(),
-                isStillImage,
-                srcWidth: probe.width,
-                srcHeight: probe.height,
-                duration: probe.duration,
-                gifFps: config.gifFps,
-                minGifFps: config.minGifFps,
-                disableOptimizations: config.disableOptimizations,
-                maxGifKb: config.maxGifKb,
-                targetGifKb: config.targetGifKb,
-                standardRetriesEnabled: config.standardRetriesEnabled,
-                retryAllowFpsDrop: config.retryAllowFpsDrop,
-                retryAllowColorDrop: config.retryAllowColorDrop,
-                lossyOversize: config.lossyOversize,
-                lossyLevel: config.lossyLevel,
-                lossyMaxAttempts: config.lossyMaxAttempts,
-                partIndex: index,
-                parts,
-                partWidth,
-              },
-              {
-                onProgress: workerProgress(index),
-                timeoutMs: 6 * 60_000,
-              },
-            ),
-          ),
+  const buildPartPayload = (
+    partIndex: number,
+    overrides: Partial<Pick<ConvertPartPayload, 'gifFps' | 'minGifFps' | 'retryAllowFpsDrop'>> = {},
+  ): ConvertPartPayload => ({
+    fileName: input.file.name,
+    fileBytes: sourceBytes.slice(),
+    isStillImage,
+    srcWidth: probe.width,
+    srcHeight: probe.height,
+    duration: probe.duration,
+    gifFps: overrides.gifFps ?? config.gifFps,
+    minGifFps: overrides.minGifFps ?? config.minGifFps,
+    disableOptimizations: config.disableOptimizations,
+    maxGifKb: config.maxGifKb,
+    targetGifKb: config.targetGifKb,
+    standardRetriesEnabled: config.standardRetriesEnabled,
+    retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
+    retryAllowColorDrop: config.retryAllowColorDrop,
+    lossyOversize: config.lossyOversize,
+    lossyLevel: config.lossyLevel,
+    lossyMaxAttempts: config.lossyMaxAttempts,
+    partIndex,
+    parts,
+    partWidth,
+  })
+
+  const runWorkshopBatch = async (
+    batchGifFps: number,
+    batchRetryAllowFpsDrop: boolean,
+    label: string,
+  ): Promise<WorkerArtifactData[]> => {
+    emit('convert', label)
+    const batchMinFps = Math.min(config.minGifFps, Math.max(1, Math.floor(batchGifFps)))
+    return Promise.all(
+      Array.from({ length: parts }, (_, index) =>
+        pool.runTask(
+          'convertPart',
+          buildPartPayload(index, {
+            gifFps: batchGifFps,
+            minGifFps: batchMinFps,
+            retryAllowFpsDrop: batchRetryAllowFpsDrop,
+          }),
+          {
+            onProgress: workerProgress(index),
+            timeoutMs: 6 * 60_000,
+          },
+        ),
+      ),
+    )
+  }
+
+  let resultData: WorkerArtifactData[]
+  if (config.preset === 'featured') {
+    resultData = [
+      await pool.runTask(
+        'convertFeatured',
+        {
+          fileName: input.file.name,
+          fileBytes: sourceBytes.slice(),
+          isStillImage,
+          srcWidth: probe.width,
+          srcHeight: probe.height,
+          duration: probe.duration,
+          gifFps: config.gifFps,
+          minGifFps: config.minGifFps,
+          disableOptimizations: config.disableOptimizations,
+          maxGifKb: config.maxGifKb,
+          targetGifKb: config.targetGifKb,
+          standardRetriesEnabled: config.standardRetriesEnabled,
+          retryAllowFpsDrop: config.retryAllowFpsDrop,
+          retryAllowColorDrop: config.retryAllowColorDrop,
+          lossyOversize: config.lossyOversize,
+          lossyLevel: config.lossyLevel,
+          lossyMaxAttempts: config.lossyMaxAttempts,
+          featuredWidth: config.featuredWidth,
+        },
+        {
+          onProgress: workerProgress(0),
+          timeoutMs: 6 * 60_000,
+        },
+      ),
+    ]
+  } else if (config.preset === 'guide') {
+    resultData = [
+      await pool.runTask(
+        'convertGuide',
+        {
+          fileName: input.file.name,
+          fileBytes: sourceBytes.slice(),
+          isStillImage,
+          srcWidth: probe.width,
+          srcHeight: probe.height,
+          duration: probe.duration,
+          gifFps: config.gifFps,
+          minGifFps: config.minGifFps,
+          disableOptimizations: config.disableOptimizations,
+          maxGifKb: config.maxGifKb,
+          targetGifKb: config.targetGifKb,
+          standardRetriesEnabled: config.standardRetriesEnabled,
+          retryAllowFpsDrop: config.retryAllowFpsDrop,
+          retryAllowColorDrop: config.retryAllowColorDrop,
+          lossyOversize: config.lossyOversize,
+          lossyLevel: config.lossyLevel,
+          lossyMaxAttempts: config.lossyMaxAttempts,
+          guideSize,
+        },
+        {
+          onProgress: workerProgress(0),
+          timeoutMs: 6 * 60_000,
+        },
+      ),
+    ]
+  } else {
+    const firstPass = await runWorkshopBatch(
+      config.gifFps,
+      false,
+      `Workshop pass 1/2: baseline run at fps=${config.gifFps}.`,
+    )
+    const canRunSharedFpsPass =
+      config.retryAllowFpsDrop &&
+      !config.disableOptimizations &&
+      !isStillImage
+
+    if (!canRunSharedFpsPass) {
+      if (!config.retryAllowFpsDrop) {
+        emit('convert', 'Workshop shared-FPS adjustment skipped: FPS reduction is disabled.')
+      }
+      resultData = firstPass
+    } else {
+      const largest = firstPass.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
+      const fpsTargetKb = largest.sizeKb > config.maxGifKb ? config.maxGifKb : config.targetGifKb
+      const sharedFps = estimateFpsForKbTarget(
+        config.gifFps,
+        largest.sizeKb,
+        fpsTargetKb,
+        config.minGifFps,
+      )
+
+      if (sharedFps >= config.gifFps || largest.sizeKb <= fpsTargetKb) {
+        emit(
+          'convert',
+          `Workshop pass 1 settled without shared FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
         )
+        resultData = firstPass
+      } else {
+        emit(
+          'convert',
+          `Workshop largest slice ${largest.name} is ${largest.sizeKb.toFixed(1)}KB; re-encoding all parts at shared fps=${sharedFps}.`,
+        )
+        resultData = await runWorkshopBatch(
+          sharedFps,
+          false,
+          `Workshop pass 2/2: enforcing shared fps=${sharedFps} for all ${parts} parts.`,
+        )
+      }
+    }
+  }
 
   const sorted = resultData
     .map(toArtifact)

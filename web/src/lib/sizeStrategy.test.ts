@@ -21,6 +21,12 @@ describe('size strategy', () => {
     expect(candidates.every((candidate) => candidate.prefilter === '')).toBe(true)
   })
 
+  it('keeps a fixed fps in lossy candidates when fps drop is disabled', () => {
+    const candidates = buildLossyCandidates(18, 10, 2, 12, { allowFpsDrop: false })
+    expect(candidates.length).toBe(12)
+    expect(candidates.every((candidate) => candidate.fps === 18)).toBe(true)
+  })
+
   it('can disable fps reduction while keeping color reduction', () => {
     const candidates = buildStandardCandidates(15, 10, {
       allowFpsDrop: false,

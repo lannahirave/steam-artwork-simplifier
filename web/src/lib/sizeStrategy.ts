@@ -11,6 +11,10 @@ export interface LossyCandidate {
   prefilter: string
 }
 
+export interface LossyCandidateOptions {
+  allowFpsDrop?: boolean
+}
+
 const STANDARD_COLORS = [224, 192, 160, 128, 96, 64, 48, 32] as const
 
 export interface StandardCandidateOptions {
@@ -101,11 +105,17 @@ export function buildLossyCandidates(
   minGifFps: number,
   lossyLevel: number,
   maxAttempts: number,
+  options: LossyCandidateOptions = {},
 ): LossyCandidate[] {
   const fpsFloor = Math.max(1, minGifFps)
+  const allowFpsDrop = options.allowFpsDrop ?? true
   const fpsCandidates: number[] = []
-  for (let fps = baseFps; fps >= fpsFloor; fps -= 1) {
-    fpsCandidates.push(fps)
+  if (allowFpsDrop) {
+    for (let fps = baseFps; fps >= fpsFloor; fps -= 1) {
+      fpsCandidates.push(fps)
+    }
+  } else {
+    fpsCandidates.push(baseFps)
   }
   if (fpsCandidates.length === 0) {
     fpsCandidates.push(baseFps)

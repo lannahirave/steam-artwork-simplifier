@@ -641,6 +641,7 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
     options.minGifFps,
     options.lossyLevel,
     options.lossyMaxAttempts,
+    { allowFpsDrop: options.retryAllowFpsDrop },
   )
 
   for (let i = 0; i < lossyCandidates.length; i += 1) {
