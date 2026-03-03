@@ -16,8 +16,8 @@ export const DEFAULTS = {
   },
   guide: {
     size: 150,
-    maxGifKb: 3000,
-    targetGifKb: 2600,
+    maxGifKb: 5000,
+    targetGifKb: 4500,
   },
   disableOptimizations: false,
   standardRetriesEnabled: false,
