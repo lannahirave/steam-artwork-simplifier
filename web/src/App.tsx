@@ -985,16 +985,6 @@ function App() {
                   Allow color reduction
                 </label>
 
-                <label className="toggle" title="Enable extra lossy profiles when GIF is still above max size.">
-                  <input
-                    type="checkbox"
-                    checked={lossyEffective}
-                    disabled={optimizationDisabled}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
-                  />
-                  Enable lossy oversize fallback
-                </label>
-
                 {optimizationDisabled && (
                   <p className="config-note">
                     Optimization controls are inactive because Disable Optimizations is on.
@@ -1006,30 +996,51 @@ function App() {
                   </p>
                 )}
 
-                <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
-                  Lossy Level
-                  <input
-                    type="number"
-                    min={1}
-                    max={3}
-                    disabled={optimizationDisabled}
-                    value={config.lossyLevel}
-                    onChange={(event) => setConfig((prev) => ({ ...prev, lossyLevel: Number.parseInt(event.target.value, 10) || 1 }))}
-                  />
-                </label>
+                <div
+                  className="lossy-group"
+                  title="Extra lossy profiles used only when output is still above max GIF size."
+                >
+                  <label className="toggle lossy-group-toggle" title="Enable extra lossy profiles when GIF is still above max size.">
+                    <input
+                      type="checkbox"
+                      checked={lossyEffective}
+                      disabled={optimizationDisabled}
+                      onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
+                    />
+                    Enable lossy oversize fallback
+                  </label>
+                  <small className="field-note lossy-group-note">
+                    {lossyEffective
+                      ? 'Lossy mode can reduce palette and apply extra compression passes after standard optimization.'
+                      : 'Lossy mode is off. Only standard optimization passes will run.'}
+                  </small>
+                  <div className="lossy-group-fields">
+                    <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
+                      Lossy Level
+                      <input
+                        type="number"
+                        min={1}
+                        max={3}
+                        disabled={optimizationDisabled || !lossyEffective}
+                        value={config.lossyLevel}
+                        onChange={(event) => setConfig((prev) => ({ ...prev, lossyLevel: Number.parseInt(event.target.value, 10) || 1 }))}
+                      />
+                    </label>
 
-                <label title="Maximum lossy attempts when output is still above max GIF size.">
-                  Lossy Attempts
-                  <input
-                    type="number"
-                    min={1}
-                    disabled={optimizationDisabled}
-                    value={config.lossyMaxAttempts}
-                    onChange={(event) =>
-                      setConfig((prev) => ({ ...prev, lossyMaxAttempts: Number.parseInt(event.target.value, 10) || 1 }))
-                    }
-                  />
-                </label>
+                    <label title="Maximum lossy attempts when output is still above max GIF size.">
+                      Lossy Attempts
+                      <input
+                        type="number"
+                        min={1}
+                        disabled={optimizationDisabled || !lossyEffective}
+                        value={config.lossyMaxAttempts}
+                        onChange={(event) =>
+                          setConfig((prev) => ({ ...prev, lossyMaxAttempts: Number.parseInt(event.target.value, 10) || 1 }))
+                        }
+                      />
+                    </label>
+                  </div>
+                </div>
               </div>
             </section>
 

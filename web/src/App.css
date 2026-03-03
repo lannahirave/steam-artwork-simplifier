@@ -454,6 +454,37 @@ button:disabled {
   background: linear-gradient(120deg, rgba(255, 138, 60, 0.28), rgba(255, 138, 60, 0.14));
 }
 
+.form-grid > .lossy-group {
+  grid-column: 1 / -1;
+  border: 1px dashed var(--line-strong);
+  border-radius: var(--radius-md);
+  background: var(--field-bg);
+  padding: 0.66rem 0.72rem;
+  display: grid;
+  gap: 0.56rem;
+}
+
+.lossy-group-toggle {
+  margin: 0;
+}
+
+.lossy-group-note {
+  margin-top: -0.1rem;
+}
+
+.lossy-group-fields {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+.lossy-group-fields > label {
+  padding: 0.55rem 0.62rem;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: var(--panel-strong);
+}
+
 .warn-box,
 .log-box,
 .subpanel {
@@ -721,6 +752,10 @@ button:disabled {
   .results-grid.workshop-strip {
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0.35rem;
+  }
+
+  .lossy-group-fields {
+    grid-template-columns: 1fr;
   }
 }
 
