@@ -330,7 +330,12 @@ function App() {
     artifactViews.length === 5 &&
     artifactViews.every((item) => /^part_\d{2}\.gif$/i.test(item.artifact.name))
   const optimizationDisabled = config.disableOptimizations
+  const standardRetriesEffective = !optimizationDisabled && config.standardRetriesEnabled
   const retryControlsDisabled = optimizationDisabled || !config.standardRetriesEnabled
+  const precheckEffective = !optimizationDisabled && config.precheckEnabled
+  const retryFpsEffective = standardRetriesEffective && config.retryAllowFpsDrop
+  const retryColorEffective = standardRetriesEffective && config.retryAllowColorDrop
+  const lossyEffective = !optimizationDisabled && config.lossyOversize
 
   function resetConvertState(): void {
     setProgress([])
@@ -846,7 +851,7 @@ function App() {
                   <span className="toggle-row">
                     <input
                       type="checkbox"
-                      checked={config.precheckEnabled}
+                      checked={precheckEffective}
                       disabled={optimizationDisabled}
                       onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
                     />
@@ -895,7 +900,7 @@ function App() {
                 <label className="toggle" title="Enable standard recompression retries after initial encode.">
                   <input
                     type="checkbox"
-                    checked={config.standardRetriesEnabled}
+                    checked={standardRetriesEffective}
                     disabled={optimizationDisabled}
                     onChange={(event) =>
                       setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
@@ -910,7 +915,7 @@ function App() {
                 >
                   <input
                     type="checkbox"
-                    checked={config.retryAllowFpsDrop}
+                    checked={retryFpsEffective}
                     disabled={retryControlsDisabled}
                     onChange={(event) =>
                       setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
@@ -925,7 +930,7 @@ function App() {
                 >
                   <input
                     type="checkbox"
-                    checked={config.retryAllowColorDrop}
+                    checked={retryColorEffective}
                     disabled={retryControlsDisabled}
                     onChange={(event) =>
                       setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
@@ -937,12 +942,23 @@ function App() {
                 <label className="toggle" title="Enable extra lossy profiles when GIF is still above max size.">
                   <input
                     type="checkbox"
-                    checked={config.lossyOversize}
+                    checked={lossyEffective}
                     disabled={optimizationDisabled}
                     onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
                   />
                   Enable lossy oversize fallback
                 </label>
+
+                {optimizationDisabled && (
+                  <p className="config-note">
+                    Optimization controls are inactive because Disable Optimizations is on.
+                  </p>
+                )}
+                {!optimizationDisabled && !config.standardRetriesEnabled && (
+                  <p className="config-note">
+                    FPS/Color reduction toggles activate after enabling standard retries.
+                  </p>
+                )}
 
                 <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
                   Lossy Level

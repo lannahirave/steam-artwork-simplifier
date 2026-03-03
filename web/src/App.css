@@ -186,6 +186,13 @@ textarea {
   color: var(--ink);
 }
 
+.config-note {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--ink-soft);
+  grid-column: 1 / -1;
+}
+
 .form-grid > label,
 .patch-grid > label {
   padding: 0.66rem 0.72rem;
