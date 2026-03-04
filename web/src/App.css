@@ -809,6 +809,28 @@ button:disabled {
   font-size: 0.84rem;
 }
 
+.app-disclaimer {
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+  margin-top: 0.25rem;
+  color: var(--ink-soft);
+  font-size: 0.76rem;
+  line-height: 1.4;
+}
+
+.app-disclaimer p {
+  margin: 0;
+}
+
+.app-disclaimer p + p {
+  margin-top: 0.32rem;
+}
+
+[data-theme='dark'] .app-disclaimer {
+  border-top-color: rgba(165, 195, 224, 0.35);
+  color: #d8e5f3;
+}
+
 .guides-intro {
   margin: 0.1rem 0 0.9rem;
   color: var(--ink-soft);
