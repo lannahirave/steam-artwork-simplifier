@@ -5,13 +5,48 @@ Utility scripts and docs for preparing Steam profile artwork assets:
 - featured artwork (single wide GIF)
 - optional hex patching workflows used in this repo
 
+This repository now includes two paths:
+- Legacy CLI tooling (Python scripts in repo root)
+- New browser app (`web/`) built with TypeScript + React 19 + FFmpeg WASM
+
 ## What is included
 
+- `web/`: browser-only toolkit (React 19 + TypeScript + ffmpeg.wasm) with media/image conversion UI, patch tools, preview, and ZIP export.
 - `video_parts_pipeline.py`: builds GIFs from a source video using `ffmpeg`/`ffprobe`, with size checks and optional EOF-byte patching.
 - `steam_hex_patch.py`: patches the last byte of target files (default `0x21`), with backup and dry-run support.
 - `steam_hex_edit_header.py`: edits GIF header width/height bytes (`6-9`) and optional EOF byte.
 - `autofill/*.js`: browser console helpers for Steam upload forms.
 - `information/*.md`: workflow docs for workshop, featured artwork, and header hex-edit.
+
+## New Web App (`web/`)
+
+```bash
+cd .\web
+npm install
+npm run dev
+```
+
+Notes:
+- Requires cross-origin isolation headers for fast ffmpeg.wasm mode.
+- The Vite dev/preview config in `web/vite.config.ts` already sets:
+  - `Cross-Origin-Opener-Policy: same-origin`
+  - `Cross-Origin-Embedder-Policy: require-corp`
+- Full web app docs: `web/README.md`
+
+Supported conversion sources in the web app:
+- Video files (`video/*` + common extensions)
+- Image files (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+
+Web app highlights:
+- Workshop preset (`part_01.gif` .. `part_05.gif`) and featured preset (`featured.gif`)
+- Live conversion progress with worker-stage logs
+- Elapsed conversion timing (`Time: ...` and `Output ready in ...`)
+- Optional precheck and retry controls (both default off)
+- FPS estimate button that can auto-apply a practical FPS target
+- FPS-first size strategy to preserve color quality as long as possible
+- Built-in Guides tab with step-by-step workflows
+- Output cards include size, final FPS, and color-reduction metadata
+- ZIP export and per-file downloads
 
 ## Requirements
 
@@ -85,6 +120,13 @@ Performance notes:
 - `information/workshop_showcase.md`
 - `information/featured_artwork.md`
 - `information/hex_edit_header.md`
+- `docs/README.md`
+- `docs/PROJECT_OVERVIEW.md`
+- `docs/TECHNICAL_ARCHITECTURE.md`
+- `docs/CONVERSION_PIPELINE.md`
+- `docs/DEPLOYMENT_RUNBOOK.md`
+- `docs/TROUBLESHOOTING.md`
+- `docs/CHROME_MCP_TESTING.md`
 
 ## License
 

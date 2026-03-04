@@ -9,12 +9,24 @@ Checked on March 1, 2026.
 - Header hex-edit guide: `information/hex_edit_header.md`
 
 ## Scripts
+- Web app (TypeScript + React 19 + ffmpeg.wasm): `web/`
 - Main pipeline: `video_parts_pipeline.py`
 - Standalone hex patch tool: `steam_hex_patch.py`
 - Header hex-edit tool: `steam_hex_edit_header.py`
 - Workshop autofill JS: `autofill/steam_upload_autofill_workshop.js`
 - Featured autofill JS: `autofill/steam_upload_autofill_featured.js`
 - Legacy autofill entrypoint: `autofill/steam_upload_autofill.js`
+
+## New web app quick start
+```bash
+cd .\web
+npm install
+npm run dev
+```
+
+Required headers for fast WASM mode:
+- `Cross-Origin-Opener-Policy: same-origin`
+- `Cross-Origin-Embedder-Policy: require-corp`
 
 ## Quick start
 ```bash
