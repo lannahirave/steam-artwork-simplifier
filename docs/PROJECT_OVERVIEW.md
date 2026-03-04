@@ -51,7 +51,7 @@ The browser app is the primary modern workflow. Legacy scripts remain available 
 
 - No backend required for conversion features.
 - Core media processing runs in browser workers using ffmpeg.wasm.
-- Production deployment currently targets Cloudflare Workers static assets + worker headers.
+- Production deployment currently targets Netlify, auto-deployed on push to `main`.
 
 ## Where To Read Next
 

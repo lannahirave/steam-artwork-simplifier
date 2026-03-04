@@ -8,7 +8,7 @@
 - Media engine: `@ffmpeg/ffmpeg` (WASM core loaded in Web Workers)
 - Packaging: `jszip`
 - Tests: Vitest + Playwright smoke tests
-- Hosting: Cloudflare Workers static assets + header worker
+- Hosting: Netlify static hosting (auto deploy on push to `main`)
 
 ## High-Level Components
 
@@ -20,7 +20,7 @@
 6. ffmpeg worker runtime (`web/src/workers/ffmpeg.worker.ts`)
 7. Patch utilities (`web/src/lib/patch.ts`)
 8. Zip export utility (`web/src/lib/zip.ts`)
-9. Deployment worker (`web/cloudflare/worker.ts`)
+9. Deployment config and headers (`netlify.toml`, `web/public/_headers`)
 
 ## UI Architecture
 
@@ -126,9 +126,13 @@ Stability hardening includes:
 
 ## Deployment Architecture
 
-`web/wrangler.toml` configures static assets from `web/dist`.
+`netlify.toml` configures Netlify build/publish:
 
-`web/cloudflare/worker.ts` forwards asset responses and injects:
+- base: `web`
+- command: `npm run build`
+- publish: `dist`
+
+`web/public/_headers` injects:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
