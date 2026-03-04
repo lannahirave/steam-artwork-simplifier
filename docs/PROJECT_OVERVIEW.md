@@ -2,60 +2,78 @@
 
 ## Goal
 
-Provide a single toolkit for creating Steam artwork GIFs with two execution paths:
+Provide one toolkit for Steam artwork preparation with two execution paths:
 
-1. Legacy CLI path (Python + desktop ffmpeg/ffprobe)
-2. Browser SPA path (`web/`) using TypeScript + React 19 + ffmpeg.wasm
-
-The browser app is the primary modern workflow. Legacy scripts remain available for compatibility and migration safety.
+1. Browser SPA (`web/`) with React + ffmpeg.wasm (primary path)
+2. Legacy Python CLI scripts (compatibility path)
 
 ## Repository Map
 
-- `web/`: React 19 + TypeScript app, browser-only conversion and patch tools.
-- `video_parts_pipeline.py`: legacy video-to-GIF pipeline.
-- `steam_hex_patch.py`: legacy EOF byte patch utility.
-- `steam_hex_edit_header.py`: legacy GIF header width/height editor.
-- `autofill/*.js`: Steam upload autofill snippets.
-- `information/*.md` and `information/how_to_run.html`: legacy usage docs.
-- `docs/`: technical and operational documentation for current architecture.
+- `web/`: browser app (conversion, patching, preview, snippets, guides).
+- `web/src/lib/*`: conversion defaults, orchestration, worker pool, sizing, patch, validation.
+- `web/src/workers/ffmpeg.worker.ts`: ffmpeg worker runtime.
+- `web/src/components/panels/*`: tab panels (Convert, Patch Tools, Steam Helpers, Guides).
+- `video_parts_pipeline.py`: legacy video->GIF pipeline.
+- `steam_hex_patch.py`: legacy EOF patch utility.
+- `steam_hex_edit_header.py`: legacy GIF header editor.
+- `autofill/*.js`: legacy Steam autofill snippets.
+- `docs/`: technical + operational docs.
 
 ## Product Capabilities
 
-1. Convert source media (video + images) to Steam-compatible GIF outputs.
-2. Supported conversion sources:
-   - Video files (`video/*` + common extensions)
-   - Image files (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
-3. Workshop preset:
-   - 5 horizontal slices
-   - 150px width per slice by default
-   - output names `part_01.gif` to `part_05.gif`
-4. Featured preset:
-   - single `featured.gif`
-   - 630px width by default
-5. Guide preset:
-   - single centered square `guide.gif`
-   - fixed output size `195x195`
-6. Optional output patching:
+1. Convert videos/images to Steam-ready GIF outputs.
+2. Presets:
+   - Workshop Showcase (default 5 split outputs)
+   - Featured Showcase (single wide output)
+   - Artwork Showcase (fixed 506 + 100 split)
+   - Guide (fixed 195x195 output)
+3. Input support:
+   - video (`video/*` + common extensions)
+   - image (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+4. Worker-based conversion with progress stages and cancellation.
+5. FPS estimate and auto-apply workflow.
+6. Retry and quality controls:
+   - standard retries (optional)
+   - FPS reduction toggle
+   - color reduction toggle
+   - lossy oversize fallback
+7. Optional output patching during conversion:
    - EOF byte patch
    - GIF header width/height patch
-7. Standalone patch tools for existing files.
-8. Steam helper snippet copy/paste workflow.
-9. In-app previews + per-file download + ZIP export.
-10. Live progress panel with worker-stage logs and progress bar.
-11. Output metadata shown per GIF (size, final FPS, color reduction).
-12. Run-time visibility: elapsed conversion timer and completion timing summary.
-13. App header version is sourced from `web/package.json` and shown as `Steam Artwork Studio Vx.y.z`.
-14. Size tuning prioritizes FPS reduction before color reduction for better visual fidelity.
+8. Standalone patch tools for existing files.
+9. Steam upload helper snippets with copy buttons and upload links.
+10. Preview cards with metadata (size, final FPS, color reduction).
+11. Per-file download plus ZIP download.
+12. Guide tab with workflow tips and Steam upload URLs.
+13. Theme modes: auto/light/dark.
+14. App version shown in UI, sourced from `web/package.json`.
+
+## Output Naming Convention
+
+Conversion output names are source-based:
+
+- Workshop/Showcase parts: `<originalFileName>_part_01.gif`, `_part_02.gif`, ...
+- Featured: `<originalFileName>_featured.gif`
+- Guide: `<originalFileName>_guide.gif`
+- Conversion ZIP: `<originalFileName>.zip`
+
+Patch output ZIP names are fixed:
+
+- `eof-patch-output.zip`
+- `header-patch-output.zip`
 
 ## Runtime Model
 
-- No backend required for conversion features.
-- Core media processing runs in browser workers using ffmpeg.wasm.
-- Production deployment currently targets Netlify, auto-deployed on push to `main`.
+- Browser app is fully client-side (no backend conversion service).
+- ffmpeg.wasm runs in dedicated Web Workers.
+- Cross-origin isolation (COOP/COEP) is mandatory for conversion runtime.
+- Deploy targets:
+  - Netlify (auto deploy on push to `main`)
+  - Optional Cloudflare Worker static-assets deployment
 
 ## Where To Read Next
 
-- Architecture: `docs/TECHNICAL_ARCHITECTURE.md`
-- Conversion internals: `docs/CONVERSION_PIPELINE.md`
-- Deployment and ops: `docs/DEPLOYMENT_RUNBOOK.md`
-- Debugging guide: `docs/TROUBLESHOOTING.md`
+- `docs/TECHNICAL_ARCHITECTURE.md`
+- `docs/CONVERSION_PIPELINE.md`
+- `docs/DEPLOYMENT_RUNBOOK.md`
+- `docs/TROUBLESHOOTING.md`

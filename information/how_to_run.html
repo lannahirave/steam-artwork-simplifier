@@ -3,88 +3,32 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>How To Run</title>
+  <title>Steam Artwork Toolkit - Run Guide</title>
 </head>
 <body>
-  <h1>How To Run (Short)</h1>
+  <h1>Steam Artwork Toolkit - Run Guide</h1>
 
-  <h2>0) New Web App (TS + React 19 + FFmpeg WASM)</h2>
-  <p>Browser-based toolkit lives in <code>.\web\</code>.</p>
+  <h2>Primary workflow: Web app</h2>
+  <p>Use the browser app in <code>web/</code>.</p>
   <pre><code>cd .\web
 npm install
 npm run dev</code></pre>
-  <p><strong>Important:</strong> fast mode requires cross-origin isolation headers:</p>
+  <p>Required response headers:</p>
   <ul>
     <li><code>Cross-Origin-Opener-Policy: same-origin</code></li>
     <li><code>Cross-Origin-Embedder-Policy: require-corp</code></li>
   </ul>
-  <p>For local dev/preview this is already configured in <code>web/vite.config.ts</code>.</p>
 
-  <h2>1) Before you run (Python + FFmpeg)</h2>
-  <p><strong>Python</strong> runs the local automation scripts:</p>
+  <h2>Legacy workflow: Python scripts</h2>
+  <p>Legacy scripts remain available for compatibility.</p>
+  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
+python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured</code></pre>
+
+  <h2>More docs</h2>
   <ul>
-    <li><code>video_parts_pipeline.py</code></li>
-    <li><code>steam_hex_patch.py</code></li>
-    <li><code>steam_hex_edit_header.py</code></li>
+    <li><code>README.md</code></li>
+    <li><code>web/README.md</code></li>
+    <li><code>docs/README.md</code></li>
   </ul>
-  <p><strong>FFmpeg</strong> does the actual media work (video -&gt; GIF, resize, palette, probe).</p>
-  <p>The scripts use <code>FFMPEG_BIN</code> from <code>.env</code> (current default: <code>D:\ffmpeg\bin</code>).</p>
-  <p>Download links:</p>
-  <ul>
-    <li><a href="https://www.python.org/downloads/">Python</a></li>
-    <li><a href="https://ffmpeg.org/download.html">FFmpeg official site</a></li>
-  </ul>
-
-  <p>Quick checks:</p>
-  <pre><code>python --version</code></pre>
-  <pre><code>D:\ffmpeg\bin\ffmpeg.exe -version</code></pre>
-  <pre><code>D:\ffmpeg\bin\ffprobe.exe -version</code></pre>
-
-  <p>If any command fails, fix Python/FFmpeg path first, then run the steps below.</p>
-
-  <h2>2) Generate GIFs from video</h2>
-  <p>Workshop (5 parts, 150px each):</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop</code></pre>
-
-  <p>Featured (single 630px):</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured</code></pre>
-
-  <p>Brief:</p>
-  <ul>
-    <li>Script reads defaults from <code>.env</code>.</li>
-    <li>Precheck runs first (to catch likely too-large outputs).</li>
-  </ul>
-  <p>If needed, bypass precheck:</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured --skip-precheck</code></pre>
-
-  <h2>3) Autofill Steam upload page (DevTools Console)</h2>
-  <ul>
-    <li>Workshop: <code>autofill/steam_upload_autofill_workshop.js</code></li>
-    <li>Featured: <code>autofill/steam_upload_autofill_featured.js</code></li>
-  </ul>
-  <p>Brief: sets required fields and checkbox automatically.</p>
-
-  <h2>4) Hex tools</h2>
-  <p>Patch EOF byte only:</p>
-  <pre><code>python steam_hex_patch.py .\media\my_folder --recursive --ext .gif</code></pre>
-
-  <p>Patch GIF header width/height (+ optional EOF):</p>
-  <pre><code>python steam_hex_edit_header.py .\media\my_folder --recursive</code></pre>
-
-  <h2>5) Where output appears</h2>
-  <p>Default output path:</p>
-  <pre><code>.\media\&lt;input_file_name&gt;\output\</code></pre>
-
-  <h2>6) Speed / CPU usage</h2>
-  <p>Use all available CPU automatically:</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --max-workers 0 --ffmpeg-threads 0</code></pre>
-  <p>Equivalent <code>.env</code> defaults:</p>
-  <pre><code>GIF_MAX_WORKERS=0
-FFMPEG_THREADS=0
-USE_NVIDIA=false</code></pre>
-  <p>Optional NVIDIA decode (off by default):</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --use-nvidia</code></pre>
-  <p>Oversize lossy fallback (runs only if GIF is still above max KB):</p>
-  <pre><code>python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop --lossy-oversize --lossy-level 2 --lossy-max-attempts 24</code></pre>
 </body>
 </html>

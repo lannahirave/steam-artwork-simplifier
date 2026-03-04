@@ -25,7 +25,7 @@ Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + f
 - Steam helper snippets with copy buttons and upload links
 - Built-in Guides tab
 - Per-file downloads + ZIP archive export
-- App header shows version from `package.json` (currently `V1.0.1`)
+- App header shows version from `package.json` (displayed as `Vx.y.z`)
 
 ## Naming Rules (Downloads)
 

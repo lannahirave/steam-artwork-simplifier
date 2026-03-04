@@ -1,77 +1,99 @@
 # Deployment Runbook
 
-## Target
+## Deployment Targets
 
-Netlify production deployment from `web/dist`, triggered automatically on push to `main`.
+1. Netlify (primary production path)
+2. Cloudflare Worker assets (optional/fallback)
 
 ## Prerequisites
 
-1. Node.js 20+
-2. npm
-3. Netlify site connected to this GitHub repository
-4. Netlify production branch set to `main`
+- Node.js 20+
+- npm
+- Successful local build from `web/`
 
-## Local Build and Test
+## Local Verification Before Deploy
 
 From `web/`:
 
 ```bash
 npm install
 npm run build
-npm run test -- --run
+npm run test
 ```
 
-## Production Deploy (Automatic)
+## Netlify (Primary)
 
-Production deploy happens automatically when commits land on `main`.
+Production deploy is automatic on push to `main`.
 
-Repository config for Netlify:
+Root `netlify.toml` settings:
 
-- `netlify.toml`
-  - `base = "web"`
-  - `command = "npm run build"`
-  - `publish = "dist"`
+- `base = "web"`
+- `command = "npm run build"`
+- `publish = "dist"`
+
+### Netlify setup checklist
+
+1. Connect repository to Netlify.
+2. Set production branch to `main`.
+3. Confirm build base is `web` and publish is `dist`.
+
+### Netlify deployment flow
+
+1. Merge/push to `main`.
+2. Wait for Netlify production deploy completion.
+3. Open production URL.
+4. Validate conversion works (not just page load).
+
+## Cloudflare Worker (Optional)
+
+Cloudflare config:
+
+- `web/wrangler.toml`
+- `web/cloudflare/worker.ts`
+
+Deploy command:
+
+```bash
+cd web
+npm run deploy
+```
+
+This builds app and deploys Wrangler worker serving `dist` assets.
 
 ## Required Runtime Headers
 
-Defined in `web/public/_headers`:
+Conversion requires cross-origin isolation:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
 
-Without these headers, the app blocks conversion and shows isolation guidance.
+For Cloudflare path, worker injects them.
+For any host, ensure headers are present on HTML and assets.
 
-## Verification Checklist
+## Production Verification Checklist
 
-1. Push to `main`.
-2. Wait for Netlify production deploy to complete.
-3. Open production URL.
-4. Confirm app loads without isolation error.
-5. Run a featured conversion on a small fixture.
-6. Run workshop conversion and confirm 5 outputs + ZIP.
-7. Check response headers:
-
-```bash
-curl -I https://<your-netlify-site>.netlify.app
-```
-
-## Optional Manual Deploy (Fallback)
-
-If Netlify auto deploy is unavailable, deploy from Netlify UI or CLI using the same build/publish settings from `netlify.toml`.
+1. App loads without isolation blocking screen.
+2. Convert one small source with `Featured Showcase`.
+3. Convert one source with `Workshop Showcase` and verify multi-output strip.
+4. Confirm `Download all (ZIP archive)` works.
+5. Confirm output file naming is source-based (`<source>_...`).
+6. Confirm Steam helper links are clickable and correct.
 
 ## Rollback
 
-Rollback is commit-based:
+Use commit-level rollback:
 
-1. Revert `main` to a known-good commit (or create a revert commit).
-2. Push to `main`.
-3. Netlify auto-deploys the reverted state.
+1. Revert to known-good commit on `main`.
+2. Push revert commit.
+3. Netlify auto-redeploys reverted state.
 
-## Common Operational Issues
+## Common Deployment Issues
 
-1. Missing COOP/COEP headers:
-   - ensure `web/public/_headers` is present and deployed
-2. Wrong folder deployed:
-   - ensure `netlify.toml` uses `base = "web"` and `publish = "dist"`
-3. Stale asset behavior:
-   - force reload browser cache after deploy
+1. Wrong folder deployed:
+   - verify Netlify base/publish values from `netlify.toml`
+2. Isolation blocked in production:
+   - verify COOP/COEP headers on responses
+3. Site updated but behavior stale:
+   - hard refresh and clear cache
+4. Build succeeds locally but fails in CI:
+   - match Node.js version and run `npm ci`/`npm install` cleanly
