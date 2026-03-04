@@ -1,46 +1,88 @@
 # Steam Artwork Toolkit Web
 
-React 19 + TypeScript + Vite browser app for Steam artwork workflows.
+Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + ffmpeg.wasm.
 
 ## Features
 
-- Media/Image -> GIF conversion in browser via `ffmpeg.wasm` (`@ffmpeg/core-mt`)
+- Media/image to GIF conversion in browser workers
 - Presets:
-  - `workshop`: 5 sliced GIFs (`part_01.gif` .. `part_05.gif`)
-  - `featured`: single `featured.gif`
-  - `guide`: single centered square `guide.gif` (`195x195`)
-- Source support:
-  - video (`video/*` + common extensions)
+  - `Workshop Showcase` (5x150 slices by default)
+  - `Featured Showcase` (single 630px default)
+  - `Artwork Showcase` (fixed 506 + 100 split)
+  - `Guide` (fixed 195x195)
+- Supported input sources:
+  - video (`video/*` + common video extensions)
   - image (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
-- Size enforcement with configurable standard + lossy fallback ladders
-- FPS estimate/apply button for quick practical FPS targeting
-- FPS-priority reduction path before palette reduction when oversize
-- Output metadata on cards: size, final FPS, and color reduction
-- Elapsed run timing in progress panel and results summary
-- Optional EOF patch and optional GIF header patch during conversion
-- Standalone patch tools:
+- Live progress with stage logs and elapsed timer
+- FPS estimate + auto-apply from probe/duration/size targets
+- Worker-pool conversion with shared-FPS pass for split presets
+- Optional precheck, standard retries, FPS reduction, color reduction, and lossy oversize fallback
+- Output metadata per GIF: size, final FPS, color reduction
+- Optional output patching during conversion:
   - EOF byte patch
-  - GIF header width/height patch (+ optional EOF patch)
-- Steam autofill snippets with copy buttons
-- Built-in Guides tab with workflow steps for convert/patch/upload use-cases
-- Preview grid, per-file download, and ZIP export
-- App header displays the running version from `package.json` (for example `Steam Artwork Studio V1.0.0`)
+  - GIF header width/height patch
+- Standalone patch tools for existing files
+- Steam helper snippets with copy buttons and upload links
+- Built-in Guides tab
+- Per-file downloads + ZIP archive export
+- App header shows version from `package.json` (currently `V1.0.1`)
+
+## Naming Rules (Downloads)
+
+Output filenames always use the source file base name:
+
+- Workshop/Showcase parts: `<originalFileName>_part_01.gif`, `_part_02.gif`, ...
+- Featured: `<originalFileName>_featured.gif`
+- Guide: `<originalFileName>_guide.gif`
+- Conversion ZIP: `<originalFileName>.zip`
+
+Patch tool ZIP names are fixed:
+
+- `eof-patch-output.zip`
+- `header-patch-output.zip`
+
+## Preset Defaults
+
+- Workshop:
+  - parts: `5`
+  - part width: `150`
+  - max/target: `5000KB / 4500KB`
+- Featured:
+  - width: `630`
+  - max/target: `4500KB / 4500KB`
+- Artwork Showcase:
+  - split widths: `506 + 100`
+  - max/target: `5000KB / 4500KB`
+- Guide:
+  - size: `195x195`
+  - max/target: `2000KB / 2000KB`
+
+## Size and Retry Behavior
+
+- Default mode is speed-first with standard retries OFF.
+- If standard retries are ON, retries can use FPS/color reductions depending on toggles.
+- If output is still oversize and lossy fallback is ON, lossy ladder attempts run.
+- If output still exceeds max size, output is kept and shown with warning (not dropped).
+
+## Steam Helper Upload URLs
+
+- Workshop: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
+- Artwork / Featured / Screenshot: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 
 ## Requirements
 
 - Node.js 20+
-- Chromium-class browser (desktop Chrome/Edge)
+- npm
+- Chromium-class desktop browser (Chrome/Edge recommended)
 
 ## Cross-Origin Isolation (Required)
 
-Fast mode requires `SharedArrayBuffer`, so you must serve with:
+Required response headers:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
 
-This repository already sets these headers for `vite dev` and `vite preview` in `vite.config.ts`.
-
-For production hosting, configure the same headers in your web server/CDN.
+Already configured for local dev and preview in `vite.config.ts`.
 
 ## Run
 
@@ -48,8 +90,6 @@ For production hosting, configure the same headers in your web server/CDN.
 npm install
 npm run dev
 ```
-
-Open the printed local URL.
 
 ## Scripts
 
@@ -60,16 +100,15 @@ npm run preview
 npm run lint
 npm run test
 npm run test:e2e
+npm run deploy
+npm run bench:workshop
 ```
 
-## Notes
+## Deployment Notes
 
-- This app is intentionally browser-only: no backend required.
-- Existing Python scripts in the repo remain available for side-by-side migration.
-- Add `?noiso=1` to the URL to simulate the isolation-blocking screen for smoke tests.
-- `Enable precheck` and `Enable standard retries` default to off.
-- Workshop preview is rendered as a compact single-row strip for quick visual checks.
-- With standard retries off, speed-first mode exits once outputs are below hard max size.
+- Netlify is configured from repo root (`netlify.toml`) with `base = "web"`, `publish = "dist"`.
+- Production deploy on Netlify is triggered by pushes to `main`.
+- Optional Cloudflare deploy is available with `npm run deploy` (Wrangler).
 
 ## Deep Docs
 
@@ -80,3 +119,11 @@ npm run test:e2e
 - `../docs/DEPLOYMENT_RUNBOOK.md`
 - `../docs/TROUBLESHOOTING.md`
 - `../docs/CHROME_MCP_TESTING.md`
+
+## Disclaimer
+
+Steam and the Steam logo are trademarks and/or registered trademarks of Valve
+Corporation in the United States and/or other countries.
+
+This project is an independent, unofficial tool and is not affiliated with,
+endorsed by, sponsored by, or approved by Valve Corporation.
