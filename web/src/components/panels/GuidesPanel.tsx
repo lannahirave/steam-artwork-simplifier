@@ -4,6 +4,21 @@ interface GuidesPanelProps {
   guides: GuideSection[]
 }
 
+const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
+const URL_WHOLE_PATTERN = /^https?:\/\/[^\s]+$/
+
+function renderTextWithLinks(text: string) {
+  return text.split(URL_PARTS_PATTERN).map((part, index) =>
+    URL_WHOLE_PATTERN.test(part) ? (
+      <a key={`${part}-${index}`} href={part} target="_blank" rel="noreferrer">
+        {part}
+      </a>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
+  )
+}
+
 export function GuidesPanel(props: GuidesPanelProps) {
   const { guides } = props
 
@@ -23,10 +38,10 @@ export function GuidesPanel(props: GuidesPanelProps) {
             </div>
             <ol className="guide-steps">
               {guide.steps.map((step) => (
-                <li key={step}>{step}</li>
+                <li key={step}>{renderTextWithLinks(step)}</li>
               ))}
             </ol>
-            {guide.tip && <p className="guide-tip">{guide.tip}</p>}
+            {guide.tip && <p className="guide-tip">{renderTextWithLinks(guide.tip)}</p>}
           </article>
         ))}
       </div>
