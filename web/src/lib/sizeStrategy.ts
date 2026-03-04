@@ -1,0 +1,165 @@
+export interface StandardCandidate {
+  fps: number
+  colors: number
+}
+
+export interface LossyCandidate {
+  fps: number
+  colors: number
+  dither: string
+  statsMode: 'single' | 'diff'
+  prefilter: string
+}
+
+export interface LossyCandidateOptions {
+  allowFpsDrop?: boolean
+}
+
+const STANDARD_COLORS = [224, 192, 160, 128, 96, 64, 48, 32] as const
+
+export interface StandardCandidateOptions {
+  allowFpsDrop?: boolean
+  allowColorDrop?: boolean
+}
+
+export function estimateFpsForKbTarget(
+  currentFps: number,
+  currentSizeKb: number,
+  targetSizeKb: number,
+  minGifFps: number,
+): number {
+  const minFps = Math.max(1, minGifFps)
+  if (!Number.isFinite(currentFps) || currentFps <= 0) {
+    return minFps
+  }
+  if (!Number.isFinite(currentSizeKb) || currentSizeKb <= 0) {
+    return Math.max(minFps, Math.floor(currentFps))
+  }
+  if (!Number.isFinite(targetSizeKb) || targetSizeKb <= 0) {
+    return minFps
+  }
+
+  const scaled = Math.floor((currentFps * targetSizeKb) / currentSizeKb)
+  return Math.max(minFps, Math.min(Math.floor(currentFps), scaled))
+}
+
+export function buildStandardCandidates(
+  baseFps: number,
+  minGifFps: number,
+  options: StandardCandidateOptions = {},
+): StandardCandidate[] {
+  const allowFpsDrop = options.allowFpsDrop ?? true
+  const allowColorDrop = options.allowColorDrop ?? true
+
+  if (!allowFpsDrop && !allowColorDrop) {
+    return []
+  }
+
+  const fpsFloor = Math.max(1, minGifFps)
+  const reducedFpsCandidates: number[] = []
+  if (allowFpsDrop) {
+    for (let fps = baseFps - 1; fps >= fpsFloor; fps -= 1) {
+      reducedFpsCandidates.push(fps)
+    }
+  }
+
+  const unique = new Set<string>()
+  const out: StandardCandidate[] = []
+  const pushCandidate = (fps: number, colors: number): void => {
+    if (fps === baseFps && colors === 256) {
+      // Initial encode already uses this combination.
+      return
+    }
+    const key = `${fps}:${colors}`
+    if (unique.has(key)) {
+      return
+    }
+    unique.add(key)
+    out.push({ fps, colors })
+  }
+
+  // Prefer FPS-only reduction before touching palette colors.
+  for (const fps of reducedFpsCandidates) {
+    pushCandidate(fps, 256)
+  }
+
+  if (allowColorDrop) {
+    for (const colors of STANDARD_COLORS) {
+      pushCandidate(baseFps, colors)
+    }
+  }
+
+  if (allowFpsDrop && allowColorDrop) {
+    for (const fps of reducedFpsCandidates) {
+      for (const colors of STANDARD_COLORS) {
+        pushCandidate(fps, colors)
+      }
+    }
+  }
+
+  return out
+}
+
+export function buildLossyCandidates(
+  baseFps: number,
+  minGifFps: number,
+  lossyLevel: number,
+  maxAttempts: number,
+  options: LossyCandidateOptions = {},
+): LossyCandidate[] {
+  const fpsFloor = Math.max(1, minGifFps)
+  const allowFpsDrop = options.allowFpsDrop ?? true
+  const fpsCandidates: number[] = []
+  if (allowFpsDrop) {
+    for (let fps = baseFps; fps >= fpsFloor; fps -= 1) {
+      fpsCandidates.push(fps)
+    }
+  } else {
+    fpsCandidates.push(baseFps)
+  }
+  if (fpsCandidates.length === 0) {
+    fpsCandidates.push(baseFps)
+  }
+
+  const level = Math.min(3, Math.max(1, lossyLevel))
+
+  const colorsCandidates =
+    level === 1 ? [64, 48, 32, 24] : level === 2 ? [64, 48, 32, 24, 16] : [64, 48, 32, 24, 16, 12]
+  const ditherCandidates =
+    level === 1
+      ? ['bayer:bayer_scale=5', 'none']
+      : ['bayer:bayer_scale=5', 'bayer:bayer_scale=3', 'none']
+  const statsModes: Array<'single' | 'diff'> = level === 1 ? ['single'] : ['single', 'diff']
+  const prefilters = level === 3 ? ['', 'gblur=sigma=0.3', 'gblur=sigma=0.6'] : level === 2 ? ['', 'gblur=sigma=0.3'] : ['']
+
+  const out: LossyCandidate[] = []
+  const unique = new Set<string>()
+
+  for (const fps of fpsCandidates) {
+    for (const prefilter of prefilters) {
+      for (const statsMode of statsModes) {
+        for (const dither of ditherCandidates) {
+          for (const colors of colorsCandidates) {
+            const key = `${fps}:${colors}:${dither}:${statsMode}:${prefilter}`
+            if (unique.has(key)) {
+              continue
+            }
+            unique.add(key)
+            out.push({
+              fps,
+              colors,
+              dither,
+              statsMode,
+              prefilter,
+            })
+            if (out.length >= maxAttempts) {
+              return out
+            }
+          }
+        }
+      }
+    }
+  }
+
+  return out
+}

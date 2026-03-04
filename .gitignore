@@ -1,2 +1,4 @@
 __pycache__/
-media/
+media/*
+!media/test-fixtures/
+!media/test-fixtures/**
