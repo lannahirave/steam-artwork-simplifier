@@ -46,7 +46,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Upload source media (video, gif, png, webp, jpg, jpeg, bmp).',
       'Tune Featured Width and FPS if needed.',
       'Run conversion and check size/FPS/color metadata under output.',
-      'Download featured.gif directly or as part of ZIP.',
+      'Download originalFileName_featured.gif directly or as part of ZIP.',
     ],
     tip: 'Start with lower FPS before increasing lossy settings for better visual quality.',
   },
@@ -99,7 +99,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Paste one snippet and run it.',
       'Verify fields and finish upload.',
     ],
-    tip: 'Snippets are intended for Steam upload pages only.',
+    tip: 'Snippets are intended for Steam upload pages only. Upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
   },
 ]
 
@@ -261,4 +261,3 @@ export function formatElapsed(ms: number): string {
   }
   return `${minutes}:${String(seconds).padStart(2, '0')}`
 }
-

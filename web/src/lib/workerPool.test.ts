@@ -73,13 +73,14 @@ class FakeWorker {
     }
 
     setTimeout(() => {
+      const sourceBaseName = message.payload.fileName.replace(/\.[^.]+$/, '')
       reply({
         id: message.id,
         event: 'result',
         payload: {
           command: 'convertFeatured',
           data: {
-            name: 'featured.gif',
+            name: `${sourceBaseName}_featured.gif`,
             fileBytes: new Uint8Array([1, 2, 3]),
             sizeKb: 0.01,
             width: 630,

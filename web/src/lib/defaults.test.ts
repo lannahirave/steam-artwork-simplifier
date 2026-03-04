@@ -31,6 +31,17 @@ describe('preset defaults', () => {
     expect(showcase.targetGifKb).toBe(4500)
   })
 
+  it('uses 2000KB limits for guide preset', () => {
+    const workshop = getDefaultConfig('workshop')
+    const guideFromPresetSwitch = applyPreset(workshop, 'guide')
+    const guideFromDefault = getDefaultConfig('guide')
+
+    expect(guideFromPresetSwitch.maxGifKb).toBe(2000)
+    expect(guideFromPresetSwitch.targetGifKb).toBe(2000)
+    expect(guideFromDefault.maxGifKb).toBe(2000)
+    expect(guideFromDefault.targetGifKb).toBe(2000)
+  })
+
   it('computes target height with preserved ratio', () => {
     expect(computeTargetHeight(1920, 1080, 750)).toBe(422)
   })

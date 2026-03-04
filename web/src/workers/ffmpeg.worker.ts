@@ -957,7 +957,7 @@ async function runConvertFeatured(
   await safeDelete(inputName)
 
   return {
-    name: 'featured.gif',
+    name: `${sourceBaseName(payload.fileName)}_featured.gif`,
     fileBytes: best.bytes,
     sizeKb: best.sizeKb,
     width: payload.featuredWidth,
@@ -1004,7 +1004,7 @@ async function runConvertGuide(
   await safeDelete(inputName)
 
   return {
-    name: 'guide.gif',
+    name: `${sourceBaseName(payload.fileName)}_guide.gif`,
     fileBytes: best.bytes,
     sizeKb: best.sizeKb,
     width: payload.guideSize,

@@ -16,8 +16,8 @@ export const DEFAULTS = {
   },
   guide: {
     size: 195,
-    maxGifKb: 5000,
-    targetGifKb: 4500,
+    maxGifKb: 2000,
+    targetGifKb: 2000,
   },
   showcase: {
     splitWidths: [506, 100],
