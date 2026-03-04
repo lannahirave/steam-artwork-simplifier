@@ -556,6 +556,19 @@ function App() {
     }
   }
 
+  const trademarkDisclaimer = (
+    <footer className="app-disclaimer" role="contentinfo">
+      <p>
+        Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the United
+        States and/or other countries.
+      </p>
+      <p>
+        This project is an independent, unofficial tool and is not affiliated with, endorsed by, sponsored by, or
+        approved by Valve Corporation.
+      </p>
+    </footer>
+  )
+
   if (!isolationState.ok) {
     return (
       <main className="shell">
@@ -572,6 +585,7 @@ function App() {
             to send the same headers.
           </p>
         </section>
+        {trademarkDisclaimer}
       </main>
     )
   }
@@ -680,6 +694,7 @@ function App() {
       )}
 
       {tab === 'guides' && <GuidesPanel guides={GUIDE_SECTIONS} />}
+      {trademarkDisclaimer}
     </main>
   )
 }
