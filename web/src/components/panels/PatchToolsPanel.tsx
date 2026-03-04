@@ -1,45 +1,21 @@
-import type { ChangeEvent } from 'react'
-import type { OutputItem } from '../../agents/appAgents'
+import { usePatchToolsContext } from '../../contexts/patchToolsContext'
 
-interface PatchToolsPanelProps {
-  eofFilesCount: number
-  eofByteInput: string
-  eofOutputs: OutputItem[]
-  eofError: string
-  headerFilesCount: number
-  headerWidth: string
-  headerHeight: string
-  headerEofEnabled: boolean
-  headerByteInput: string
-  headerOutputs: OutputItem[]
-  headerError: string
-  onEofFilesChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onEofByteInputChange: (value: string) => void
-  onRunEofPatch: () => void
-  onHeaderFilesChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onHeaderWidthChange: (value: string) => void
-  onHeaderHeightChange: (value: string) => void
-  onHeaderEofEnabledChange: (enabled: boolean) => void
-  onHeaderByteInputChange: (value: string) => void
-  onRunHeaderPatch: () => void
-  onDownloadEofZip: () => void
-  onDownloadHeaderZip: () => void
-  onDownloadBlob: (name: string, blob: Blob) => void
-}
-
-export function PatchToolsPanel(props: PatchToolsPanelProps) {
+export function PatchToolsPanel() {
+  const { state, actions, meta } = usePatchToolsContext()
   const {
-    eofFilesCount,
+    eofFiles,
     eofByteInput,
     eofOutputs,
     eofError,
-    headerFilesCount,
+    headerFiles,
     headerWidth,
     headerHeight,
     headerEofEnabled,
     headerByteInput,
     headerOutputs,
     headerError,
+  } = state
+  const {
     onEofFilesChange,
     onEofByteInputChange,
     onRunEofPatch,
@@ -51,8 +27,11 @@ export function PatchToolsPanel(props: PatchToolsPanelProps) {
     onRunHeaderPatch,
     onDownloadEofZip,
     onDownloadHeaderZip,
-    onDownloadBlob,
-  } = props
+  } = actions
+  const { downloadBlob: onDownloadBlob } = meta
+
+  const eofFilesCount = eofFiles.length
+  const headerFilesCount = headerFiles.length
 
   return (
     <section className="panel">
