@@ -109,8 +109,6 @@ export const STEAM_HELPER_NOTES = [
   'Paste only one code snippet per upload form.',
   'Ignore preview glitches: Steam still uploads the last selected GIF.',
   'Open Steam upload form, then run the snippet in DevTools Console.',
-  'Workshop upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
-  'Artwork/Screenshot upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   'Workshop uses app_id/file_type/visibility fields.',
   'Artwork/Featured uses image_width=1000 and image_height=1.',
   'Screenshot uses image_width=1000, image_height=1, file_type=5.',
