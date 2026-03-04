@@ -10,6 +10,21 @@ interface SteamHelpersPanelProps {
   onCopySnippet: (label: 'workshop' | 'featured' | 'screenshot') => void
 }
 
+const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
+const URL_WHOLE_PATTERN = /^https?:\/\/[^\s]+$/
+
+function renderTextWithLinks(text: string) {
+  return text.split(URL_PARTS_PATTERN).map((part, index) =>
+    URL_WHOLE_PATTERN.test(part) ? (
+      <a key={`${part}-${index}`} href={part} target="_blank" rel="noreferrer">
+        {part}
+      </a>
+    ) : (
+      <span key={`${part}-${index}`}>{part}</span>
+    ),
+  )
+}
+
 export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
   const { copyStatus, onCopySnippet } = props
 
@@ -19,7 +34,7 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
       <p>Copy and run these snippets in Steam upload page DevTools Console.</p>
       <ul>
         {STEAM_HELPER_NOTES.map((note) => (
-          <li key={note}>{note}</li>
+          <li key={note}>{renderTextWithLinks(note)}</li>
         ))}
       </ul>
 

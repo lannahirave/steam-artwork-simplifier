@@ -99,7 +99,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Paste one snippet and run it.',
       'Verify fields and finish upload.',
     ],
-    tip: 'Snippets are intended for Steam upload pages only. Upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
+    tip:
+      'Snippets are intended for Steam upload pages only. Workshop: https://steamcommunity.com/sharedfiles/editguide/?appid=760 Artwork/Screenshot: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
 ]
 
