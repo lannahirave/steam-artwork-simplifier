@@ -1,121 +1,122 @@
 # Troubleshooting
 
-## Cross-Origin Isolation Error Screen
+## Cross-Origin Isolation Blocking Screen
 
 Symptom:
 
-- App shows a blocking message about isolation requirements.
+- App shows isolation-required screen and conversion is unavailable.
 
 Fix:
 
-1. Ensure both headers are present on HTML/assets:
+1. Ensure both headers are returned by host for HTML/assets:
    - `Cross-Origin-Opener-Policy: same-origin`
    - `Cross-Origin-Embedder-Policy: require-corp`
-2. For Netlify deployment, verify `web/public/_headers` is present and deployed.
+2. For local dev/preview, use this repo's `vite.config.ts` setup.
+3. For production, verify host or worker injects headers.
+
+## Unsupported Source File
+
+Symptom:
+
+- `Unsupported source file...`
+
+Fix:
+
+1. Use supported formats:
+   - video (`video/*`)
+   - `.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`
+2. Keep a standard extension when MIME is missing.
 
 ## Probe Failures
 
 Symptoms:
 
-- `Unable to parse source dimensions ...`
-- `ffmpeg probe failed ...`
-- `ffprobe failed to inspect input video ...`
+- Probe fails to parse dimensions/duration.
 
 Checks:
 
-1. Confirm source file is readable and non-empty.
-2. Confirm source type is supported (`video/*`, `.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`).
-3. Retry with hard refresh after code changes.
-4. Inspect `Live Progress` ffmpeg tail in UI for exact probe output.
+1. Confirm file is readable and non-empty.
+2. Retry after hard refresh.
+3. Review `Live Progress` + `Run Logs` for ffmpeg error lines.
+4. Retry with smaller/known-good source to isolate source corruption.
 
-## Tiny or Black GIF Outputs
-
-Historical symptom:
-
-- conversion reports success, but outputs are tiny black GIFs (for example near `6.1KB` each).
-
-Current mitigation:
-
-1. Suspicious tiny aborted outputs are rejected.
-2. Encoder fallback chain retries:
-   - single-pass palette
-   - two-pass palette
-   - direct GIF fallback
-
-If issue returns:
-
-1. Capture full `Live Progress` and `Run Logs`.
-2. Note source filename, preset, and worker count.
-3. Re-run with `workerCount=1` to isolate concurrency effects.
-
-## Output Looks Bad Due To Color Reduction
+## Outputs Above Max Size
 
 Symptom:
 
-- output quality drops because palette/colors are reduced too early.
+- Warning appears that outputs still exceed max KB.
 
 Current behavior:
 
-1. Pipeline now prioritizes FPS reduction first.
-2. If still oversize, it runs an explicit FPS-priority sweep (colors fixed at `256`) before color-reduction ladders.
+- This is warning-only.
+- Outputs remain visible and downloadable.
+
+What to adjust:
+
+1. Lower `GIF FPS`.
+2. Enable/keep `Allow FPS reduction`.
+3. Enable standard retries for extra attempts.
+4. Keep lossy fallback enabled for hard cases.
+5. Increase `Max GIF KB` only if your Steam use-case allows it.
+
+## Quality Too Low
+
+Symptom:
+
+- Visible quality drop after retries.
 
 Checks:
 
-1. Keep `Allow FPS reduction` enabled.
-2. Raise `Max GIF KB` if platform limits allow it.
-3. Lower initial `GIF FPS` so fewer aggressive fallback steps are needed.
+1. Start from lower FPS to reduce need for aggressive fallback.
+2. Increase `Target GIF KB` and `Max GIF KB` if possible.
+3. Disable color reduction if you prefer motion-loss over palette-loss.
 
-## `Aborted()` in Worker Logs
+## `Aborted()` in Logs
 
 Important:
 
-- `Aborted()` may appear in wasm logs even when fallback output is valid.
-- The app now accepts output only when byte-level checks pass.
+- `Aborted()` in wasm logs is suspicious but not always fatal.
+- Worker performs fallback encoding and byte-level validation.
 
-Treat `Aborted()` as suspicious, not automatically fatal.
+If failures persist:
 
-## Vite Worker Optimization Error
+1. Re-run with `Worker Count = 1`.
+2. Capture `Live Progress` and `Run Logs`.
+3. Note source file + preset + config.
+
+## Vite Worker Dependency Errors
 
 Symptom:
 
-- missing `.vite/deps/worker.js?worker_file&type=module`
+- Missing `.vite/deps/*worker*` module errors.
 
 Fix:
 
-1. Ensure ffmpeg packages are excluded from optimizeDeps in `vite.config.ts`.
-2. Restart with forced optimization refresh:
-
 ```bash
+cd web
 npm run dev -- --force
 ```
 
-## No CPU Utilization During Conversion
-
-Checks:
-
-1. Ensure conversion has passed probe and started worker tasks.
-2. Confirm `workerCount` is not clamped too low for your current task.
-3. Watch `Live Progress` for `Starting initial encode...` lines.
-4. For static image sources, expected CPU load is lower than long video encodes.
+Also verify ffmpeg packages remain excluded in `vite.config.ts` optimizeDeps.
 
 ## Second Run Behaves Differently
 
-Sometimes stale wasm/dev cache affects behavior between runs.
+Possible cause:
 
-Recommended reset:
+- stale worker/dev cache state.
+
+Reset flow:
 
 1. Stop dev server.
-2. Start `npm run dev -- --force`.
+2. Start with `npm run dev -- --force`.
 3. Hard refresh browser.
 4. Re-run conversion.
 
-## Invalid Source File Message
+## Performance Is Slower Than Expected
 
-Symptom:
+Checks:
 
-- `Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).`
-
-Fix:
-
-1. Use a supported source extension/MIME type.
-2. If MIME is empty, keep a standard extension in filename (`.mp4`, `.gif`, `.webp`, etc.).
+1. Use split presets with `Worker Count` between `2-3`.
+2. Confirm conversion reached worker encode stages (`worker-x:*`).
+3. Large/static differences are expected (static images encode differently).
+4. Reduce retries/disable standard retries for speed-first flow.

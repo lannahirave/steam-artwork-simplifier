@@ -2,93 +2,100 @@
 
 ## Supported Inputs
 
-- Video files (`video/*` and common video extensions)
-- Image files (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
+Validation is handled in `web/src/lib/validation.ts`.
 
-Input validation is implemented in `web/src/lib/validation.ts`.
+Accepted sources:
 
-## Presets
+- Video (`video/*` + common video extensions)
+- Image (`.gif`, `.png`, `.webp`, `.jpg`, `.jpeg`, `.bmp`)
 
-### Workshop
+## Presets and Defaults
 
-- `parts = 5`
-- `partWidth = 150`
-- output names `part_01.gif` .. `part_05.gif`
+Defaults are in `web/src/lib/defaults.ts`.
 
-### Featured
+### Workshop Showcase
 
-- single output `featured.gif`
-- `featuredWidth = 630`
+- default parts: `5`
+- default part width: `150`
+- max/target: `5000KB / 4500KB`
+- output names: `<source>_part_01.gif` ... `<source>_part_05.gif`
+
+### Featured Showcase
+
+- single output
+- default width: `630`
+- max/target: `4500KB / 4500KB`
+- output name: `<source>_featured.gif`
+
+### Artwork Showcase
+
+- fixed split widths: `506 + 100`
+- max/target: `5000KB / 4500KB`
+- output names: `<source>_part_01.gif`, `<source>_part_02.gif`
 
 ### Guide
 
-- single output `guide.gif`
-- fixed square size `195x195`
-- defaults: `maxGifKb = 5000`, `targetGifKb = 4500`
-
-Defaults are defined in `web/src/lib/defaults.ts`.
+- fixed size: `195x195`
+- max/target: `2000KB / 2000KB`
+- output name: `<source>_guide.gif`
 
 ## End-to-End Flow
 
-1. User selects source file and preset.
-2. Optional: user can press the FPS estimate button to calculate and auto-apply an FPS target from current resolution, duration, and size target.
-3. `convertVideo` requests worker pool warmup (`init` per worker).
-4. Probe task runs (`probe`) to resolve source width/height/duration.
-5. Optional precheck estimates expected GIF size.
-6. Conversion tasks run:
-   - `convertPart` for workshop slices (parallel)
-   - `convertFeatured` for featured output
-   - `convertGuide` for guide output
-7. Each task executes encode strategy and returns artifact bytes + metadata.
-8. Optional post-patches apply in main thread:
-   - GIF header patch (if enabled)
-   - EOF patch (if enabled)
-9. Final size gate rejects any artifact above `maxGifKb`.
+1. User chooses preset and source file.
+2. Optional FPS estimate computes and applies a practical FPS.
+3. `convertVideo` warms workers (`init`).
+4. Probe (`probe`) resolves width/height/duration/fps and start offset.
+5. Optional precheck estimates expected output size.
+6. Conversion runs by preset:
+   - split presets (`workshop`, `showcase`) -> `convertPart`
+   - featured -> `convertFeatured`
+   - guide -> `convertGuide`
+7. Main thread applies optional post-patching:
+   - GIF header patch
+   - EOF byte patch
+8. Artifacts are sorted, previewed, and made downloadable.
 
 ## Source-Type Behavior
 
-### Still Images
+### Still images
 
-If source is image-like and probe duration is effectively zero, worker switches to a resize-only GIF path:
+When source is image-like and duration is effectively zero:
 
-- no temporal sampling
-- no FPS laddering effects beyond final single-frame output
-- workshop still applies horizontal splitting
+- worker uses resize-only single-frame encode path
+- no temporal frame sampling
+- split presets still produce multiple sliced outputs
 
-### Video / Animated Sources
+### Video / animated sources
 
-- uses temporal sampling at configured FPS
-- applies standard/lossy strategies as needed
+- uses configured FPS sampling
+- can execute retries/fallback ladders based on settings
 
 ## Geometry Rules
 
-### Workshop
+### Split presets (`workshop` / `showcase`)
 
-1. Compute total target width: `parts * partWidth`
-2. Scale source to total width while preserving aspect ratio
-3. Crop each slice by `partIndex * partWidth`
-
-Implementation note:
-- scaling uses `bicubic` flags in worker encode filters for speed/quality balance.
+1. Compute total target width (sum of split widths).
+2. Scale while preserving aspect ratio.
+3. Crop slices by horizontal offsets.
 
 ### Featured
 
-1. Scale source to `featuredWidth`
-2. Preserve aspect ratio
+1. Scale to `featuredWidth`.
+2. Preserve aspect ratio.
 
 ### Guide
 
-1. Scale source to `guideSize x guideSize` with `force_original_aspect_ratio=increase`
-2. Center-crop to exact square `guideSize x guideSize`
+1. Scale to square with `force_original_aspect_ratio=increase`.
+2. Center-crop to exact `195x195`.
 
-## Encode Strategy
+## Encode and Retry Strategy
 
-### Pass 1: Initial Encode
+### Initial pass
 
-- start at configured `gifFps`
-- start at full palette target (`maxColors=256`)
+- starts at `gifFps`
+- starts with full palette (`256` colors)
 
-### Pass 2: Standard Retries (Optional)
+### Standard retries (optional)
 
 Controlled by:
 
@@ -96,72 +103,59 @@ Controlled by:
 - `retryAllowFpsDrop`
 - `retryAllowColorDrop`
 
-Candidate ordering from `buildStandardCandidates` is intentionally FPS-first:
+### FPS-fit step
 
-1. FPS-only reduction
-2. Color-only reduction
-3. Combined FPS + color reductions
+When oversize and FPS drop is allowed, pipeline estimates direct next FPS to hit target/max bounds.
 
-### Pass 3: FPS-Fit Step (Optional)
+### FPS-priority oversize behavior
 
-If output is still above `targetGifKb` and FPS-drop is allowed, pipeline estimates the FPS needed to hit target size and tries that candidate directly.
+Pipeline prioritizes FPS reduction before color reduction when trying to recover size.
 
-This step is driven by `estimateFpsForKbTarget` in `web/src/lib/sizeStrategy.ts`.
+### Lossy fallback (optional)
 
-### Pass 4: FPS-Priority Sweep (Always Before Color Reduction When Oversize)
-
-If output is still above `maxGifKb`, worker performs an FPS-only sweep (colors fixed at `256`) down to `minGifFps` before allowing color-reduction ladders.
-
-This guarantees frame-rate reduction is prioritized over palette reduction for better visual fidelity.
-
-### Pass 5: Lossy Ladder (Optional)
-
-Triggered only when still oversize and `lossyOversize=true`.
-
-Candidates are generated by `buildLossyCandidates` using:
+If still oversize and `lossyOversize = true`, lossy candidates run using:
 
 - `lossyLevel`
 - `lossyMaxAttempts`
 
-### Final Size Gate
+## Oversize Final Behavior
 
-- success when artifact is `<= maxGifKb`
-- hard fail when best artifact remains above `maxGifKb`
-- speed-first behavior: when standard retries are disabled, processing may stop as soon as output is below `maxGifKb` (without chasing `targetGifKb`)
+Outputs are not discarded if still above `maxGifKb`.
+
+- Conversion finishes.
+- Warning is emitted listing oversize files.
+- Files remain visible and downloadable.
 
 ## WASM Stability Fallbacks
 
-In `encodeGif`:
+Inside `encodeGif` worker path:
 
-1. Try single-pass `palettegen+paletteuse`.
-2. If unstable, retry compatibility two-pass `palettegen` then `paletteuse`.
-3. If still unstable, retry direct GIF encode fallback.
+1. single-pass palette graph
+2. compatibility two-pass palette
+3. direct GIF encode fallback
 
-`Aborted()` logs combined with tiny output bytes are treated as suspicious and not accepted.
-
-Valid non-tiny primary outputs are accepted immediately to avoid unnecessary fallback cost.
+`Aborted()` logs with tiny output bytes are treated as suspicious and rejected.
 
 ## Progress and Logs
 
-Progress lines are stage-tagged, for example:
+Typical stage tags:
 
 - `[init]`
 - `[probe]`
+- `[precheck]`
 - `[convert]`
-- `[worker-2:standard]`
-- `[worker-3:lossy]`
+- `[worker-x:ffmpeg]`
+- `[worker-x:standard]`
+- `[worker-x:lossy]`
+- `[done]`
 
-Worker ffmpeg logs are streamed as `[worker-x:ffmpeg]` for diagnosis.
+UI also shows:
 
-## Output and Export
+- elapsed live timer (`Time: ...`)
+- completion summary (`Output ready in ...`)
 
-- in-memory artifacts are converted to preview URLs
-- progress panel shows live elapsed time during conversion
-- per-artifact card shows:
-  - filename
-  - size in KB
-  - final FPS
-  - color reduction percent
-- result summary includes `Output ready in ...` elapsed time
-- per-artifact download button uses `URL.createObjectURL`
-- ZIP export uses `jszip` and includes all produced outputs
+## Export
+
+- Per-file download via object URLs.
+- Conversion ZIP includes all current artifacts.
+- ZIP filename is source-based: `<source>.zip`.

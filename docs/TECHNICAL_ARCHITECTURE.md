@@ -4,27 +4,41 @@
 
 - UI: React 19
 - Language: TypeScript
-- Build: Vite 7
-- Media engine: `@ffmpeg/ffmpeg` (WASM core loaded in Web Workers)
+- Build/dev: Vite 7
+- Media engine: `@ffmpeg/ffmpeg` (WASM core in workers)
 - Packaging: `jszip`
-- Tests: Vitest + Playwright smoke tests
-- Hosting: Netlify static hosting (auto deploy on push to `main`)
+- Unit tests: Vitest
+- E2E smoke tests: Playwright
+- Hosting: Netlify (auto deploy on `main`) or Cloudflare Worker assets
 
 ## High-Level Components
 
-1. UI layer (`web/src/App.tsx`, `web/src/App.css`)
-2. Domain/config modules (`web/src/lib/defaults.ts`, `web/src/lib/types.ts`)
-3. Validation and precheck modules (`web/src/lib/validation.ts`, `web/src/lib/precheck.ts`)
-4. Conversion orchestration (`web/src/lib/conversion.ts`)
-5. Worker pool / protocol (`web/src/lib/workerPool.ts`, `web/src/lib/ffmpegProtocol.ts`)
-6. ffmpeg worker runtime (`web/src/workers/ffmpeg.worker.ts`)
-7. Patch utilities (`web/src/lib/patch.ts`)
-8. Zip export utility (`web/src/lib/zip.ts`)
-9. Deployment config and headers (`netlify.toml`, `web/public/_headers`)
+1. App shell and UI state: `web/src/App.tsx`
+2. Styling and theme system: `web/src/App.css`, `web/src/index.css`
+3. Panel components:
+   - `web/src/components/panels/ConvertPanel.tsx`
+   - `web/src/components/panels/PatchToolsPanel.tsx`
+   - `web/src/components/panels/SteamHelpersPanel.tsx`
+   - `web/src/components/panels/GuidesPanel.tsx`
+4. Domain/config:
+   - `web/src/lib/types.ts`
+   - `web/src/lib/defaults.ts`
+   - `web/src/agents/appAgents.ts`
+5. Conversion orchestration: `web/src/lib/conversion.ts`
+6. Worker pool + protocol:
+   - `web/src/lib/workerPool.ts`
+   - `web/src/lib/ffmpegProtocol.ts`
+7. Worker runtime: `web/src/workers/ffmpeg.worker.ts`
+8. Helpers:
+   - `web/src/lib/precheck.ts`
+   - `web/src/lib/sizeStrategy.ts`
+   - `web/src/lib/validation.ts`
+   - `web/src/lib/patch.ts`
+   - `web/src/lib/zip.ts`
 
 ## UI Architecture
 
-`App.tsx` is a feature-shell with four sections:
+`App.tsx` owns feature-level state and routes rendering across 4 tabs:
 
 1. Convert
 2. Patch Tools
@@ -34,45 +48,42 @@
 Primary state domains:
 
 - conversion config and source file
-- progress/log state
-- elapsed timing state for active/last conversion
-- artifact preview/download state
+- worker progress + logs
+- elapsed timing and completion summary
+- artifact previews and downloads
 - patch tool inputs/results
-- UI mode state (tab + theme mode)
+- theme mode (`auto`, `light`, `dark`)
 
-The conversion section maintains a worker pool instance via `useRef`, allowing cancellation and reuse.
+A reusable worker pool is held in `useRef` so runs can be cancelled and workers reused between conversions.
 
-## Typed Domain Contract
+## Typed Contract
 
-Core types are defined in `web/src/lib/types.ts`:
+`web/src/lib/types.ts` defines end-to-end contracts across UI, orchestrator, and workers:
 
-- `Preset`
+- `Preset` (`workshop`, `featured`, `guide`, `showcase`)
 - `ConversionConfig`
-- `ConversionInput`
-- `ConversionArtifact`
-- `ConversionResult`
-- `EofPatchRequest`
-- `HeaderPatchRequest`
-- Worker request/response maps and event payloads
+- `ConversionArtifact`, `ConversionResult`
+- patch request/response types
+- worker request/response payload maps
 
-This typed contract enforces consistent payload shape across UI, orchestrator, and workers.
+This prevents drift between main thread and worker message payloads.
 
 ## Worker System
 
-### Pool
+### Pool (`FFmpegWorkerPool`)
 
-`FFmpegWorkerPool` manages:
+Responsibilities:
 
-- a fixed number of worker slots
-- task queue + dispatch
-- in-flight tracking per request id
-- progress forwarding
-- timeout handling
-- cancellation and worker replacement
+- worker lifecycle and warmup
+- queued task scheduling
+- in-flight request tracking
+- timeout and cancellation handling
+- worker replacement after cancellation/errors
+- progress forwarding to UI
 
 ### Protocol
 
-Worker commands:
+Commands:
 
 - `init`
 - `probe`
@@ -80,61 +91,75 @@ Worker commands:
 - `convertFeatured`
 - `convertGuide`
 
-Worker response events:
+Events:
 
 - `progress`
 - `result`
 - `error`
 
-`ffmpegProtocol.ts` validates message shapes before consumption.
+`ffmpegProtocol.ts` validates message payload shape.
 
 ## Conversion Engine
 
-`convertVideo` in `web/src/lib/conversion.ts` orchestrates:
+`convertVideo` (`web/src/lib/conversion.ts`) orchestrates:
 
-1. pool warmup
-2. source load
-3. source probe
-4. still-image detection (for static image inputs)
-5. optional precheck
-6. parallel conversion jobs
-7. deterministic artifact sort
-8. optional post-patching
-9. max-size enforcement
+1. worker warmup
+2. source load + probe
+3. still-image detection
+4. optional precheck
+5. preset-specific conversion tasks
+6. deterministic artifact sort
+7. optional header/EOF patching
+8. oversize warning emission (outputs are still kept)
+
+Notable behavior:
+
+- split presets (`workshop` and `showcase`) can use a shared-FPS two-pass strategy
+- worker count is clamped for stability (`MAX_SAFE_WASM_WORKERS = 3`)
 
 ## ffmpeg Worker Runtime
 
-`web/src/workers/ffmpeg.worker.ts` responsibilities:
+`web/src/workers/ffmpeg.worker.ts` handles:
 
-- load ffmpeg core lazily per worker
-- probe dimensions/duration
-- run preset geometry transforms (split vs featured resize, fast `bicubic` scale mode)
-- run encode/retry ladders (standard, FPS-fit, FPS-priority sweep, lossy)
-- emit stage progress lines
-- return byte payloads with transferables
-- return output metadata (`finalFps`, `finalColors`)
+- lazy ffmpeg core loading
+- source probing (dimensions/duration/fps)
+- dark-intro start offset detection
+- geometry transforms per preset
+- retry ladders (standard, FPS-fit, FPS-priority, lossy)
+- progress stage events and artifact metadata
 
-Stability hardening includes:
+Stability safeguards:
 
-- log-tail capture for detailed errors
-- suspicious tiny GIF detection when `Aborted()` appears
-- acceptance of valid non-tiny primary outputs even when `Aborted()` noise appears in logs
-- fallback encoding chain:
+- treats `Aborted()` + tiny outputs as suspicious
+- fallback chain:
   1. single-pass palette graph
   2. compatibility two-pass palette
   3. direct GIF encoder fallback
 
+## Naming and Export
+
+Naming is generated in worker runtime using source base name:
+
+- `<source>_part_XX.gif`
+- `<source>_featured.gif`
+- `<source>_guide.gif`
+
+Conversion ZIP name is generated in app shell as `<source>.zip`.
+
 ## Deployment Architecture
 
-`netlify.toml` configures Netlify build/publish:
+Netlify path (automatic):
 
-- base: `web`
-- command: `npm run build`
-- publish: `dist`
+- root `netlify.toml`
+- `base = "web"`, `command = "npm run build"`, `publish = "dist"`
+- production deploy on push to `main`
 
-`web/public/_headers` injects:
+Cloudflare path (optional):
+
+- `web/wrangler.toml`
+- `web/cloudflare/worker.ts` injects required COOP/COEP headers for assets
+
+Required headers for conversion runtime:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
-
-These headers are required for cross-origin isolated execution with fast ffmpeg.wasm workflows.
