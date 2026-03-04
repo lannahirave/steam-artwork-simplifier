@@ -2,14 +2,14 @@
 
 ## Target
 
-Cloudflare Workers static assets deployment from `web/dist`, with header injection for cross-origin isolation.
+Netlify production deployment from `web/dist`, triggered automatically on push to `main`.
 
 ## Prerequisites
 
 1. Node.js 20+
 2. npm
-3. Cloudflare account with Worker deploy permissions
-4. Wrangler auth (`npx wrangler whoami` succeeds)
+3. Netlify site connected to this GitHub repository
+4. Netlify production branch set to `main`
 
 ## Local Build and Test
 
@@ -21,31 +21,20 @@ npm run build
 npm run test -- --run
 ```
 
-## Deploy
+## Production Deploy (Automatic)
 
-From `web/`:
+Production deploy happens automatically when commits land on `main`.
 
-```bash
-npm run deploy
-```
+Repository config for Netlify:
 
-`deploy` runs:
-
-1. `npm run build`
-2. `npx wrangler deploy`
-
-## Cloudflare Config
-
-`web/wrangler.toml`:
-
-- `main = "cloudflare/worker.ts"`
-- static assets directory: `./dist`
-- `run_worker_first = true`
-- SPA fallback: `not_found_handling = "single-page-application"`
+- `netlify.toml`
+  - `base = "web"`
+  - `command = "npm run build"`
+  - `publish = "dist"`
 
 ## Required Runtime Headers
 
-Injected in `web/cloudflare/worker.ts`:
+Defined in `web/public/_headers`:
 
 - `Cross-Origin-Opener-Policy: same-origin`
 - `Cross-Origin-Embedder-Policy: require-corp`
@@ -54,32 +43,35 @@ Without these headers, the app blocks conversion and shows isolation guidance.
 
 ## Verification Checklist
 
-1. Open deployment URL.
-2. Confirm app loads without isolation error.
-3. Run a featured conversion on a small fixture.
-4. Run workshop conversion and confirm 5 outputs + ZIP.
-5. Check response headers:
+1. Push to `main`.
+2. Wait for Netlify production deploy to complete.
+3. Open production URL.
+4. Confirm app loads without isolation error.
+5. Run a featured conversion on a small fixture.
+6. Run workshop conversion and confirm 5 outputs + ZIP.
+7. Check response headers:
 
 ```bash
-curl -I https://<your-worker>.workers.dev
+curl -I https://<your-netlify-site>.netlify.app
 ```
+
+## Optional Manual Deploy (Fallback)
+
+If Netlify auto deploy is unavailable, deploy from Netlify UI or CLI using the same build/publish settings from `netlify.toml`.
 
 ## Rollback
 
-Use Wrangler to redeploy a previous known-good commit state from git history.
+Rollback is commit-based:
 
-Recommended safe rollback process:
-
-1. `git checkout <known-good-commit>`
-2. `cd web`
-3. `npm run deploy`
-4. return to main branch after deploy
+1. Revert `main` to a known-good commit (or create a revert commit).
+2. Push to `main`.
+3. Netlify auto-deploys the reverted state.
 
 ## Common Operational Issues
 
 1. Missing COOP/COEP headers:
-   - ensure `run_worker_first = true` in `wrangler.toml`
-2. Stale asset behavior:
+   - ensure `web/public/_headers` is present and deployed
+2. Wrong folder deployed:
+   - ensure `netlify.toml` uses `base = "web"` and `publish = "dist"`
+3. Stale asset behavior:
    - force reload browser cache after deploy
-3. Local dev worker import cache glitches:
-   - start dev server with `npm run dev -- --force`

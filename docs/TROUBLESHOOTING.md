@@ -11,7 +11,7 @@ Fix:
 1. Ensure both headers are present on HTML/assets:
    - `Cross-Origin-Opener-Policy: same-origin`
    - `Cross-Origin-Embedder-Policy: require-corp`
-2. For Cloudflare deployment, verify `web/cloudflare/worker.ts` is active and `run_worker_first = true`.
+2. For Netlify deployment, verify `web/public/_headers` is present and deployed.
 
 ## Probe Failures
 
