@@ -201,6 +201,18 @@ function extensionOf(fileName: string): string {
   return parts.pop() ?? 'mp4'
 }
 
+function sourceBaseName(fileName: string): string {
+  const trimmed = fileName.trim()
+  if (!trimmed) {
+    return 'output'
+  }
+  const dotIndex = trimmed.lastIndexOf('.')
+  if (dotIndex <= 0) {
+    return trimmed
+  }
+  return trimmed.slice(0, dotIndex)
+}
+
 async function safeDelete(path: string): Promise<void> {
   try {
     await ffmpeg.deleteFile(path)
@@ -897,10 +909,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
 
   await safeDelete(inputName)
 
-  const outputPrefix = payload.outputPrefix && payload.outputPrefix.trim().length > 0
-    ? payload.outputPrefix.trim().toLowerCase()
-    : 'part'
-  const outputName = `${outputPrefix}_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
+  const outputName = `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
 
   if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
     throw new Error(

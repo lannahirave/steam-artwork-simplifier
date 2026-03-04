@@ -582,6 +582,12 @@ button:disabled {
   font-weight: 600;
 }
 
+.results-actions-row {
+  margin-top: 0.8rem;
+  display: flex;
+  justify-content: flex-end;
+}
+
 .results-grid.workshop-strip {
   display: flex;
   align-items: flex-start;

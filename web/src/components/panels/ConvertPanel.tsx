@@ -462,9 +462,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
         <button disabled={!busy} onClick={onCancelConversion}>
           Cancel
         </button>
-        <button disabled={artifactViews.length === 0} onClick={onDownloadZip}>
-          Download ZIP
-        </button>
         <button onClick={onResetConvertState}>Reset Results</button>
       </div>
 
@@ -518,6 +515,11 @@ export function ConvertPanel(props: ConvertPanelProps) {
           {lastElapsedMs !== null && (
             <p className="result-timing">Output ready in {formatElapsed(lastElapsedMs)}.</p>
           )}
+          <div className="results-actions-row">
+            <button onClick={onDownloadZip}>
+              Download all (ZIP archive)
+            </button>
+          </div>
           <section className={resultsGridClassName}>
             {artifactViews.map((item) => (
               <article className="result-card" key={item.artifact.name}>

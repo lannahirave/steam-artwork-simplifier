@@ -39,6 +39,18 @@ import { GuidesPanel } from './components/panels/GuidesPanel'
 
 const APP_VERSION = __APP_VERSION__
 
+function toArchiveBaseName(fileName: string): string {
+  const trimmed = fileName.trim()
+  if (!trimmed) {
+    return 'steam-artwork-output'
+  }
+  const dotIndex = trimmed.lastIndexOf('.')
+  if (dotIndex <= 0) {
+    return trimmed
+  }
+  return trimmed.slice(0, dotIndex)
+}
+
 function App() {
   const isolationState = useMemo(() => getIsolationState(), [])
   const [tab, setTab] = useState<TabKey>('convert')
@@ -65,6 +77,7 @@ function App() {
   const [progressLabel, setProgressLabel] = useState('')
   const [elapsedMs, setElapsedMs] = useState(0)
   const [lastElapsedMs, setLastElapsedMs] = useState<number | null>(null)
+  const [lastConversionSourceName, setLastConversionSourceName] = useState('')
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
 
@@ -140,12 +153,13 @@ function App() {
   }, [busy])
 
   const convertDisabled = busy || !sourceFile
+  const isPartNamedOutput = (name: string): boolean => /_part_\d{2}\.gif$/i.test(name)
   const isWorkshopStrip =
     artifactViews.length === 5 &&
-    artifactViews.every((item) => /^part_\d{2}\.gif$/i.test(item.artifact.name))
+    artifactViews.every((item) => isPartNamedOutput(item.artifact.name))
   const isShowcaseStrip =
     artifactViews.length === 2 &&
-    artifactViews.every((item) => /^showcase_\d{2}\.gif$/i.test(item.artifact.name))
+    artifactViews.every((item) => isPartNamedOutput(item.artifact.name))
   const isCompactStrip = isWorkshopStrip || isShowcaseStrip
   const resultsGridClassName = isWorkshopStrip
     ? 'results-grid workshop-strip'
@@ -245,6 +259,7 @@ function App() {
       workerCount: effectiveWorkerCount,
     }
     const extraWarnings: string[] = []
+    setLastConversionSourceName(sourceFile.name)
 
     totalJobsRef.current = requestedJobs
     workerWeightsRef.current = {}
@@ -319,11 +334,31 @@ function App() {
       return
     }
 
+    const sourceNameForArchive =
+      lastConversionSourceName || sourceFile?.name || ''
+    const archiveName = `${toArchiveBaseName(sourceNameForArchive)}.zip`
+
     const zip = await createZip(
       artifactViews.map((item) => ({
         name: item.artifact.name,
         blob: item.artifact.blob,
       })),
+      archiveName,
+    )
+    downloadBlob(zip.name, zip.blob)
+  }
+
+  async function downloadPatchZip(items: OutputItem[], archiveName: string): Promise<void> {
+    if (items.length === 0) {
+      return
+    }
+
+    const zip = await createZip(
+      items.map((item) => ({
+        name: item.name,
+        blob: item.blob,
+      })),
+      archiveName,
     )
     downloadBlob(zip.name, zip.blob)
   }
@@ -631,6 +666,8 @@ function App() {
           onHeaderEofEnabledChange={setHeaderEofEnabled}
           onHeaderByteInputChange={setHeaderByteInput}
           onRunHeaderPatch={() => void runHeaderPatch()}
+          onDownloadEofZip={() => void downloadPatchZip(eofOutputs, 'eof-patch-output.zip')}
+          onDownloadHeaderZip={() => void downloadPatchZip(headerOutputs, 'header-patch-output.zip')}
           onDownloadBlob={downloadBlob}
         />
       )}

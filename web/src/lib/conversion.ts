@@ -217,7 +217,6 @@ export async function convertVideo(
     parts,
     partWidth,
     splitWidths,
-    outputPrefix: config.preset === 'showcase' ? 'showcase' : 'part',
   })
 
   const runSplitBatch = async (

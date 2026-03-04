@@ -123,7 +123,6 @@ export interface ConvertPartPayload extends ConvertPayloadBase {
   parts: number
   partWidth: number
   splitWidths?: number[]
-  outputPrefix?: string
 }
 
 export interface ConvertFeaturedPayload extends ConvertPayloadBase {

@@ -50,13 +50,14 @@ class FakeWorker {
 
     if (message.command === 'convertPart') {
       setTimeout(() => {
+        const sourceBaseName = message.payload.fileName.replace(/\.[^.]+$/, '')
         reply({
           id: message.id,
           event: 'result',
           payload: {
             command: 'convertPart',
             data: {
-              name: `part_${String(message.payload.partIndex + 1).padStart(2, '0')}.gif`,
+              name: `${sourceBaseName}_part_${String(message.payload.partIndex + 1).padStart(2, '0')}.gif`,
               fileBytes: new Uint8Array([1, 2, 3]),
               sizeKb: 0.01,
               width: message.payload.partWidth,
@@ -160,8 +161,8 @@ describe('worker pool', () => {
       }),
     ])
 
-    expect(outputs[0].name).toBe('part_01.gif')
-    expect(outputs[1].name).toBe('part_02.gif')
+    expect(outputs[0].name).toBe('a_part_01.gif')
+    expect(outputs[1].name).toBe('a_part_02.gif')
 
     pool.dispose()
   })

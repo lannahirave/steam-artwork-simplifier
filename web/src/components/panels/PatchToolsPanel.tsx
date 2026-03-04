@@ -22,6 +22,8 @@ interface PatchToolsPanelProps {
   onHeaderEofEnabledChange: (enabled: boolean) => void
   onHeaderByteInputChange: (value: string) => void
   onRunHeaderPatch: () => void
+  onDownloadEofZip: () => void
+  onDownloadHeaderZip: () => void
   onDownloadBlob: (name: string, blob: Blob) => void
 }
 
@@ -47,6 +49,8 @@ export function PatchToolsPanel(props: PatchToolsPanelProps) {
     onHeaderEofEnabledChange,
     onHeaderByteInputChange,
     onRunHeaderPatch,
+    onDownloadEofZip,
+    onDownloadHeaderZip,
     onDownloadBlob,
   } = props
 
@@ -67,6 +71,9 @@ export function PatchToolsPanel(props: PatchToolsPanelProps) {
           </label>
           <button disabled={eofFilesCount === 0} onClick={onRunEofPatch}>
             Apply EOF Patch
+          </button>
+          <button disabled={eofOutputs.length === 0} onClick={onDownloadEofZip}>
+            Download all (ZIP archive)
           </button>
           {eofError && <p className="error">{eofError}</p>}
           <ul className="output-list">
@@ -108,6 +115,9 @@ export function PatchToolsPanel(props: PatchToolsPanelProps) {
           <button disabled={headerFilesCount === 0} onClick={onRunHeaderPatch}>
             Apply Header Patch
           </button>
+          <button disabled={headerOutputs.length === 0} onClick={onDownloadHeaderZip}>
+            Download all (ZIP archive)
+          </button>
           {headerError && <p className="error">{headerError}</p>}
           <ul className="output-list">
             {headerOutputs.map((item) => (
@@ -122,4 +132,3 @@ export function PatchToolsPanel(props: PatchToolsPanelProps) {
     </section>
   )
 }
-
