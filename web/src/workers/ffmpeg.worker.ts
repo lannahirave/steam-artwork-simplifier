@@ -911,12 +911,6 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
 
   const outputName = `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
 
-  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
-    throw new Error(
-      `${outputName} still exceeds max size (${best.sizeKb.toFixed(1)}KB).`,
-    )
-  }
-
   return {
     name: outputName,
     fileBytes: best.bytes,
@@ -961,10 +955,6 @@ async function runConvertFeatured(
   })
 
   await safeDelete(inputName)
-
-  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
-    throw new Error(`featured.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`)
-  }
 
   return {
     name: 'featured.gif',
@@ -1012,10 +1002,6 @@ async function runConvertGuide(
   })
 
   await safeDelete(inputName)
-
-  if (!payload.disableOptimizations && best.sizeKb > payload.maxGifKb) {
-    throw new Error(`guide.gif still exceeds max size (${best.sizeKb.toFixed(1)}KB).`)
-  }
 
   return {
     name: 'guide.gif',

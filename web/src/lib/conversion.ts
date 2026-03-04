@@ -414,8 +414,14 @@ export async function convertVideo(
   if (!config.disableOptimizations) {
     const oversize = patched.filter((artifact) => artifact.sizeKb > config.maxGifKb)
     if (oversize.length > 0) {
-      const first = oversize[0]
-      throw new Error(`Output exceeded max limit: ${first.name} is ${first.sizeKb.toFixed(1)}KB.`)
+      const details = oversize
+        .map((artifact) => `${artifact.name} (${artifact.sizeKb.toFixed(1)}KB)`)
+        .join(', ')
+      const message =
+        `Some outputs still exceed max size (${config.maxGifKb}KB): ${details}. ` +
+        'Keeping outputs so you can preview/download anyway.'
+      warnings.push(message)
+      emit('warn', message)
     }
   }
 
