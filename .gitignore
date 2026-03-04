@@ -2,3 +2,4 @@ __pycache__/
 media/*
 !media/test-fixtures/
 !media/test-fixtures/**
+web/.vite/
