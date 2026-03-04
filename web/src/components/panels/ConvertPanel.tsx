@@ -1,63 +1,17 @@
-import type { ChangeEvent, Dispatch, SetStateAction } from 'react'
 import { getDefaultWorkerCount } from '../../lib/defaults'
-import type { ConversionProgress } from '../../lib/conversion'
 import type { ConversionConfig } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
-import { type ArtifactView, formatElapsed } from '../../agents/appAgents'
+import { formatElapsed } from '../../agents/appAgents'
+import { useConvertContext } from '../../contexts/convertContext'
 
-interface ConvertPanelProps {
-  config: ConversionConfig
-  setConfig: Dispatch<SetStateAction<ConversionConfig>>
-  sourceFile: File | null
-  busy: boolean
-  estimatingFps: boolean
-  fpsEstimateInfo: string
-  convertDisabled: boolean
-  optimizationDisabled: boolean
-  standardRetriesEffective: boolean
-  retryControlsDisabled: boolean
-  precheckEffective: boolean
-  retryFpsEffective: boolean
-  retryColorEffective: boolean
-  lossyEffective: boolean
-  progressPercent: number
-  progressLabel: string
-  elapsedMs: number
-  lastElapsedMs: number | null
-  warnings: string[]
-  progress: ConversionProgress[]
-  logs: string[]
-  error: string
-  artifactViews: ArtifactView[]
-  isCompactStrip: boolean
-  resultsGridClassName: string
-  getColorReductionPercent: (finalColors: number) => number
-  onUpdatePreset: (preset: ConversionConfig['preset']) => void
-  onSourceFileChange: (event: ChangeEvent<HTMLInputElement>) => void
-  onEstimateAndApplyFps: () => void
-  onRunConversion: () => void
-  onCancelConversion: () => void
-  onDownloadZip: () => void
-  onResetConvertState: () => void
-  onDownloadBlob: (name: string, blob: Blob) => void
-}
-
-export function ConvertPanel(props: ConvertPanelProps) {
+export function ConvertPanel() {
+  const { state, actions, meta } = useConvertContext()
   const {
     config,
-    setConfig,
     sourceFile,
     busy,
     estimatingFps,
     fpsEstimateInfo,
-    convertDisabled,
-    optimizationDisabled,
-    standardRetriesEffective,
-    retryControlsDisabled,
-    precheckEffective,
-    retryFpsEffective,
-    retryColorEffective,
-    lossyEffective,
     progressPercent,
     progressLabel,
     elapsedMs,
@@ -67,9 +21,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
     logs,
     error,
     artifactViews,
-    isCompactStrip,
-    resultsGridClassName,
-    getColorReductionPercent,
+  } = state
+  const {
+    setConfig,
     onUpdatePreset,
     onSourceFileChange,
     onEstimateAndApplyFps,
@@ -77,8 +31,21 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onCancelConversion,
     onDownloadZip,
     onResetConvertState,
-    onDownloadBlob,
-  } = props
+  } = actions
+  const {
+    convertDisabled,
+    optimizationDisabled,
+    standardRetriesEffective,
+    retryControlsDisabled,
+    precheckEffective,
+    retryFpsEffective,
+    retryColorEffective,
+    lossyEffective,
+    isCompactStrip,
+    resultsGridClassName,
+    getColorReductionPercent,
+    downloadBlob: onDownloadBlob,
+  } = meta
 
   return (
     <section className="panel">

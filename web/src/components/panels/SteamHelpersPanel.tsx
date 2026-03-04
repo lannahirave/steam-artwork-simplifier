@@ -4,11 +4,7 @@ import {
   STEAM_HELPER_NOTES,
   WORKSHOP_SNIPPET,
 } from '../../lib/steamSnippets'
-
-interface SteamHelpersPanelProps {
-  copyStatus: string
-  onCopySnippet: (label: 'workshop' | 'featured' | 'screenshot') => void
-}
+import { useSteamHelpersContext } from '../../contexts/steamHelpersContext'
 
 const WORKSHOP_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/editguide/?appid=760'
 const ARTWORK_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
@@ -27,8 +23,10 @@ function renderTextWithLinks(text: string) {
   )
 }
 
-export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
-  const { copyStatus, onCopySnippet } = props
+export function SteamHelpersPanel() {
+  const { state, actions } = useSteamHelpersContext()
+  const { copyStatus } = state
+  const { onCopySnippet } = actions
 
   return (
     <section className="panel">
