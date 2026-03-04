@@ -15,3 +15,7 @@ Then include both files in the same commit:
 
 - `web/package.json`
 - `web/package-lock.json`
+
+## Commit cadence
+
+For every completed part of a job, create a commit before starting the next part.
