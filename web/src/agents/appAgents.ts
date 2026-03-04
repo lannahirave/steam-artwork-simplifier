@@ -26,7 +26,7 @@ export interface GuideSection {
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
     key: 'workshop',
-    title: 'Workshop GIFs (5 parts)',
+    title: 'Workshop Showcase (5 parts)',
     badge: 'Convert',
     steps: [
       'Open Convert tab and keep preset as Workshop (5x150 slices).',
@@ -35,11 +35,12 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Click Run Conversion and wait for Output ready in...',
       'Review all 5 previews, then download single files or ZIP.',
     ],
-    tip: 'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction.',
+    tip:
+      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
   },
   {
     key: 'featured',
-    title: 'Featured GIF (single wide)',
+    title: 'Featured Showcase (single wide)',
     badge: 'Convert',
     steps: [
       'Switch preset to Featured (single 630px).',
@@ -48,7 +49,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Run conversion and check size/FPS/color metadata under output.',
       'Download originalFileName_featured.gif directly or as part of ZIP.',
     ],
-    tip: 'Start with lower FPS before increasing lossy settings for better visual quality.',
+    tip:
+      'Start with lower FPS before increasing lossy settings for better visual quality. Artwork upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
   {
     key: 'showcase',
@@ -61,7 +63,8 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Open Steam Helpers tab and copy either Artwork/Featured or Screenshot snippet (only one).',
       'Run one snippet in Steam Console to prefill invisible title and agreement checkbox.',
     ],
-    tip: 'Use this flow only for the 506 + 100 showcase preset.',
+    tip:
+      'Use this flow only for the 506 + 100 showcase preset. Artwork/Screenshot upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
   {
     key: 'tuning',
@@ -99,8 +102,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Paste one snippet and run it.',
       'Verify fields and finish upload.',
     ],
-    tip:
-      'Snippets are intended for Steam upload pages only. Workshop: https://steamcommunity.com/sharedfiles/editguide/?appid=760 Artwork/Screenshot: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
+    tip: 'Snippets are intended for Steam upload pages only. Use the matching upload URL from each section.',
   },
 ]
 

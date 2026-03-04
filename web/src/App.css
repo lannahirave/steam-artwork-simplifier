@@ -803,6 +803,12 @@ button:disabled {
   margin-bottom: 0.5rem;
 }
 
+.snippet-upload-link {
+  margin: 0 0 0.5rem;
+  color: var(--ink-soft);
+  font-size: 0.84rem;
+}
+
 .guides-intro {
   margin: 0.1rem 0 0.9rem;
   color: var(--ink-soft);

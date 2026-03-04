@@ -10,6 +10,8 @@ interface SteamHelpersPanelProps {
   onCopySnippet: (label: 'workshop' | 'featured' | 'screenshot') => void
 }
 
+const WORKSHOP_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/editguide/?appid=760'
+const ARTWORK_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
 const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
 const URL_WHOLE_PATTERN = /^https?:\/\/[^\s]+$/
 
@@ -43,6 +45,12 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
           <h3>Workshop Snippet</h3>
           <button onClick={() => onCopySnippet('workshop')}>Copy</button>
         </div>
+        <p className="snippet-upload-link">
+          Upload page:{' '}
+          <a href={WORKSHOP_UPLOAD_URL} target="_blank" rel="noreferrer">
+            {WORKSHOP_UPLOAD_URL}
+          </a>
+        </p>
         <textarea readOnly value={WORKSHOP_SNIPPET} rows={14} />
       </article>
 
@@ -51,6 +59,12 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
           <h3>Artwork or Featured Artwork Snippet</h3>
           <button onClick={() => onCopySnippet('featured')}>Copy</button>
         </div>
+        <p className="snippet-upload-link">
+          Upload page:{' '}
+          <a href={ARTWORK_UPLOAD_URL} target="_blank" rel="noreferrer">
+            {ARTWORK_UPLOAD_URL}
+          </a>
+        </p>
         <textarea readOnly value={FEATURED_SNIPPET} rows={14} />
       </article>
 
@@ -59,6 +73,12 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
           <h3>Screenshot Snippet</h3>
           <button onClick={() => onCopySnippet('screenshot')}>Copy</button>
         </div>
+        <p className="snippet-upload-link">
+          Upload page:{' '}
+          <a href={ARTWORK_UPLOAD_URL} target="_blank" rel="noreferrer">
+            {ARTWORK_UPLOAD_URL}
+          </a>
+        </p>
         <textarea readOnly value={SCREENSHOT_SNIPPET} rows={16} />
       </article>
 
