@@ -53,6 +53,22 @@ class FakeWorker {
         const sourceBaseName = message.payload.fileName.replace(/\.[^.]+$/, '')
         reply({
           id: message.id,
+          event: 'progress',
+          payload: {
+            stage: 'frames',
+            message: 'extracting frames...',
+          },
+        })
+        reply({
+          id: message.id,
+          event: 'progress',
+          payload: {
+            stage: 'gifski',
+            message: 'encoding gif...',
+          },
+        })
+        reply({
+          id: message.id,
           event: 'result',
           payload: {
             command: 'convertPart',
@@ -115,6 +131,7 @@ describe('worker pool', () => {
 
     expect(probe.width).toBe(1280)
 
+    const progressStages: string[] = []
     const outputs = await Promise.all([
       pool.runTask('convertPart', {
         fileName: 'a.mp4',
@@ -137,6 +154,10 @@ describe('worker pool', () => {
         partIndex: 0,
         parts: 5,
         partWidth: 150,
+      }, {
+        onProgress: (_, stage) => {
+          progressStages.push(stage)
+        },
       }),
       pool.runTask('convertPart', {
         fileName: 'a.mp4',
@@ -164,6 +185,8 @@ describe('worker pool', () => {
 
     expect(outputs[0].name).toBe('a_part_01.gif')
     expect(outputs[1].name).toBe('a_part_02.gif')
+    expect(progressStages).toContain('frames')
+    expect(progressStages).toContain('gifski')
 
     pool.dispose()
   })

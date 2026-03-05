@@ -3,6 +3,7 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { computeTargetHeight } from '../lib/defaults'
+import { mapColorsToGifskiQuality } from '../lib/gifskiQuality'
 import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from '../lib/sizeStrategy'
 import {
   encodeWithGifski,
@@ -284,32 +285,6 @@ function hasGifSignature(bytes: Uint8Array): boolean {
     bytes[5],
   )
   return head === 'GIF87a' || head === 'GIF89a'
-}
-
-const GIFSKI_QUALITY_BY_COLORS = new Map<number, number>([
-  [256, 100],
-  [224, 92],
-  [192, 84],
-  [160, 76],
-  [128, 68],
-  [96, 58],
-  [64, 48],
-  [48, 40],
-  [32, 32],
-  [24, 24],
-  [16, 16],
-  [12, 12],
-])
-
-function mapColorsToGifskiQuality(maxColors: number): number {
-  const normalized = Math.max(12, Math.min(256, Math.round(maxColors)))
-  const direct = GIFSKI_QUALITY_BY_COLORS.get(normalized)
-  if (direct !== undefined) {
-    return direct
-  }
-  // Keep deterministic quality mapping even for non-standard color counts.
-  const scaled = Math.round((normalized / 256) * 100)
-  return Math.max(1, Math.min(100, scaled))
 }
 
 async function decodePngToRgba(pngBytes: Uint8Array, width: number, height: number): Promise<Uint8Array> {

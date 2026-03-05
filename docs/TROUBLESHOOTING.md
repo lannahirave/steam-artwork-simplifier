@@ -71,17 +71,17 @@ Checks:
 2. Increase `Target GIF KB` and `Max GIF KB` if possible.
 3. Disable color reduction if you prefer motion-loss over palette-loss.
 
-## `Aborted()` in Logs
+## gifski Encode Failures
 
 Important:
 
-- `Aborted()` in wasm logs is suspicious but not always fatal.
-- Worker performs fallback encoding and byte-level validation.
+- GIF encoding is handled by gifski.wasm after ffmpeg frame extraction.
+- There is no runtime fallback to ffmpeg GIF encoding.
 
 If failures persist:
 
 1. Re-run with `Worker Count = 1`.
-2. Capture `Live Progress` and `Run Logs`.
+2. Capture `Live Progress` stages (`worker-x:frames`, `worker-x:gifski`) and `Run Logs`.
 3. Note source file + preset + config.
 
 ## Vite Worker Dependency Errors

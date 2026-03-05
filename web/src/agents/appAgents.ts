@@ -143,7 +143,7 @@ export function getIsolationState(): IsolationState {
   return {
     ok: false,
     reason:
-      'This app requires cross-origin isolation to run ffmpeg.wasm multithread core (SharedArrayBuffer).',
+      'This app requires cross-origin isolation to run WASM media processing workers (SharedArrayBuffer).',
   }
 }
 
@@ -239,8 +239,11 @@ export function getBaseProgress(stage: string): number {
 }
 
 export function getWorkerStageWeight(stage: string): number {
-  if (stage === 'ffmpeg') {
+  if (stage === 'frames') {
     return 0.35
+  }
+  if (stage === 'gifski') {
+    return 0.75
   }
   if (stage === 'convert') {
     return 0.5
