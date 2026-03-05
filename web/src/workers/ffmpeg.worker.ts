@@ -4,6 +4,11 @@ import { FFmpeg } from '@ffmpeg/ffmpeg'
 import { toBlobURL } from '@ffmpeg/util'
 import { computeTargetHeight } from '../lib/defaults'
 import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from '../lib/sizeStrategy'
+import {
+  encodeWithGifski,
+  ensureGifskiRuntimeLoaded,
+  GIFSKI_RUNTIME_VERSION,
+} from './gifskiRuntime'
 import type {
   AnyWorkerRequest,
   ArtifactStatus,
@@ -235,13 +240,15 @@ async function ensureLoaded(requestId: string): Promise<void> {
     wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
   })
 
+  postProgress(requestId, 'init', `Loading gifski WASM runtime (${GIFSKI_RUNTIME_VERSION})...`)
+  await ensureGifskiRuntimeLoaded()
+
   loaded = true
 }
 
 interface ExecContext {
   ret: number
   logTail: string
-  hasAbortLog: boolean
 }
 
 async function execWithContext(args: string[]): Promise<ExecContext> {
@@ -252,21 +259,17 @@ async function execWithContext(args: string[]): Promise<ExecContext> {
   return {
     ret,
     logTail: tailLogOutput(trimmed),
-    hasAbortLog: trimmed.some((line) => /aborted\(\)/i.test(line)),
   }
 }
 
 interface EncodeOptions {
   inputName: string
-  outputName: string
+  outputTag: string
   vf: string
+  fps: number
   maxColors: number
-  dither?: string
-  statsMode?: 'single' | 'diff'
   startOffsetSec?: number
 }
-
-const SUSPICIOUS_ABORT_GIF_MAX_BYTES = 8 * 1024
 
 function hasGifSignature(bytes: Uint8Array): boolean {
   if (bytes.length < 6) {
@@ -283,122 +286,80 @@ function hasGifSignature(bytes: Uint8Array): boolean {
   return head === 'GIF87a' || head === 'GIF89a'
 }
 
-async function readGifIfValid(path: string): Promise<Uint8Array | null> {
+const GIFSKI_QUALITY_BY_COLORS = new Map<number, number>([
+  [256, 100],
+  [224, 92],
+  [192, 84],
+  [160, 76],
+  [128, 68],
+  [96, 58],
+  [64, 48],
+  [48, 40],
+  [32, 32],
+  [24, 24],
+  [16, 16],
+  [12, 12],
+])
+
+function mapColorsToGifskiQuality(maxColors: number): number {
+  const normalized = Math.max(12, Math.min(256, Math.round(maxColors)))
+  const direct = GIFSKI_QUALITY_BY_COLORS.get(normalized)
+  if (direct !== undefined) {
+    return direct
+  }
+  // Keep deterministic quality mapping even for non-standard color counts.
+  const scaled = Math.round((normalized / 256) * 100)
+  return Math.max(1, Math.min(100, scaled))
+}
+
+async function decodePngToRgba(pngBytes: Uint8Array, width: number, height: number): Promise<Uint8Array> {
+  if (typeof createImageBitmap !== 'function') {
+    throw new Error('createImageBitmap is not available in this worker runtime.')
+  }
+
+  const safePngBytes = new Uint8Array(pngBytes.byteLength)
+  safePngBytes.set(pngBytes)
+  const imageBlob = new Blob([safePngBytes.buffer], { type: 'image/png' })
+  const bitmap = await createImageBitmap(imageBlob)
   try {
-    const bytes = (await ffmpeg.readFile(path)) as Uint8Array
-    return hasGifSignature(bytes) ? bytes : null
-  } catch {
-    return null
+    const canvas = new OffscreenCanvas(width, height)
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) {
+      throw new Error('Failed to create 2D canvas context for frame decode.')
+    }
+    context.drawImage(bitmap, 0, 0, width, height)
+    const imageData = context.getImageData(0, 0, width, height)
+    const out = new Uint8Array(imageData.data.byteLength)
+    out.set(imageData.data)
+    return out
+  } finally {
+    bitmap.close()
   }
 }
 
+async function listFramePaths(prefix: string): Promise<string[]> {
+  const entries = await ffmpeg.listDir('.')
+  return entries
+    .filter((entry) => !entry.isDir && entry.name.startsWith(`${prefix}-`) && entry.name.endsWith('.png'))
+    .map((entry) => entry.name)
+    .sort((a, b) => a.localeCompare(b))
+}
+
 async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
-  // Faster default than sierra2_4a with acceptable quality for Steam artwork.
-  const dither = options.dither ?? 'bayer:bayer_scale=5'
-  const statsMode = options.statsMode ?? 'single'
-  const singlePassGraph =
-    `[0:v]${options.vf},split[v][p];` +
-    `[p]palettegen=max_colors=${options.maxColors}:stats_mode=${statsMode}[palette];` +
-    `[v][palette]paletteuse=dither=${dither}:diff_mode=rectangle`
-  const twoPassGraph = `${options.vf}[x];[x][1:v]paletteuse=dither=${dither}:diff_mode=rectangle`
-  const paletteName = `${options.outputName}.palette.png`
+  const framePrefix = `frames-${options.outputTag}`
+  const framePattern = `${framePrefix}-%05d.png`
+  let framePaths: string[] = []
   const seekArgs =
     options.startOffsetSec && options.startOffsetSec > 0
       ? ['-ss', options.startOffsetSec.toFixed(3)]
       : []
 
   try {
-    const singleResult = await execWithContext([
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-y',
-      '-threads',
-      '1',
-      ...seekArgs,
-      '-i',
-      options.inputName,
-      '-filter_complex',
-      singlePassGraph,
-      options.outputName,
-    ])
-    const singleBytes = await readGifIfValid(options.outputName)
-    const singleSuspiciousAbort =
-      singleResult.hasAbortLog &&
-      singleBytes !== null &&
-      singleBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES
-    const singleLooksStable =
-      singleResult.ret === 0 &&
-      singleBytes !== null &&
-      !singleSuspiciousAbort
-    const singleNeedsVerification = singleLooksStable && singleResult.hasAbortLog
-
-    if (singleLooksStable && !singleNeedsVerification) {
-      return singleBytes
-    }
-
     if (currentRequestId) {
-      postProgress(
-        currentRequestId,
-        'convert',
-        singleNeedsVerification
-          ? 'Primary GIF encode returned with Aborted() logs; validating with compatibility palette pass...'
-          : 'Primary GIF encode reported instability; retrying with compatibility palette pass...',
-      )
+      postProgress(currentRequestId, 'frames', `Extracting PNG frame sequence at ${options.fps}fps...`)
     }
 
-    const paletteResult = await execWithContext([
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-y',
-      '-threads',
-      '1',
-      ...seekArgs,
-      '-i',
-      options.inputName,
-      '-vf',
-      `${options.vf},palettegen=max_colors=${options.maxColors}:stats_mode=full`,
-      '-update',
-      '1',
-      paletteName,
-    ])
-
-    const compatResult = await execWithContext([
-      '-hide_banner',
-      '-loglevel',
-      'error',
-      '-y',
-      '-threads',
-      '1',
-      ...seekArgs,
-      '-i',
-      options.inputName,
-      '-i',
-      paletteName,
-      '-lavfi',
-      twoPassGraph,
-      options.outputName,
-    ])
-    const compatBytes = await readGifIfValid(options.outputName)
-
-    if (
-      compatResult.ret === 0 &&
-      compatBytes !== null &&
-      !(compatResult.hasAbortLog && compatBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES)
-    ) {
-      return compatBytes
-    }
-
-    if (currentRequestId) {
-      postProgress(
-        currentRequestId,
-        'convert',
-        'Palette encode still unstable; retrying with direct GIF encoder fallback...',
-      )
-    }
-
-    const directResult = await execWithContext([
+    const extractResult = await execWithContext([
       '-hide_banner',
       '-loglevel',
       'error',
@@ -410,50 +371,70 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       options.inputName,
       '-vf',
       options.vf,
-      options.outputName,
+      '-vsync',
+      '0',
+      '-f',
+      'image2',
+      '-vcodec',
+      'png',
+      framePattern,
     ])
-    const directBytes = await readGifIfValid(options.outputName)
 
-    if (
-      directResult.ret === 0 &&
-      directBytes !== null &&
-      !(directResult.hasAbortLog && directBytes.byteLength <= SUSPICIOUS_ABORT_GIF_MAX_BYTES)
-    ) {
-      return directBytes
+    if (extractResult.ret !== 0) {
+      throw new Error(`ffmpeg frame extraction failed.\n\nffmpeg tail:\n${extractResult.logTail}`)
     }
 
-    if (singleLooksStable) {
-      return singleBytes
+    framePaths = await listFramePaths(framePrefix)
+    if (framePaths.length === 0) {
+      throw new Error('Frame extraction succeeded but produced no PNG frames.')
     }
 
-    const reasons = [
-      `single-pass ret=${singleResult.ret}${singleResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
-      `compat-palette ret=${compatResult.ret}${compatResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
-      `palette-pass ret=${paletteResult.ret}${paletteResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
-      `direct-gif ret=${directResult.ret}${directResult.hasAbortLog ? ' (Aborted logged)' : ''}`,
-    ].join('\n')
+    const firstFrame = (await ffmpeg.readFile(framePaths[0])) as Uint8Array
+    const dims = parsePngDimensions(firstFrame)
+    if (!dims) {
+      throw new Error(`Failed to parse PNG dimensions from ${framePaths[0]}.`)
+    }
 
-    const details = [
-      `single-pass tail:\n${singleResult.logTail}`,
-      `compat-palette tail:\n${compatResult.logTail}`,
-      `palette-pass tail:\n${paletteResult.logTail}`,
-      `direct-gif tail:\n${directResult.logTail}`,
-    ].join('\n\n')
+    const rgbaFrames: Uint8Array[] = []
+    rgbaFrames.push(await decodePngToRgba(firstFrame, dims.width, dims.height))
 
-    if (singleBytes === null && compatBytes === null && directBytes === null) {
-      throw new Error(
-        `GIF encode failed.\n\n${reasons}\n\n${details}`,
+    for (let index = 1; index < framePaths.length; index += 1) {
+      const frameBytes = (await ffmpeg.readFile(framePaths[index])) as Uint8Array
+      const frameDims = parsePngDimensions(frameBytes)
+      if (!frameDims || frameDims.width !== dims.width || frameDims.height !== dims.height) {
+        throw new Error(`Frame geometry mismatch in ${framePaths[index]}.`)
+      }
+      rgbaFrames.push(await decodePngToRgba(frameBytes, dims.width, dims.height))
+    }
+
+    const quality = mapColorsToGifskiQuality(options.maxColors)
+    if (currentRequestId) {
+      postProgress(
+        currentRequestId,
+        'gifski',
+        `Encoding ${framePaths.length} frame(s) with quality ${quality}.`,
       )
     }
 
-    throw new Error(
-      'GIF encode produced suspicious output after fallback.\n\n' +
-        `${reasons}\n\n` +
-        `${details}`,
-    )
+    const gifBytes = await encodeWithGifski({
+      frames: rgbaFrames,
+      width: dims.width,
+      height: dims.height,
+      fps: options.fps,
+      quality,
+      repeat: 0,
+    })
+
+    if (!hasGifSignature(gifBytes)) {
+      throw new Error('gifski produced output without a valid GIF signature.')
+    }
+
+    return gifBytes
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`GIF encode failed via gifski.\n\n${message}`)
   } finally {
-    await safeDelete(paletteName)
-    await safeDelete(options.outputName)
+    await Promise.all(framePaths.map((path) => safeDelete(path)))
   }
 }
 
@@ -489,8 +470,9 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
     postProgress(options.requestId, 'convert', 'Static image source detected: resize-only encode.')
     const bytes = await encodeGif({
       inputName: options.inputName,
-      outputName: `still-${options.requestId}.gif`,
+      outputTag: `still-${options.requestId}`,
       vf: options.baseFilter,
+      fps: 1,
       maxColors: 256,
       startOffsetSec: options.startOffsetSec,
     })
@@ -509,8 +491,9 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
   let bestColors = 256
   let bestBytes = await encodeGif({
     inputName: options.inputName,
-    outputName: `initial-${options.requestId}.gif`,
+    outputTag: `initial-${options.requestId}`,
     vf: `fps=${options.gifFps},${options.baseFilter}`,
+    fps: options.gifFps,
     maxColors: 256,
     startOffsetSec: options.startOffsetSec,
   })
@@ -558,8 +541,9 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
       )
       const attemptBytes = await encodeGif({
         inputName: options.inputName,
-        outputName: `standard-${candidate.fps}-${candidate.colors}-${options.requestId}.gif`,
+        outputTag: `standard-${candidate.fps}-${candidate.colors}-${options.requestId}`,
         vf: `fps=${candidate.fps},${options.baseFilter}`,
+        fps: candidate.fps,
         maxColors: candidate.colors,
         startOffsetSec: options.startOffsetSec,
       })
@@ -613,8 +597,9 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
 
       const attemptBytes = await encodeGif({
         inputName: options.inputName,
-        outputName: `fpsfit-${nextFps}-${options.requestId}.gif`,
+        outputTag: `fpsfit-${nextFps}-${options.requestId}`,
         vf: `fps=${nextFps},${options.baseFilter}`,
+        fps: nextFps,
         maxColors: 256,
         startOffsetSec: options.startOffsetSec,
       })
@@ -678,8 +663,9 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
 
       const attemptBytes = await encodeGif({
         inputName: options.inputName,
-        outputName: `fps-priority-${fps}-${options.requestId}.gif`,
+        outputTag: `fps-priority-${fps}-${options.requestId}`,
         vf: `fps=${fps},${options.baseFilter}`,
+        fps,
         maxColors: 256,
         startOffsetSec: options.startOffsetSec,
       })
@@ -736,11 +722,10 @@ async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncod
 
     const attemptBytes = await encodeGif({
       inputName: options.inputName,
-      outputName: `lossy-${candidate.fps}-${candidate.colors}-${options.requestId}.gif`,
+      outputTag: `lossy-${candidate.fps}-${candidate.colors}-${options.requestId}`,
       vf: vfParts.join(','),
+      fps: candidate.fps,
       maxColors: candidate.colors,
-      dither: candidate.dither,
-      statsMode: candidate.statsMode,
       startOffsetSec: options.startOffsetSec,
     })
 

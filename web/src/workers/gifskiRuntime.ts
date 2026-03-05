@@ -52,6 +52,10 @@ async function getRuntime(): Promise<GifskiRuntimeModule> {
   return initPromise
 }
 
+export async function ensureGifskiRuntimeLoaded(): Promise<void> {
+  await getRuntime()
+}
+
 export async function encodeWithGifski(options: GifskiEncodeOptions): Promise<Uint8Array> {
   const runtime = await getRuntime()
   const requestedFrames = options.frames
