@@ -112,6 +112,15 @@ npm run bench:workshop
 - Optional Cloudflare deploy is available with `npm run deploy` (Wrangler).
 - gifski runtime assets are pinned and self-hosted in `public/vendor/gifski/2.2.0/`.
 
+## License and Source
+
+- License: `AGPL-3.0-or-later`
+- Source repository: `https://github.com/lannahirave/steam-artwork-simplifier`
+- Deployed legal files:
+  - `/LICENSE.txt`
+  - `/THIRD_PARTY_NOTICES.txt`
+  - `/SOURCE.txt`
+
 ## Deep Docs
 
 - `../docs/README.md`
