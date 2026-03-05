@@ -397,7 +397,6 @@ async function encodeGif(options: EncodeOptions): Promise<Uint8Array> {
       height: dims.height,
       fps: options.fps,
       quality,
-      repeat: 0,
     })
 
     if (!hasGifSignature(gifBytes)) {
