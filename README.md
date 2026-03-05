@@ -108,4 +108,14 @@ python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
 
 ## License
 
-MIT. See `LICENSE`.
+AGPL-3.0-or-later. See `LICENSE`.
+
+If you interact with a network deployment of this project, the corresponding source is available at:
+
+`https://github.com/lannahirave/steam-artwork-simplifier`
+
+## Trademark Notice
+
+Steam and the Steam logo are trademarks and/or registered trademarks of Valve Corporation in the United States and/or other countries.
+
+This project is an independent, unofficial tool and is not affiliated with, endorsed by, sponsored by, or approved by Valve Corporation.
