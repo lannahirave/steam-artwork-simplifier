@@ -79,8 +79,12 @@ export function ConvertPanel() {
   }
 
   return (
-    <section className="panel">
+    <section className="panel panel-convert">
       <h2>Media to GIF</h2>
+      <p className="panel-intro">
+        Encode source media into Steam-specific layouts with control over frame rate, size ceilings, retries, and
+        post-processing patches.
+      </p>
 
       <div className="config-groups">
         <section className="config-group">

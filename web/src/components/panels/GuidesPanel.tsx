@@ -23,11 +23,9 @@ export function GuidesPanel(props: GuidesPanelProps) {
   const { guides } = props
 
   return (
-    <section className="panel">
+    <section className="panel panel-guides">
       <h2>Guides</h2>
-      <p className="guides-intro">
-        Step-by-step workflows for common tasks in this toolkit.
-      </p>
+      <p className="panel-intro guides-intro">Step-by-step workflows for the common tasks in this toolkit.</p>
 
       <div className="guides-grid">
         {guides.map((guide) => (
