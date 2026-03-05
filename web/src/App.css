@@ -5,7 +5,8 @@
   --bg: #eef2f6;
   --bg-deep: #d8e1ea;
   --ink: #17212b;
-  --ink-soft: #607080;
+  --ink-soft: #465766;
+  --muted-strong: #314252;
   --surface: rgba(251, 253, 255, 0.82);
   --surface-strong: rgba(255, 255, 255, 0.94);
   --surface-deep: rgba(245, 248, 252, 0.98);
@@ -38,7 +39,8 @@
   --bg: #0c1218;
   --bg-deep: #18222d;
   --ink: #edf3fa;
-  --ink-soft: #a7b4c0;
+  --ink-soft: #b4c0cb;
+  --muted-strong: #d3dce5;
   --surface: rgba(19, 28, 37, 0.84);
   --surface-strong: rgba(23, 34, 45, 0.92);
   --surface-deep: rgba(17, 25, 34, 0.96);
@@ -205,7 +207,7 @@ textarea {
   text-transform: uppercase;
   font-size: 0.68rem;
   font-weight: 700;
-  color: var(--ink-soft);
+  color: var(--muted-strong);
 }
 
 .hero-chip {
@@ -253,7 +255,7 @@ textarea {
   align-items: center;
   min-height: 42px;
   padding: 0 0.15rem;
-  color: var(--ink-soft);
+  color: var(--muted-strong);
   text-decoration: none;
   font-weight: 700;
 }
@@ -417,14 +419,15 @@ textarea {
   gap: 0.3rem;
   align-content: start;
   border-radius: var(--radius-md);
-  border: 1px solid var(--panel-edge);
+  border: 1px solid rgba(29, 111, 214, 0.18);
   padding: 0.9rem 0.95rem;
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.52), rgba(255, 255, 255, 0.18)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.82), rgba(244, 248, 252, 0.96)),
     var(--surface);
   color: var(--ink);
   text-align: left;
   cursor: pointer;
+  position: relative;
   transition:
     transform 160ms ease,
     border-color 160ms ease,
@@ -434,26 +437,55 @@ textarea {
 
 [data-theme='dark'] .tab {
   background:
-    linear-gradient(180deg, rgba(255, 255, 255, 0.04), rgba(255, 255, 255, 0.01)),
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.015)),
     var(--surface);
+  border-color: rgba(98, 168, 255, 0.22);
+}
+
+.tab::after {
+  content: 'Open';
+  justify-self: start;
+  margin-top: 0.25rem;
+  padding: 0.26rem 0.55rem;
+  border-radius: 999px;
+  background: rgba(29, 111, 214, 0.1);
+  color: var(--accent);
+  font-size: 0.7rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+[data-theme='dark'] .tab::after {
+  background: rgba(98, 168, 255, 0.12);
 }
 
 .tab:hover:not(.active) {
-  transform: translateY(-1px);
-  border-color: var(--panel-edge-strong);
+  transform: translateY(-2px);
+  border-color: rgba(29, 111, 214, 0.42);
+  box-shadow: 0 12px 24px rgba(29, 111, 214, 0.12);
 }
 
 .tab.active {
-  border-color: rgba(29, 111, 214, 0.3);
-  box-shadow: 0 10px 24px rgba(29, 111, 214, 0.12);
+  border-color: rgba(29, 111, 214, 0.52);
+  box-shadow: 0 14px 28px rgba(29, 111, 214, 0.16);
   background:
-    linear-gradient(145deg, rgba(29, 111, 214, 0.12), rgba(21, 154, 140, 0.06)),
+    linear-gradient(145deg, rgba(29, 111, 214, 0.18), rgba(21, 154, 140, 0.08)),
     var(--surface-strong);
 }
 
 [data-theme='dark'] .tab.active {
-  border-color: rgba(98, 168, 255, 0.34);
-  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.2);
+  border-color: rgba(98, 168, 255, 0.5);
+  box-shadow: 0 12px 24px rgba(0, 0, 0, 0.24);
+}
+
+.tab.active::after {
+  background: var(--accent);
+  color: #f7fbff;
+}
+
+[data-theme='dark'] .tab.active::after {
+  color: #0c1218;
 }
 
 .tab-title {
@@ -464,7 +496,7 @@ textarea {
 .tab-summary {
   font-size: 0.78rem;
   line-height: 1.4;
-  color: var(--ink-soft);
+  color: var(--muted-strong);
 }
 
 .spotlight-panel {
