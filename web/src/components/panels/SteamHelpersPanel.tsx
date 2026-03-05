@@ -29,9 +29,9 @@ export function SteamHelpersPanel() {
   const { onCopySnippet } = actions
 
   return (
-    <section className="panel">
+    <section className="panel panel-steam">
       <h2>Steam Upload Helpers</h2>
-      <p>Copy and run these snippets in Steam upload page DevTools Console.</p>
+      <p className="panel-intro">Copy and run these snippets in the DevTools Console on the matching Steam upload page.</p>
       <ul>
         {STEAM_HELPER_NOTES.map((note) => (
           <li key={note}>{renderTextWithLinks(note)}</li>

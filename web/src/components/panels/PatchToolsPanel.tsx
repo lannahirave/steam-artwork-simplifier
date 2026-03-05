@@ -34,8 +34,11 @@ export function PatchToolsPanel() {
   const headerFilesCount = headerFiles.length
 
   return (
-    <section className="panel">
+    <section className="panel panel-patch">
       <h2>Patch Tools</h2>
+      <p className="panel-intro">
+        Rewrite EOF bytes and logical GIF dimensions in batches when you need surgical fixes without re-encoding.
+      </p>
 
       <div className="patch-grid">
         <article className="subpanel">
