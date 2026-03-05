@@ -74,6 +74,11 @@ function App() {
         This project is an independent, unofficial tool and is not affiliated with, endorsed by, sponsored by, or
         approved by Valve Corporation.
       </p>
+      <p>
+        Source code: <a href="https://github.com/lannahirave/steam-artwork-simplifier">GitHub</a> | License:{' '}
+        <a href="/LICENSE.txt">AGPL-3.0-or-later</a> | Third-party notices:{' '}
+        <a href="/THIRD_PARTY_NOTICES.txt">View</a>
+      </p>
     </footer>
   )
 
