@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { getDefaultWorkerCount } from '../../lib/defaults'
 import type { ConversionConfig } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
@@ -6,6 +7,7 @@ import { useConvertContext } from '../../contexts/convertContext'
 
 export function ConvertPanel() {
   const { state, actions, meta } = useConvertContext()
+  const [copiedSection, setCopiedSection] = useState<'progress' | 'logs' | null>(null)
   const {
     config,
     sourceFile,
@@ -46,6 +48,35 @@ export function ConvertPanel() {
     getColorReductionPercent,
     downloadBlob: onDownloadBlob,
   } = meta
+  const progressText = progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')
+  const runLogsText = logs.join('\n')
+
+  async function copyText(section: 'progress' | 'logs', text: string): Promise<void> {
+    if (!text) {
+      return
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text)
+      } else {
+        const textarea = document.createElement('textarea')
+        textarea.value = text
+        textarea.setAttribute('readonly', '')
+        textarea.style.position = 'absolute'
+        textarea.style.left = '-9999px'
+        document.body.appendChild(textarea)
+        textarea.select()
+        document.execCommand('copy')
+        document.body.removeChild(textarea)
+      }
+      setCopiedSection(section)
+      window.setTimeout(() => {
+        setCopiedSection((prev) => (prev === section ? null : prev))
+      }, 1600)
+    } catch {
+      setCopiedSection(null)
+    }
+  }
 
   return (
     <section className="panel">
@@ -465,15 +496,25 @@ export function ConvertPanel() {
 
       {progress.length > 0 && (
         <div className="log-box">
-          <h3>Live Progress</h3>
-          <pre>{progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')}</pre>
+          <div className="log-head">
+            <h3>Live Progress</h3>
+            <button type="button" className="inline-action" onClick={() => void copyText('progress', progressText)}>
+              {copiedSection === 'progress' ? 'Copied' : 'Copy Logs'}
+            </button>
+          </div>
+          <pre>{progressText}</pre>
         </div>
       )}
 
       {logs.length > 0 && (
         <div className="log-box">
-          <h3>Run Logs</h3>
-          <pre>{logs.join('\n')}</pre>
+          <div className="log-head">
+            <h3>Run Logs</h3>
+            <button type="button" className="inline-action" onClick={() => void copyText('logs', runLogsText)}>
+              {copiedSection === 'logs' ? 'Copied' : 'Copy Logs'}
+            </button>
+          </div>
+          <pre>{runLogsText}</pre>
         </div>
       )}
 
