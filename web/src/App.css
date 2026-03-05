@@ -592,6 +592,18 @@ button:disabled {
   margin: 0 0 0.5rem;
 }
 
+.log-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.55rem;
+  margin-bottom: 0.5rem;
+}
+
+.log-head h3 {
+  margin: 0;
+}
+
 .warn-box ul {
   margin: 0;
   padding-left: 1.15rem;
