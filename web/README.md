@@ -16,6 +16,7 @@ Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + f
 - Live progress with stage logs and elapsed timer
 - FPS estimate + auto-apply from probe/duration/size targets
 - Worker-pool conversion with shared-FPS pass for split presets
+- Encoding path: ffmpeg.wasm frame extraction + gifski.wasm GIF encode
 - Optional precheck, standard retries, FPS reduction, color reduction, and lossy oversize fallback
 - Output metadata per GIF: size, final FPS, color reduction
 - Optional output patching during conversion:

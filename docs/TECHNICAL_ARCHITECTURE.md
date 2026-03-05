@@ -5,7 +5,9 @@
 - UI: React 19
 - Language: TypeScript
 - Build/dev: Vite 7
-- Media engine: `@ffmpeg/ffmpeg` (WASM core in workers)
+- Media engines:
+  - `@ffmpeg/ffmpeg` (probe + scaling/cropping + frame extraction)
+  - `gifski-wasm` (GIF encoding)
 - Packaging: `jszip`
 - Unit tests: Vitest
 - E2E smoke tests: Playwright
@@ -122,19 +124,18 @@ Notable behavior:
 `web/src/workers/ffmpeg.worker.ts` handles:
 
 - lazy ffmpeg core loading
+- lazy gifski runtime loading
 - source probing (dimensions/duration/fps)
 - dark-intro start offset detection
 - geometry transforms per preset
 - retry ladders (standard, FPS-fit, FPS-priority, lossy)
 - progress stage events and artifact metadata
 
-Stability safeguards:
+Encoding path:
 
-- treats `Aborted()` + tiny outputs as suspicious
-- fallback chain:
-  1. single-pass palette graph
-  2. compatibility two-pass palette
-  3. direct GIF encoder fallback
+1. ffmpeg extracts PNG frame sequence for the selected filter/FPS profile
+2. worker decodes frames to RGBA buffers
+3. gifski encodes final GIF bytes using mapped quality profile
 
 ## Naming and Export
 

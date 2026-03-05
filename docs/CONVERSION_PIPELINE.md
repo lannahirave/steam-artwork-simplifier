@@ -130,11 +130,11 @@ Outputs are not discarded if still above `maxGifKb`.
 
 Inside `encodeGif` worker path:
 
-1. single-pass palette graph
-2. compatibility two-pass palette
-3. direct GIF encode fallback
+1. ffmpeg frame extraction to PNG sequence
+2. PNG decode to RGBA buffers in worker memory
+3. gifski encode with deterministic quality mapping from retry color profiles
 
-`Aborted()` logs with tiny output bytes are treated as suspicious and rejected.
+If gifski encode fails, the attempt fails with diagnostic logs (no ffmpeg GIF fallback chain).
 
 ## Progress and Logs
 
@@ -145,6 +145,8 @@ Typical stage tags:
 - `[precheck]`
 - `[convert]`
 - `[worker-x:ffmpeg]`
+- `[worker-x:frames]`
+- `[worker-x:gifski]`
 - `[worker-x:standard]`
 - `[worker-x:lossy]`
 - `[done]`
