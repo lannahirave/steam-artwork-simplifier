@@ -71,6 +71,16 @@ Patch output ZIP names are fixed:
   - Netlify (auto deploy on push to `main`)
   - Optional Cloudflare Worker static-assets deployment
 
+## Licensing and Source Availability
+
+- Repository license: `AGPL-3.0-or-later`.
+- Web deployments publish legal/source files at:
+  - `/LICENSE.txt`
+  - `/THIRD_PARTY_NOTICES.txt`
+  - `/SOURCE.txt`
+- Canonical source URL:
+  - `https://github.com/lannahirave/steam-artwork-simplifier`
+
 ## Where To Read Next
 
 - `docs/TECHNICAL_ARCHITECTURE.md`

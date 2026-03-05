@@ -70,6 +70,18 @@ Conversion requires cross-origin isolation:
 For Cloudflare path, worker injects them.
 For any host, ensure headers are present on HTML and assets.
 
+## License Compliance
+
+Deployments must keep these static files publicly reachable:
+
+1. `/LICENSE.txt`
+2. `/THIRD_PARTY_NOTICES.txt`
+3. `/SOURCE.txt`
+
+`/SOURCE.txt` must point to the canonical corresponding source repository:
+
+`https://github.com/lannahirave/steam-artwork-simplifier`
+
 ## Production Verification Checklist
 
 1. App loads without isolation blocking screen.
@@ -78,6 +90,9 @@ For any host, ensure headers are present on HTML and assets.
 4. Confirm `Download all (ZIP archive)` works.
 5. Confirm output file naming is source-based (`<source>_...`).
 6. Confirm Steam helper links are clickable and correct.
+7. Confirm `/LICENSE.txt` returns `200`.
+8. Confirm `/THIRD_PARTY_NOTICES.txt` returns `200`.
+9. Confirm `/SOURCE.txt` returns `200` and points to the canonical source URL.
 
 ## Rollback
 
