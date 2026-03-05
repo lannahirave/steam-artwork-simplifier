@@ -1,6 +1,6 @@
 # Steam Artwork Toolkit Web
 
-Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + ffmpeg.wasm.
+Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + ffmpeg.wasm + gifski.wasm.
 
 ## Features
 
@@ -109,6 +109,7 @@ npm run bench:workshop
 - Netlify is configured from repo root (`netlify.toml`) with `base = "web"`, `publish = "dist"`.
 - Production deploy on Netlify is triggered by pushes to `main`.
 - Optional Cloudflare deploy is available with `npm run deploy` (Wrangler).
+- gifski runtime assets are pinned and self-hosted in `public/vendor/gifski/2.2.0/`.
 
 ## Deep Docs
 
