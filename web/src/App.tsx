@@ -28,70 +28,70 @@ const TAB_DETAILS: Record<
   }
 > = {
   convert: {
-    label: 'Conversion Atelier',
-    eyebrow: 'Primary Workflow',
-    summary: 'Shape raw media into Steam-ready GIF systems with aggressive control over size, speed, and output fidelity.',
+    label: 'Convert',
+    eyebrow: 'Primary',
+    summary: 'Convert media into Steam-ready GIF layouts with control over speed, size, retries, and patching.',
     points: [
-      'Workshop strips, featured canvases, showcase splits, and guide squares in one flow.',
-      'Adaptive worker scheduling and retry ladders for practical browser-side throughput.',
-      'Live progress, logs, previews, and single-click ZIP export once output is ready.',
+      'Workshop, showcase, featured, and guide presets.',
+      'Live progress, logs, previews, and ZIP export.',
+      'Browser-only processing with parallel workers.',
     ],
   },
   patch: {
-    label: 'Patch Lab',
-    eyebrow: 'File Surgery',
-    summary: 'Repair or rewrite existing GIF metadata without rerunning the full conversion pipeline.',
+    label: 'Patch Tools',
+    eyebrow: 'Utilities',
+    summary: 'Patch existing GIF files without rerunning conversion.',
     points: [
-      'Batch EOF rewriting for legacy-compatible endings.',
-      'Header width and height patching for Steam-specific presentation tricks.',
-      'Direct downloads or ZIP bundles for cleaned output sets.',
+      'Batch EOF rewriting.',
+      'Header width and height patching.',
+      'Single-file downloads or ZIP bundles.',
     ],
   },
   steam: {
-    label: 'Upload Console',
-    eyebrow: 'Steam Helpers',
-    summary: 'Prepare upload sessions faster with ready-to-run console snippets for the exact Steam screens you need.',
+    label: 'Steam Helpers',
+    eyebrow: 'Upload',
+    summary: 'Open the right Steam page, copy the matching helper snippet, and finish upload setup faster.',
     points: [
-      'Dedicated snippets for workshop, artwork/featured, and screenshot uploads.',
-      'Built-in copy actions and direct links to the correct Steam pages.',
-      'Notes that keep the helper workflow constrained to the intended upload surfaces.',
+      'Separate snippets for workshop, artwork, featured, and screenshots.',
+      'Direct links to the intended Steam upload pages.',
+      'Copy actions built into each helper section.',
     ],
   },
   guides: {
-    label: 'Field Manual',
-    eyebrow: 'Operational Guides',
-    summary: 'Reference the fastest working paths through the toolkit when you need to move from source file to uploadable artwork.',
+    label: 'Guides',
+    eyebrow: 'Reference',
+    summary: 'Reference the fastest path through the tool when you need preset-specific steps or tuning guidance.',
     points: [
-      'Preset-specific playbooks for workshop, showcase, featured, and guide output.',
-      'Tuning recommendations for size pressure, retries, and quality tradeoffs.',
-      'Patch and upload walkthroughs for the full end-to-end Steam workflow.',
+      'Preset-specific workflows.',
+      'Quality and size tuning tips.',
+      'Patch and upload checklists.',
     ],
   },
 }
 
 const STUDIO_SIGNALS = [
   {
-    value: '100% Local',
-    label: 'Media stays in your browser while the pipeline runs.',
+    value: 'Local Processing',
+    label: 'Source media stays in the browser during conversion.',
   },
   {
-    value: `${MAX_SAFE_WASM_WORKERS} Workers`,
+    value: `${MAX_SAFE_WASM_WORKERS} Max Workers`,
     label: 'Parallel conversion tuned for browser stability.',
   },
   {
-    value: `${GUIDE_SECTIONS.length} Guides`,
-    label: 'Reference workflows for the common Steam publishing paths.',
+    value: `${GUIDE_SECTIONS.length} Built-In Guides`,
+    label: 'Reference workflows for common Steam upload paths.',
   },
 ]
 
-const WORKBENCH_NOTES = [
+const QUICK_FACTS = [
   {
-    title: 'Built For Steam Constraints',
-    body: 'Preset geometry, patching, and helper snippets are aligned with the weird edges of Steam artwork workflows.',
+    title: 'Why it is useful',
+    body: 'Presets, patching, and helper snippets are aligned to actual Steam artwork workflows instead of generic media conversion.',
   },
   {
-    title: 'Not A Toy Converter',
-    body: 'Retry ladders, precheck toggles, and lossy fallback controls make this feel more like a mastering desk than a file uploader.',
+    title: 'What is here',
+    body: 'Conversion, patch tools, upload helpers, and guides are all available in one place without leaving the page.',
   },
 ]
 
@@ -206,17 +206,16 @@ function App() {
             <p className="hero-eyebrow">Steam Artwork Studio</p>
             <span className="hero-chip">V{APP_VERSION}</span>
           </div>
-          <h1>Steam artwork tooling with the atmosphere of a finished product.</h1>
+          <h1>Practical Steam artwork tools in one browser workspace.</h1>
           <p className="hero-summary">
-            Convert, patch, and prep upload flows in one browser workspace with a sharper visual hierarchy and no
-            external processing dependency.
+            Convert media, patch finished GIFs, and prepare Steam uploads without leaving the app.
           </p>
           <div className="hero-actions">
             <button type="button" className="hero-primary" onClick={() => setTab('convert')}>
-              Open Conversion Studio
+              Open Convert
             </button>
             <button type="button" className="theme-switch" onClick={cycleThemeMode}>
-              Palette: {themeLabel}
+              Theme: {themeLabel}
             </button>
             <a className="hero-link" href="https://github.com/lannahirave/steam-artwork-simplifier">
               Source Code
@@ -237,9 +236,14 @@ function App() {
             <p className="hero-spotlight-label">{activeTab.eyebrow}</p>
             <h2>{activeTab.label}</h2>
             <p>{activeTab.summary}</p>
+            <ul className="hero-spotlight-list">
+              {activeTab.points.map((point) => (
+                <li key={point}>{point}</li>
+              ))}
+            </ul>
           </section>
           <div className="hero-note-grid">
-            {WORKBENCH_NOTES.map((note) => (
+            {QUICK_FACTS.map((note) => (
               <article key={note.title} className="hero-note-card">
                 <h3>{note.title}</h3>
                 <p>{note.body}</p>
@@ -259,6 +263,7 @@ function App() {
               aria-pressed={tab === key}
               onClick={() => setTab(key as TabKey)}
             >
+              <span className="tab-eyebrow">{item.eyebrow}</span>
               <span className="tab-title">{item.label}</span>
               <span className="tab-summary">{item.summary}</span>
             </button>
