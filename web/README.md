@@ -69,6 +69,7 @@ Patch tool ZIP names are fixed:
 
 - Workshop: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 - Artwork / Featured / Screenshot: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
+- Guide: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
 
 ## Requirements
 
