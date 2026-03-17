@@ -44,6 +44,7 @@ If files still exceed max size, results are still shown and downloadable with wa
 
 - Workshop upload page: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 - Artwork / Featured / Screenshot upload page: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
+- Guide upload page: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
 
 ## Quick Start (Web App)
 

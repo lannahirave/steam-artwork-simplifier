@@ -67,6 +67,20 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Use this flow only for the 506 + 100 showcase preset. Artwork/Screenshot upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
   {
+    key: 'guide',
+    title: 'Guide Artwork (195x195)',
+    badge: 'Convert',
+    steps: [
+      'Switch preset to Guide (fixed 195x195 square).',
+      'Upload source media and keep the crop focused on the important area.',
+      'Set GIF FPS if needed, or click Estimate to auto-fill a starting point.',
+      'Run conversion and check the final size and FPS metadata under output.',
+      'Download originalFileName_guide.gif and upload it on the Steam guide page.',
+    ],
+    tip:
+      'Guide uploads use the fixed 195x195 output. Guide upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
+  },
+  {
     key: 'tuning',
     title: 'Fix size or quality issues',
     badge: 'Tuning',
