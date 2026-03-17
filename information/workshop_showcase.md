@@ -11,7 +11,7 @@ Upload GIF assets to Steam Workshop and place them in Workshop Showcase sections
 
 ## Upload URL
 
-- Workshop upload page: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
+- Workshop upload page: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 
 ## Legacy autofill
 

@@ -42,7 +42,7 @@ If files still exceed max size, results are still shown and downloadable with wa
 
 ### Steam upload helper links
 
-- Workshop upload page: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
+- Workshop upload page: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 - Artwork / Featured / Screenshot upload page: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 
 ## Quick Start (Web App)

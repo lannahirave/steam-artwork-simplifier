@@ -67,7 +67,7 @@ Patch tool ZIP names are fixed:
 
 ## Steam Helper Upload URLs
 
-- Workshop: `https://steamcommunity.com/sharedfiles/editguide/?appid=760`
+- Workshop: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 - Artwork / Featured / Screenshot: `https://steamcommunity.com/sharedfiles/edititem/767/3/#`
 
 ## Requirements
