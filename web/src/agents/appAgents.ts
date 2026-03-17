@@ -36,7 +36,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Review all 5 previews, then download single files or ZIP.',
     ],
     tip:
-      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
+      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
   {
     key: 'featured',

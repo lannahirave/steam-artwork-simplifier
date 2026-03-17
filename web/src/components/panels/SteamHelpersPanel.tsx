@@ -6,7 +6,7 @@ import {
 } from '../../lib/steamSnippets'
 import { useSteamHelpersContext } from '../../contexts/steamHelpersContext'
 
-const WORKSHOP_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/editguide/?appid=760'
+const WORKSHOP_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
 const ARTWORK_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
 const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
 const URL_WHOLE_PATTERN = /^https?:\/\/[^\s]+$/
