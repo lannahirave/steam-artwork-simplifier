@@ -98,6 +98,14 @@ function App() {
   const [tab, setTab] = useState<TabKey>('convert')
   const activeTab = TAB_DETAILS[tab]
 
+  function openConvertWorkspace(): void {
+    setTab('convert')
+    document.getElementById('workspace')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   const trademarkDisclaimer = (
     <footer className="app-disclaimer" role="contentinfo">
       <p>
@@ -151,7 +159,7 @@ function App() {
     <div className="apple-app">
       <header className="global-nav">
         <div className="global-nav-inner">
-          <button type="button" className="global-nav-brand" onClick={() => setTab('convert')}>
+          <button type="button" className="global-nav-brand" onClick={openConvertWorkspace}>
             Steam Artwork Studio
           </button>
           <nav className="global-nav-links" aria-label="Primary">
@@ -189,7 +197,7 @@ function App() {
               workstation.
             </p>
             <div className="hero-actions">
-              <button type="button" className="hero-primary" onClick={() => setTab('convert')}>
+              <button type="button" className="hero-primary" onClick={openConvertWorkspace}>
                 Open Convert
               </button>
               <a className="hero-link hero-link-pill" href="#workspace">
