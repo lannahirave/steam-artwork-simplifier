@@ -190,7 +190,7 @@ textarea {
 .hero-copy {
   width: min(760px, 100%);
   display: grid;
-  gap: 1rem;
+  gap: 1.05rem;
   justify-items: center;
 }
 
@@ -225,11 +225,13 @@ textarea {
   align-items: center;
   justify-content: center;
   min-height: 1.75rem;
-  padding: 0.2rem 0.7rem;
+  padding: 0.2rem 0.8rem;
   border-radius: var(--radius-pill);
   border: 1px solid var(--line-inverse);
   color: rgba(255, 255, 255, 0.82);
   font-size: 0.75rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
 }
 
 .hero h1,
@@ -244,9 +246,9 @@ textarea {
 }
 
 .hero h1 {
-  max-width: 11ch;
-  font-size: clamp(2.8rem, 7vw, 5rem);
-  line-height: 1.07;
+  max-width: 12ch;
+  font-size: clamp(3.25rem, 8vw, 6.4rem);
+  line-height: 0.95;
 }
 
 .hero-summary {
