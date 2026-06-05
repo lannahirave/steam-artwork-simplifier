@@ -188,10 +188,9 @@ function App() {
         <section className="hero">
           <div className="hero-copy">
             <div className="hero-meta-row">
-              <p className="hero-eyebrow">Steam Artwork Studio</p>
               <span className="hero-chip">V{APP_VERSION}</span>
             </div>
-            <h1>Steam artwork workflows, staged like a launch page.</h1>
+            <h1>Steam Artwork Studio</h1>
             <p className="hero-summary">
               Convert source media, patch finished GIFs, and prepare Steam uploads from one controlled browser
               workstation.
