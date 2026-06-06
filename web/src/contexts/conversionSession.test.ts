@@ -1,0 +1,60 @@
+import { describe, expect, it } from 'vitest'
+import { getArtifactLayoutClassName, toArchiveBaseName } from './conversionSession'
+import type { ArtifactView } from '../agents/appAgents'
+
+function artifactView(name: string): ArtifactView {
+  return {
+    artifact: {
+      name,
+      blob: new Blob(),
+      sizeKb: 1,
+      width: 1,
+      height: 1,
+      status: 'original',
+      finalFps: 1,
+      finalColors: 256,
+    },
+    url: `blob:${name}`,
+  }
+}
+
+describe('conversion session helpers', () => {
+  it('derives archive base names from source files', () => {
+    expect(toArchiveBaseName('clip.mp4')).toBe('clip')
+    expect(toArchiveBaseName('archive.final.webm')).toBe('archive.final')
+    expect(toArchiveBaseName(' no-extension ')).toBe('no-extension')
+    expect(toArchiveBaseName('   ')).toBe('steam-artwork-output')
+  })
+
+  it('recognizes workshop and showcase strip result layouts', () => {
+    expect(
+      getArtifactLayoutClassName([
+        artifactView('demo_part_01.gif'),
+        artifactView('demo_part_02.gif'),
+        artifactView('demo_part_03.gif'),
+        artifactView('demo_part_04.gif'),
+        artifactView('demo_part_05.gif'),
+      ]),
+    ).toEqual({
+      isCompactStrip: true,
+      resultsGridClassName: 'results-grid workshop-strip',
+    })
+
+    expect(
+      getArtifactLayoutClassName([
+        artifactView('demo_part_01.gif'),
+        artifactView('demo_part_02.gif'),
+      ]),
+    ).toEqual({
+      isCompactStrip: true,
+      resultsGridClassName: 'results-grid showcase-strip',
+    })
+  })
+
+  it('falls back to the regular result grid for non-strip outputs', () => {
+    expect(getArtifactLayoutClassName([artifactView('demo_featured.gif')])).toEqual({
+      isCompactStrip: false,
+      resultsGridClassName: 'results-grid',
+    })
+  })
+})
