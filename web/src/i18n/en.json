@@ -123,7 +123,7 @@
   "convert.outputReady": "Output ready in {time}.",
   "convert.downloadZip": "Download all (ZIP archive)",
   "convert.fpsMeta": "FPS: {fps}",
-  "convert.colorReduction": "Color reduction: {percent}%",
+  "convert.colorReductionMeta": "Color reduction: {percent}%",
   "convert.download": "Download",
   "convert.downloadShort": "DL",
   "convert.option.workshop": "Workshop (5x150 slices)",
