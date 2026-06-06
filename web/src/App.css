@@ -126,6 +126,7 @@ textarea {
 }
 
 .global-nav-link,
+.nav-help,
 .nav-source,
 .nav-version {
   font-size: 0.75rem;
@@ -158,6 +159,21 @@ textarea {
 .nav-source {
   color: rgba(255, 255, 255, 0.82);
   text-decoration: none;
+}
+
+.nav-help {
+  min-height: 1.85rem;
+  padding: 0.25rem 0.68rem;
+  border-color: rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.06);
+  color: rgba(255, 255, 255, 0.86);
+  font-weight: 600;
+}
+
+.nav-help:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--ink-inverse);
+  transform: none;
 }
 
 .shell {
@@ -303,6 +319,110 @@ textarea {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 1rem;
+}
+
+.onboarding-card {
+  position: fixed;
+  top: 4.25rem;
+  right: max(1rem, calc((100vw - var(--content-width)) / 2));
+  z-index: 30;
+  width: min(23rem, calc(100vw - 2rem));
+  padding: 1rem;
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  border-radius: var(--radius-panel);
+  background: rgba(255, 255, 255, 0.96);
+  color: var(--ink);
+  box-shadow: 0 24px 60px rgba(0, 0, 0, 0.22);
+  backdrop-filter: saturate(180%) blur(20px);
+}
+
+.onboarding-spotlight {
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 25;
+  pointer-events: none;
+  opacity: 0;
+  border: 2px solid var(--apple-blue-light);
+  border-radius: calc(var(--radius-panel) + 4px);
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.34),
+    0 0 0 6px rgba(41, 151, 255, 0.16);
+  transition:
+    opacity 180ms ease,
+    transform 260ms ease,
+    width 260ms ease,
+    height 260ms ease;
+}
+
+.onboarding-card-head,
+.onboarding-actions {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.onboarding-kicker {
+  color: var(--ink-muted);
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.onboarding-card h2 {
+  margin: 0.65rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  line-height: 1.1;
+  letter-spacing: -0.024em;
+}
+
+.onboarding-card p {
+  margin: 0.65rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.48;
+}
+
+.onboarding-progress {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 0.35rem;
+  margin: 1rem 0;
+}
+
+.onboarding-progress span {
+  height: 0.25rem;
+  border-radius: var(--radius-pill);
+  background: rgba(29, 29, 31, 0.12);
+}
+
+.onboarding-progress span.active {
+  background: var(--apple-blue);
+}
+
+.onboarding-skip,
+.onboarding-secondary,
+.onboarding-primary {
+  min-height: 2.25rem;
+  padding: 0.55rem 0.9rem;
+  font-size: 0.9rem;
+}
+
+.onboarding-skip {
+  color: var(--ink-muted);
+  background: transparent;
+}
+
+.onboarding-primary {
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+}
+
+.onboarding-primary:hover {
+  background: var(--apple-blue-dark);
 }
 
 .signal-card,
@@ -498,7 +618,7 @@ textarea {
 }
 
 .tab::after {
-  content: 'Open';
+  content: attr(data-open-label);
   justify-self: start;
   margin-top: 0.4rem;
   padding: 0.32rem 0.72rem;
@@ -725,6 +845,12 @@ button:focus-visible,
   outline: none;
   border-color: rgba(0, 113, 227, 0.46);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
+}
+
+.nav-help:focus-visible {
+  outline: none;
+  border-color: rgba(41, 151, 255, 0.68);
+  box-shadow: 0 0 0 4px rgba(41, 151, 255, 0.2);
 }
 
 input[type='file'] {
@@ -1232,6 +1358,16 @@ button:disabled {
 
   .global-nav-actions {
     justify-content: space-between;
+  }
+
+  .onboarding-card {
+    top: auto;
+    right: 1rem;
+    bottom: 1rem;
+    left: 1rem;
+    width: auto;
+    max-height: calc(100vh - 2rem);
+    overflow: auto;
   }
 
   .hero-primary,

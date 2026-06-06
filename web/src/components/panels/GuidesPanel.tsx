@@ -1,7 +1,9 @@
+import { useIntl } from 'react-intl'
 import type { GuideSection } from '../../agents/appAgents'
 
 interface GuidesPanelProps {
   guides: GuideSection[]
+  onboardingTarget?: string
 }
 
 const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
@@ -20,12 +22,13 @@ function renderTextWithLinks(text: string) {
 }
 
 export function GuidesPanel(props: GuidesPanelProps) {
-  const { guides } = props
+  const intl = useIntl()
+  const { guides, onboardingTarget } = props
 
   return (
-    <section className="panel panel-guides">
-      <h2>Guides</h2>
-      <p className="panel-intro guides-intro">Step-by-step workflows for the common tasks in this toolkit.</p>
+    <section className="panel panel-guides" data-onboarding-target={onboardingTarget}>
+      <h2>{intl.formatMessage({ id: 'guides.title' })}</h2>
+      <p className="panel-intro guides-intro">{intl.formatMessage({ id: 'guides.intro' })}</p>
 
       <div className="guides-grid">
         {guides.map((guide) => (

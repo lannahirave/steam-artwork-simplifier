@@ -1,3 +1,4 @@
+import { useIntl } from 'react-intl'
 import {
   FEATURED_SNIPPET,
   SCREENSHOT_SNIPPET,
@@ -23,15 +24,21 @@ function renderTextWithLinks(text: string) {
   )
 }
 
-export function SteamHelpersPanel() {
+interface SteamHelpersPanelProps {
+  onboardingTarget?: string
+}
+
+export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
+  const intl = useIntl()
+  const { onboardingTarget } = props
   const { state, actions } = useSteamHelpersContext()
   const { copyStatus } = state
   const { onCopySnippet } = actions
 
   return (
-    <section className="panel panel-steam">
-      <h2>Steam Upload Helpers</h2>
-      <p className="panel-intro">Copy and run these snippets in the DevTools Console on the matching Steam upload page.</p>
+    <section className="panel panel-steam" data-onboarding-target={onboardingTarget}>
+      <h2>{intl.formatMessage({ id: 'steam.title' })}</h2>
+      <p className="panel-intro">{intl.formatMessage({ id: 'steam.intro' })}</p>
       <ul>
         {STEAM_HELPER_NOTES.map((note) => (
           <li key={note}>{renderTextWithLinks(note)}</li>
@@ -40,11 +47,11 @@ export function SteamHelpersPanel() {
 
       <article className="subpanel">
         <div className="snippet-head">
-          <h3>Workshop Snippet</h3>
-          <button onClick={() => onCopySnippet('workshop')}>Copy</button>
+          <h3>{intl.formatMessage({ id: 'steam.workshopSnippet' })}</h3>
+          <button onClick={() => onCopySnippet('workshop')}>{intl.formatMessage({ id: 'steam.copy' })}</button>
         </div>
         <p className="snippet-upload-link">
-          Upload page:{' '}
+          {intl.formatMessage({ id: 'steam.uploadPage' })}{' '}
           <a href={WORKSHOP_UPLOAD_URL} target="_blank" rel="noreferrer">
             {WORKSHOP_UPLOAD_URL}
           </a>
@@ -54,11 +61,11 @@ export function SteamHelpersPanel() {
 
       <article className="subpanel">
         <div className="snippet-head">
-          <h3>Artwork or Featured Artwork Snippet</h3>
-          <button onClick={() => onCopySnippet('featured')}>Copy</button>
+          <h3>{intl.formatMessage({ id: 'steam.artworkSnippet' })}</h3>
+          <button onClick={() => onCopySnippet('featured')}>{intl.formatMessage({ id: 'steam.copy' })}</button>
         </div>
         <p className="snippet-upload-link">
-          Upload page:{' '}
+          {intl.formatMessage({ id: 'steam.uploadPage' })}{' '}
           <a href={ARTWORK_UPLOAD_URL} target="_blank" rel="noreferrer">
             {ARTWORK_UPLOAD_URL}
           </a>
@@ -68,11 +75,11 @@ export function SteamHelpersPanel() {
 
       <article className="subpanel">
         <div className="snippet-head">
-          <h3>Screenshot Snippet</h3>
-          <button onClick={() => onCopySnippet('screenshot')}>Copy</button>
+          <h3>{intl.formatMessage({ id: 'steam.screenshotSnippet' })}</h3>
+          <button onClick={() => onCopySnippet('screenshot')}>{intl.formatMessage({ id: 'steam.copy' })}</button>
         </div>
         <p className="snippet-upload-link">
-          Upload page:{' '}
+          {intl.formatMessage({ id: 'steam.uploadPage' })}{' '}
           <a href={ARTWORK_UPLOAD_URL} target="_blank" rel="noreferrer">
             {ARTWORK_UPLOAD_URL}
           </a>
@@ -80,7 +87,13 @@ export function SteamHelpersPanel() {
         <textarea readOnly value={SCREENSHOT_SNIPPET} rows={16} />
       </article>
 
-      {copyStatus && <p>{copyStatus}</p>}
+      {copyStatus && (
+        <p>
+          {copyStatus.type === 'success'
+            ? intl.formatMessage({ id: 'steam.copyStatus' }, { label: copyStatus.label })
+            : intl.formatMessage({ id: 'steam.copyFailed' })}
+        </p>
+      )}
     </section>
   )
 }
