@@ -571,7 +571,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   <span>{intl.formatMessage({ id: 'convert.fpsMeta' }, { fps: item.artifact.finalFps })}</span>
                   <span>
                     {intl.formatMessage(
-                      { id: 'convert.colorReduction' },
+                      { id: 'convert.colorReductionMeta' },
                       { percent: getColorReductionPercent(item.artifact.finalColors) },
                     )}
                   </span>
