@@ -3,9 +3,13 @@ import { createContext, use, useState, type ReactNode } from 'react'
 import { FEATURED_SNIPPET, SCREENSHOT_SNIPPET, WORKSHOP_SNIPPET } from '../lib/steamSnippets'
 
 type CopyLabel = 'workshop' | 'featured' | 'screenshot'
+type CopyStatus =
+  | { type: 'success'; label: CopyLabel }
+  | { type: 'error' }
+  | null
 
 interface SteamHelpersState {
-  copyStatus: string
+  copyStatus: CopyStatus
 }
 
 interface SteamHelpersActions {
@@ -31,7 +35,7 @@ export function useSteamHelpersContext(): SteamHelpersContextValue {
 }
 
 export function SteamHelpersProvider({ children }: { children: ReactNode }) {
-  const [copyStatus, setCopyStatus] = useState('')
+  const [copyStatus, setCopyStatus] = useState<CopyStatus>(null)
 
   async function copySnippet(label: CopyLabel): Promise<void> {
     const text =
@@ -42,9 +46,9 @@ export function SteamHelpersProvider({ children }: { children: ReactNode }) {
           : SCREENSHOT_SNIPPET
     try {
       await navigator.clipboard.writeText(text)
-      setCopyStatus(`${label} snippet copied.`)
+      setCopyStatus({ type: 'success', label })
     } catch {
-      setCopyStatus('Clipboard copy failed. Copy manually from the text area.')
+      setCopyStatus({ type: 'error' })
     }
   }
 

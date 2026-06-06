@@ -1,11 +1,18 @@
 import { useState } from 'react'
+import { useIntl } from 'react-intl'
 import { getDefaultWorkerCount } from '../../lib/defaults'
 import type { ConversionConfig } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
 
-export function ConvertPanel() {
+interface ConvertPanelProps {
+  onboardingTarget?: string
+}
+
+export function ConvertPanel(props: ConvertPanelProps) {
+  const intl = useIntl()
+  const { onboardingTarget } = props
   const { state, actions, meta } = useConvertContext()
   const [copiedSection, setCopiedSection] = useState<'progress' | 'logs' | null>(null)
   const {
@@ -79,29 +86,26 @@ export function ConvertPanel() {
   }
 
   return (
-    <section className="panel panel-convert">
-      <h2>Media to GIF</h2>
-      <p className="panel-intro">
-        Encode source media into Steam-specific layouts with control over frame rate, size ceilings, retries, and
-        post-processing patches.
-      </p>
+    <section className="panel panel-convert" data-onboarding-target={onboardingTarget}>
+      <h2>{intl.formatMessage({ id: 'convert.title' })}</h2>
+      <p className="panel-intro">{intl.formatMessage({ id: 'convert.intro' })}</p>
 
       <div className="config-groups">
         <section className="config-group">
-          <h3>Source and Layout</h3>
+          <h3>{intl.formatMessage({ id: 'convert.sourceLayout' })}</h3>
           <div className="form-grid">
             <label title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF.">
-              Preset
+              {intl.formatMessage({ id: 'convert.preset' })}
               <select value={config.preset} onChange={(event) => onUpdatePreset(event.target.value as ConversionConfig['preset'])}>
-                <option value="workshop">Workshop (5x150 slices)</option>
-                <option value="showcase">Artwork Showcase (506 + 100 split)</option>
-                <option value="featured">Featured (single 630px)</option>
-                <option value="guide">Guide (single 195x195)</option>
+                <option value="workshop">{intl.formatMessage({ id: 'convert.option.workshop' })}</option>
+                <option value="showcase">{intl.formatMessage({ id: 'convert.option.showcase' })}</option>
+                <option value="featured">{intl.formatMessage({ id: 'convert.option.featured' })}</option>
+                <option value="guide">{intl.formatMessage({ id: 'convert.option.guide' })}</option>
               </select>
             </label>
 
             <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
-              Source File
+              {intl.formatMessage({ id: 'convert.sourceFile' })}
               <input
                 type="file"
                 accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
@@ -112,7 +116,7 @@ export function ConvertPanel() {
             {config.preset === 'workshop' && (
               <>
                 <label title="Number of output slices for workshop preset.">
-                  Parts
+                  {intl.formatMessage({ id: 'convert.parts' })}
                   <input
                     type="number"
                     min={1}
@@ -128,7 +132,7 @@ export function ConvertPanel() {
                   />
                 </label>
                 <label title="Width in pixels of each workshop slice.">
-                  Part Width
+                  {intl.formatMessage({ id: 'convert.partWidth' })}
                   <input
                     type="number"
                     min={1}
@@ -143,7 +147,7 @@ export function ConvertPanel() {
 
             {config.preset === 'featured' && (
               <label title="Width in pixels of the featured output GIF.">
-                Featured Width
+                {intl.formatMessage({ id: 'convert.featuredWidth' })}
                 <input
                   type="number"
                   min={1}
@@ -157,20 +161,20 @@ export function ConvertPanel() {
 
             {config.preset === 'guide' && (
               <label title="Guide preset outputs a centered square GIF at 195x195.">
-                Guide Size
-                <input value="195x195 (fixed)" disabled />
+                {intl.formatMessage({ id: 'convert.guideSize' })}
+                <input value={intl.formatMessage({ id: 'convert.fixed.guideSize' })} disabled />
               </label>
             )}
 
             {config.preset === 'showcase' && (
               <>
                 <label title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
-                  Showcase Split
-                  <input value="506px + 100px (fixed)" disabled />
+                  {intl.formatMessage({ id: 'convert.showcaseSplit' })}
+                  <input value={intl.formatMessage({ id: 'convert.fixed.showcaseSplit' })} disabled />
                 </label>
                 <label title="Total target width used before splitting the showcase output.">
-                  Showcase Total Width
-                  <input value="606px (fixed)" disabled />
+                  {intl.formatMessage({ id: 'convert.showcaseTotalWidth' })}
+                  <input value={intl.formatMessage({ id: 'convert.fixed.showcaseWidth' })} disabled />
                 </label>
               </>
             )}
@@ -178,10 +182,10 @@ export function ConvertPanel() {
         </section>
 
         <section className="config-group">
-          <h3>Frame Rate and Size</h3>
+          <h3>{intl.formatMessage({ id: 'convert.frameSize' })}</h3>
           <div className="form-grid">
             <label title="Starting frame rate for the first encode pass.">
-              GIF FPS
+              {intl.formatMessage({ id: 'convert.gifFps' })}
               <div className="field-input-row">
                 <input
                   type="number"
@@ -196,14 +200,14 @@ export function ConvertPanel() {
                   disabled={!sourceFile || busy || estimatingFps}
                   onClick={onEstimateAndApplyFps}
                 >
-                  {estimatingFps ? 'Estimating...' : 'Estimate'}
+                  {intl.formatMessage({ id: estimatingFps ? 'convert.estimating' : 'convert.estimate' })}
                 </button>
               </div>
               {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
             </label>
 
             <label title="Lowest FPS allowed during recompression attempts.">
-              Min GIF FPS
+              {intl.formatMessage({ id: 'convert.minGifFps' })}
               <input
                 type="number"
                 min={1}
@@ -215,7 +219,7 @@ export function ConvertPanel() {
             </label>
 
             <label title="Hard output size limit per GIF in kilobytes. Ignored when Disable Optimizations is enabled.">
-              Max GIF KB
+              {intl.formatMessage({ id: 'convert.maxGifKb' })}
               <input
                 type="number"
                 min={1}
@@ -226,7 +230,7 @@ export function ConvertPanel() {
             </label>
 
             <label title="Preferred output size target used by recompression attempts. Ignored when Disable Optimizations is enabled.">
-              Target GIF KB
+              {intl.formatMessage({ id: 'convert.targetGifKb' })}
               <input
                 type="number"
                 min={1}
@@ -246,17 +250,17 @@ export function ConvertPanel() {
                   disabled={optimizationDisabled}
                   onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
                 />
-                Enable precheck
+                {intl.formatMessage({ id: 'convert.enablePrecheck' })}
               </span>
             </label>
           </div>
         </section>
 
         <section className="config-group">
-          <h3>Performance and Optimization</h3>
+          <h3>{intl.formatMessage({ id: 'convert.performance' })}</h3>
           <div className="form-grid">
             <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
-              Worker Count
+              {intl.formatMessage({ id: 'convert.workerCount' })}
               <input
                 type="number"
                 min={1}
@@ -279,12 +283,14 @@ export function ConvertPanel() {
                   }))
                 }
               >
-                {optimizationDisabled ? 'Enable Optimizations' : 'Disable Optimizations'}
+                {intl.formatMessage({
+                  id: optimizationDisabled ? 'convert.enableOptimizations' : 'convert.disableOptimizations',
+                })}
               </button>
               <small className="field-note">
-                {optimizationDisabled
-                  ? 'Raw mode active: FPS/color retries and max-size limit are ignored.'
-                  : 'Use raw mode when you want original encode behavior without optimization constraints.'}
+                {intl.formatMessage({
+                  id: optimizationDisabled ? 'convert.rawModeActive' : 'convert.rawModeInactive',
+                })}
               </small>
             </div>
 
@@ -297,7 +303,7 @@ export function ConvertPanel() {
                   setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
                 }
               />
-              Enable standard retries
+              {intl.formatMessage({ id: 'convert.standardRetries' })}
             </label>
 
             <label
@@ -312,7 +318,7 @@ export function ConvertPanel() {
                   setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
                 }
               />
-              Allow FPS reduction
+              {intl.formatMessage({ id: 'convert.fpsReduction' })}
             </label>
 
             <label
@@ -327,17 +333,17 @@ export function ConvertPanel() {
                   setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
                 }
               />
-              Allow color reduction
+              {intl.formatMessage({ id: 'convert.colorReduction' })}
             </label>
 
             {optimizationDisabled && (
               <p className="config-note">
-                Optimization controls are inactive because Disable Optimizations is on.
+                {intl.formatMessage({ id: 'convert.optimizationInactive' })}
               </p>
             )}
             {!optimizationDisabled && !config.standardRetriesEnabled && (
               <p className="config-note">
-                FPS/Color reduction toggles activate after enabling standard retries.
+                {intl.formatMessage({ id: 'convert.retriesNeedStandard' })}
               </p>
             )}
 
@@ -352,16 +358,14 @@ export function ConvertPanel() {
                   disabled={optimizationDisabled}
                   onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
                 />
-                Enable lossy oversize fallback
+                {intl.formatMessage({ id: 'convert.lossyFallback' })}
               </label>
               <small className="field-note lossy-group-note">
-                {lossyEffective
-                  ? 'Lossy mode can reduce palette and apply extra compression passes after standard optimization.'
-                  : 'Lossy mode is off. Only standard optimization passes will run.'}
+                {intl.formatMessage({ id: lossyEffective ? 'convert.lossyOn' : 'convert.lossyOff' })}
               </small>
               <div className="lossy-group-fields">
                 <label title="Lossy fallback aggressiveness (1 mild, 2 balanced, 3 aggressive).">
-                  Lossy Level
+                  {intl.formatMessage({ id: 'convert.lossyLevel' })}
                   <input
                     type="number"
                     min={1}
@@ -373,7 +377,7 @@ export function ConvertPanel() {
                 </label>
 
                 <label title="Maximum lossy attempts when output is still above max GIF size.">
-                  Lossy Attempts
+                    {intl.formatMessage({ id: 'convert.lossyAttempts' })}
                   <input
                     type="number"
                     min={1}
@@ -390,10 +394,10 @@ export function ConvertPanel() {
         </section>
 
         <section className="config-group">
-          <h3>Output Patching</h3>
+          <h3>{intl.formatMessage({ id: 'convert.outputPatching' })}</h3>
           <div className="form-grid">
             <label title="Hex byte value used for EOF patching (for example 21 = 0x21).">
-              EOF Byte (hex)
+              {intl.formatMessage({ id: 'convert.eofByte' })}
               <input
                 value={config.eofByte.toString(16).toUpperCase()}
                 onChange={(event) => {
@@ -413,7 +417,7 @@ export function ConvertPanel() {
                 checked={config.eofPatchEnabled}
                 onChange={(event) => setConfig((prev) => ({ ...prev, eofPatchEnabled: event.target.checked }))}
               />
-              Patch EOF byte on outputs
+              {intl.formatMessage({ id: 'convert.patchOutputEof' })}
             </label>
 
             <label className="toggle" title="Rewrite GIF header logical width/height metadata on outputs.">
@@ -422,13 +426,13 @@ export function ConvertPanel() {
                 checked={config.headerPatchEnabled}
                 onChange={(event) => setConfig((prev) => ({ ...prev, headerPatchEnabled: event.target.checked }))}
               />
-              Patch GIF header width/height
+              {intl.formatMessage({ id: 'convert.patchHeader' })}
             </label>
 
             {config.headerPatchEnabled && (
               <>
                 <label title="Width value written to GIF header bytes 6-7.">
-                  Header Width
+                  {intl.formatMessage({ id: 'convert.headerWidth' })}
                   <input
                     type="number"
                     min={1}
@@ -440,7 +444,7 @@ export function ConvertPanel() {
                   />
                 </label>
                 <label title="Height value written to GIF header bytes 8-9.">
-                  Header Height
+                  {intl.formatMessage({ id: 'convert.headerHeight' })}
                   <input
                     type="number"
                     min={1}
@@ -459,18 +463,18 @@ export function ConvertPanel() {
 
       <div className="actions">
         <button disabled={convertDisabled} onClick={onRunConversion}>
-          Run Conversion
+          {intl.formatMessage({ id: 'convert.run' })}
         </button>
         <button disabled={!busy} onClick={onCancelConversion}>
-          Cancel
+          {intl.formatMessage({ id: 'convert.cancel' })}
         </button>
-        <button onClick={onResetConvertState}>Reset Results</button>
+        <button onClick={onResetConvertState}>{intl.formatMessage({ id: 'convert.reset' })}</button>
       </div>
 
       {(busy || progressPercent > 0) && (
         <div className="progress-panel">
           <div className="progress-head">
-            <span>{busy ? 'Converting GIFs...' : 'Last conversion'}</span>
+            <span>{intl.formatMessage({ id: busy ? 'convert.converting' : 'convert.lastConversion' })}</span>
             <strong>{Math.round(progressPercent)}%</strong>
           </div>
           <div className="progress-track" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progressPercent)}>
@@ -479,7 +483,7 @@ export function ConvertPanel() {
           {progressLabel && <p className="progress-label">{progressLabel}</p>}
           {(busy || lastElapsedMs !== null) && (
             <p className="progress-time">
-              Time: {busy ? formatElapsed(elapsedMs) : formatElapsed(lastElapsedMs ?? 0)}
+              {intl.formatMessage({ id: 'convert.time' })} {busy ? formatElapsed(elapsedMs) : formatElapsed(lastElapsedMs ?? 0)}
             </p>
           )}
         </div>
@@ -489,7 +493,7 @@ export function ConvertPanel() {
 
       {warnings.length > 0 && (
         <div className="warn-box">
-          <h3>Warnings</h3>
+          <h3>{intl.formatMessage({ id: 'convert.warnings' })}</h3>
           <ul>
             {warnings.map((warning) => (
               <li key={warning}>{warning}</li>
@@ -501,9 +505,9 @@ export function ConvertPanel() {
       {progress.length > 0 && (
         <div className="log-box">
           <div className="log-head">
-            <h3>Live Progress</h3>
+            <h3>{intl.formatMessage({ id: 'convert.liveProgress' })}</h3>
             <button type="button" className="inline-action" onClick={() => void copyText('progress', progressText)}>
-              {copiedSection === 'progress' ? 'Copied' : 'Copy Logs'}
+              {intl.formatMessage({ id: copiedSection === 'progress' ? 'convert.copied' : 'convert.copyLogs' })}
             </button>
           </div>
           <pre>{progressText}</pre>
@@ -513,9 +517,9 @@ export function ConvertPanel() {
       {logs.length > 0 && (
         <div className="log-box">
           <div className="log-head">
-            <h3>Run Logs</h3>
+            <h3>{intl.formatMessage({ id: 'convert.runLogs' })}</h3>
             <button type="button" className="inline-action" onClick={() => void copyText('logs', runLogsText)}>
-              {copiedSection === 'logs' ? 'Copied' : 'Copy Logs'}
+              {intl.formatMessage({ id: copiedSection === 'logs' ? 'convert.copied' : 'convert.copyLogs' })}
             </button>
           </div>
           <pre>{runLogsText}</pre>
@@ -525,11 +529,13 @@ export function ConvertPanel() {
       {artifactViews.length > 0 && (
         <>
           {lastElapsedMs !== null && (
-            <p className="result-timing">Output ready in {formatElapsed(lastElapsedMs)}.</p>
+            <p className="result-timing">
+              {intl.formatMessage({ id: 'convert.outputReady' }, { time: formatElapsed(lastElapsedMs) })}
+            </p>
           )}
           <div className="results-actions-row">
             <button onClick={onDownloadZip}>
-              Download all (ZIP archive)
+              {intl.formatMessage({ id: 'convert.downloadZip' })}
             </button>
           </div>
           <section className={resultsGridClassName}>
@@ -562,8 +568,13 @@ export function ConvertPanel() {
                   }
                 />
                 <div className={isCompactStrip ? 'gif-meta compact' : 'gif-meta'}>
-                  <span>FPS: {item.artifact.finalFps}</span>
-                  <span>Color reduction: {getColorReductionPercent(item.artifact.finalColors)}%</span>
+                  <span>{intl.formatMessage({ id: 'convert.fpsMeta' }, { fps: item.artifact.finalFps })}</span>
+                  <span>
+                    {intl.formatMessage(
+                      { id: 'convert.colorReduction' },
+                      { percent: getColorReductionPercent(item.artifact.finalColors) },
+                    )}
+                  </span>
                 </div>
                 <div className={isCompactStrip ? 'download-row compact' : 'download-row'}>
                   <span className="gif-size">{item.artifact.sizeKb.toFixed(1)}KB</span>
@@ -571,7 +582,7 @@ export function ConvertPanel() {
                     className={isCompactStrip ? 'compact-download' : ''}
                     onClick={() => onDownloadBlob(item.artifact.name, item.artifact.blob)}
                   >
-                    {isCompactStrip ? 'DL' : 'Download'}
+                    {intl.formatMessage({ id: isCompactStrip ? 'convert.downloadShort' : 'convert.download' })}
                   </button>
                 </div>
               </article>
