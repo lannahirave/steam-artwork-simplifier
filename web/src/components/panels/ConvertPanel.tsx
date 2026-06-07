@@ -13,7 +13,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
   const intl = useIntl()
   const { onboardingTarget } = props
   const { state, actions, meta } = useConvertContext()
-  const [copiedSection, setCopiedSection] = useState<'progress' | 'logs' | null>(null)
+  const [copiedSection, setCopiedSection] = useState<'progress' | null>(null)
   const {
     config,
     sourceFile,
@@ -26,7 +26,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
     lastElapsedMs,
     warnings,
     progress,
-    logs,
     error,
     artifactViews,
   } = state
@@ -57,9 +56,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
     presetPlan,
   } = meta
   const progressText = progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')
-  const runLogsText = logs.join('\n')
 
-  async function copyText(section: 'progress' | 'logs', text: string): Promise<void> {
+  async function copyText(section: 'progress', text: string): Promise<void> {
     if (!text) {
       return
     }
@@ -508,18 +506,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
             </button>
           </div>
           <pre>{progressText}</pre>
-        </div>
-      )}
-
-      {logs.length > 0 && (
-        <div className="log-box">
-          <div className="log-head">
-            <h3>{intl.formatMessage({ id: 'convert.runLogs' })}</h3>
-            <button type="button" className="inline-action" onClick={() => void copyText('logs', runLogsText)}>
-              {intl.formatMessage({ id: copiedSection === 'logs' ? 'convert.copied' : 'convert.copyLogs' })}
-            </button>
-          </div>
-          <pre>{runLogsText}</pre>
         </div>
       )}
 
