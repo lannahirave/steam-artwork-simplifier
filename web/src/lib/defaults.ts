@@ -25,7 +25,8 @@ export const DEFAULTS = {
     targetGifKb: 4500,
   },
   disableOptimizations: false,
-  standardRetriesEnabled: false,
+  optimizationMode: 'hybrid',
+  standardRetriesEnabled: true,
   retryAllowFpsDrop: true,
   retryAllowColorDrop: true,
   precheckEnabled: false,
@@ -116,6 +117,7 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
           : preset === 'showcase'
             ? DEFAULTS.showcase.targetGifKb
           : DEFAULTS.workshop.targetGifKb,
+    optimizationMode: DEFAULTS.optimizationMode,
     standardRetriesEnabled: DEFAULTS.standardRetriesEnabled,
     retryAllowFpsDrop: DEFAULTS.retryAllowFpsDrop,
     retryAllowColorDrop: DEFAULTS.retryAllowColorDrop,

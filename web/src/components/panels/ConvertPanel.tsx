@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { useIntl } from 'react-intl'
-import type { ConversionConfig } from '../../lib/types'
+import type { ConversionConfig, OptimizationMode } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
@@ -288,6 +288,24 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 })}
               </small>
             </div>
+
+            <label title="Choose how the optimizer balances speed, size, and quality.">
+              {intl.formatMessage({ id: 'convert.optimizationMode' })}
+              <select
+                disabled={optimizationDisabled}
+                value={config.optimizationMode}
+                onChange={(event) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    optimizationMode: event.target.value as OptimizationMode,
+                  }))
+                }
+              >
+                <option value="hybrid">{intl.formatMessage({ id: 'convert.optimizationMode.hybrid' })}</option>
+                <option value="quality-first">{intl.formatMessage({ id: 'convert.optimizationMode.qualityFirst' })}</option>
+                <option value="fast-fit">{intl.formatMessage({ id: 'convert.optimizationMode.fastFit' })}</option>
+              </select>
+            </label>
 
             <label className="toggle" title="Enable standard recompression retries after initial encode.">
               <input

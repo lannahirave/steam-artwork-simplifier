@@ -1,6 +1,17 @@
+import type { OptimizationMode } from './types'
+
 export interface StandardCandidate {
   fps: number
   colors: number
+}
+
+export type EncodeCandidatePhase = 'fast-fit' | 'quality-recovery' | 'quality-first' | 'lossy'
+
+export interface EncodeCandidate {
+  phase: EncodeCandidatePhase
+  fps: number
+  colors: number
+  reason: string
 }
 
 export interface LossyCandidate {
@@ -16,6 +27,9 @@ export interface LossyCandidateOptions {
 }
 
 const STANDARD_COLORS = [224, 192, 160, 128, 96, 64, 48, 32] as const
+const RECOVERY_COLORS = [256, 224, 192, 160, 128, 96, 64, 48, 32, 24, 16, 12] as const
+export const RECOVERY_UNDER_TARGET_RATIO = 0.9
+export const HEAVY_PART_RATIO = 1.1
 
 export interface StandardCandidateOptions {
   allowFpsDrop?: boolean
@@ -98,6 +112,154 @@ export function buildStandardCandidates(
   }
 
   return out
+}
+
+function toEncodeCandidate(candidate: StandardCandidate, phase: EncodeCandidatePhase, reason: string): EncodeCandidate {
+  return {
+    phase,
+    fps: candidate.fps,
+    colors: candidate.colors,
+    reason,
+  }
+}
+
+function pushUniqueCandidate(candidates: EncodeCandidate[], seen: Set<string>, candidate: EncodeCandidate): void {
+  const key = `${candidate.fps}:${candidate.colors}`
+  if (seen.has(key)) {
+    return
+  }
+  seen.add(key)
+  candidates.push(candidate)
+}
+
+function estimateFastFitCandidate(input: {
+  currentFps: number
+  currentSizeKb: number
+  maxGifKb: number
+  minGifFps: number
+  allowFpsDrop: boolean
+  allowColorDrop: boolean
+}): StandardCandidate | null {
+  if (input.allowFpsDrop) {
+    const estimatedFps = estimateFpsForKbTarget(
+      input.currentFps,
+      input.currentSizeKb,
+      input.maxGifKb,
+      input.minGifFps,
+    )
+    if (estimatedFps < input.currentFps) {
+      return { fps: estimatedFps, colors: 256 }
+    }
+  }
+
+  if (!input.allowColorDrop) {
+    return null
+  }
+
+  const ratio = input.maxGifKb / input.currentSizeKb
+  const estimatedColors = Math.max(32, Math.min(224, Math.floor(256 * ratio)))
+  const colorCandidate = STANDARD_COLORS.find((colors) => colors <= estimatedColors) ?? STANDARD_COLORS[STANDARD_COLORS.length - 1]
+  return {
+    fps: input.currentFps,
+    colors: colorCandidate,
+  }
+}
+
+export function buildOptimizationCandidates(input: {
+  mode: OptimizationMode
+  currentFps: number
+  currentSizeKb: number
+  targetGifKb: number
+  maxGifKb: number
+  minGifFps: number
+  allowFpsDrop: boolean
+  allowColorDrop: boolean
+  standardRetriesEnabled: boolean
+}): EncodeCandidate[] {
+  if (!input.standardRetriesEnabled && input.mode === 'quality-first') {
+    return []
+  }
+
+  const candidates: EncodeCandidate[] = []
+  const seen = new Set<string>()
+  const includeFastFit = input.mode === 'hybrid' || input.mode === 'fast-fit'
+  if (includeFastFit) {
+    const fastFit = estimateFastFitCandidate(input)
+    if (fastFit) {
+      pushUniqueCandidate(
+        candidates,
+        seen,
+        toEncodeCandidate(fastFit, 'fast-fit', `Estimated from current size ${input.currentSizeKb.toFixed(1)}KB toward max ${input.maxGifKb}KB.`),
+      )
+    }
+  }
+
+  if (input.mode !== 'fast-fit' && input.standardRetriesEnabled) {
+    for (const candidate of buildStandardCandidates(input.currentFps, input.minGifFps, {
+      allowFpsDrop: input.allowFpsDrop,
+      allowColorDrop: input.allowColorDrop,
+    })) {
+      pushUniqueCandidate(
+        candidates,
+        seen,
+        toEncodeCandidate(candidate, 'quality-first', 'Ordered standard retry candidate.'),
+      )
+    }
+  }
+
+  return candidates
+}
+
+export function shouldTryQualityRecovery(sizeKb: number, targetGifKb: number): boolean {
+  return sizeKb < targetGifKb * RECOVERY_UNDER_TARGET_RATIO
+}
+
+export function buildQualityRecoveryCandidates(input: {
+  fps: number
+  colors: number
+  allowColorDrop: boolean
+}): EncodeCandidate[] {
+  if (!input.allowColorDrop) {
+    return []
+  }
+  return RECOVERY_COLORS
+    .filter((colors) => colors > input.colors)
+    .sort((a, b) => a - b)
+    .map((colors) => ({
+      phase: 'quality-recovery',
+      fps: input.fps,
+      colors,
+      reason: 'Recovering quality while preserving output timing.',
+    }))
+}
+
+export interface SplitPartSize {
+  index: number
+  name: string
+  sizeKb: number
+}
+
+export interface SplitPartWeight extends SplitPartSize {
+  averageSizeKb: number
+  heavy: boolean
+}
+
+export function analyzeSplitPartWeights(parts: SplitPartSize[]): SplitPartWeight[] {
+  if (parts.length === 0) {
+    return []
+  }
+  const averageSizeKb = parts.reduce((sum, part) => sum + part.sizeKb, 0) / parts.length
+  return parts.map((part) => ({
+    ...part,
+    averageSizeKb,
+    heavy: part.sizeKb > averageSizeKb * HEAVY_PART_RATIO,
+  }))
+}
+
+export function orderSplitPartIndicesByWeight(parts: SplitPartWeight[]): number[] {
+  return [...parts]
+    .sort((a, b) => b.sizeKb - a.sizeKb)
+    .map((part) => part.index)
 }
 
 export function buildLossyCandidates(

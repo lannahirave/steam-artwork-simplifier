@@ -1,6 +1,10 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
-import { estimateFpsForKbTarget } from './sizeStrategy'
+import {
+  analyzeSplitPartWeights,
+  estimateFpsForKbTarget,
+  orderSplitPartIndicesByWeight,
+} from './sizeStrategy'
 import { FFmpegWorkerPool } from './workerPool'
 import { resolvePresetPlan } from './presetPlan'
 import type {
@@ -172,6 +176,7 @@ export async function convertVideo(
         | 'lossyMaxAttempts'
         | 'maxGifKb'
         | 'targetGifKb'
+        | 'optimizationMode'
       >
     > = {},
   ): ConvertPartPayload => ({
@@ -186,6 +191,7 @@ export async function convertVideo(
     disableOptimizations: overrides.disableOptimizations ?? config.disableOptimizations,
     maxGifKb: overrides.maxGifKb ?? config.maxGifKb,
     targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
+    optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
     retryAllowColorDrop: overrides.retryAllowColorDrop ?? config.retryAllowColorDrop,
@@ -213,13 +219,16 @@ export async function convertVideo(
         | 'lossyMaxAttempts'
         | 'maxGifKb'
         | 'targetGifKb'
+        | 'optimizationMode'
       >
     > = {},
+    partOrder?: number[],
   ): Promise<WorkerArtifactData[]> => {
     emit('convert', label)
     const batchMinFps = Math.min(config.minGifFps, Math.max(1, Math.floor(batchGifFps)))
+    const order = partOrder ?? Array.from({ length: presetPlan.jobCount }, (_, index) => index)
     return Promise.all(
-      Array.from({ length: presetPlan.jobCount }, (_, index) =>
+      order.map((index) =>
         pool.runTask(
           'convertPart',
           buildPartPayload(index, {
@@ -254,6 +263,7 @@ export async function convertVideo(
           disableOptimizations: config.disableOptimizations,
           maxGifKb: config.maxGifKb,
           targetGifKb: config.targetGifKb,
+          optimizationMode: config.optimizationMode,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowColorDrop: config.retryAllowColorDrop,
@@ -285,6 +295,7 @@ export async function convertVideo(
           disableOptimizations: config.disableOptimizations,
           maxGifKb: config.maxGifKb,
           targetGifKb: config.targetGifKb,
+          optimizationMode: config.optimizationMode,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowColorDrop: config.retryAllowColorDrop,
@@ -335,7 +346,24 @@ export async function convertVideo(
           targetGifKb: Number.MAX_SAFE_INTEGER,
         },
       )
-      const largest = sizingPass.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
+      const splitWeights = analyzeSplitPartWeights(
+        sizingPass.map((item, index) => ({
+          index,
+          name: item.name,
+          sizeKb: item.sizeKb,
+        })),
+      )
+      for (const part of splitWeights.filter((item) => item.heavy)) {
+        emit(
+          'convert',
+          `${splitPresetLabel} heavy part detected: ${part.name} is ${part.sizeKb.toFixed(1)}KB; average is ${part.averageSizeKb.toFixed(1)}KB.`,
+        )
+      }
+      const prioritizedPartOrder = orderSplitPartIndicesByWeight(splitWeights)
+      const heavyParts = splitWeights.filter((item) => item.heavy)
+      const largestWeight = (heavyParts.length > 0 ? heavyParts : splitWeights)
+        .reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
+      const largest = sizingPass[largestWeight.index]
       const fpsTargetKb = config.standardRetriesEnabled
         ? (largest.sizeKb > config.maxGifKb ? config.maxGifKb : config.targetGifKb)
         : config.maxGifKb
@@ -380,6 +408,8 @@ export async function convertVideo(
           finalFps,
           false,
           `${splitPresetLabel} pass 2/2: final conversion at shared fps=${finalFps}.`,
+          {},
+          prioritizedPartOrder,
         )
       }
     }
