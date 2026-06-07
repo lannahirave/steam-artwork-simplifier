@@ -541,7 +541,11 @@ export function ConvertPanel(props: ConvertPanelProps) {
           </div>
           <section className={resultsGridClassName}>
             {artifactViews.map((item) => (
-              <article className="result-card" key={item.artifact.name}>
+              <article
+                className="result-card"
+                key={item.artifact.name}
+                style={isCompactStrip ? { width: `${item.artifact.width}px` } : undefined}
+              >
                 {!isCompactStrip && (
                   <>
                     <h3>{item.artifact.name}</h3>

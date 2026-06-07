@@ -1171,7 +1171,6 @@ button:disabled {
 .results-grid.workshop-strip .result-card,
 .results-grid.showcase-strip .result-card {
   flex: 0 0 auto;
-  width: fit-content;
   min-width: 0;
   gap: 0.25rem;
   padding: 0;
