@@ -1,8 +1,8 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
-import { DEFAULTS } from './defaults'
 import { runPrecheck } from './precheck'
 import { estimateFpsForKbTarget } from './sizeStrategy'
 import { FFmpegWorkerPool } from './workerPool'
+import { resolvePresetPlan } from './presetPlan'
 import type {
   ConvertPartPayload,
   ConversionArtifact,
@@ -120,27 +120,7 @@ export async function convertVideo(
   }
   const isStillImage = imageLikeSource && probe.duration <= 0.001
 
-  const isSingleOutputPreset = config.preset === 'featured' || config.preset === 'guide'
-  const isSplitPreset = config.preset === 'workshop' || config.preset === 'showcase'
-  const splitWidths = config.preset === 'showcase' ? [...DEFAULTS.showcase.splitWidths] : undefined
-  const guideSize = DEFAULTS.guide.size
-  const parts = isSingleOutputPreset
-    ? 1
-    : config.preset === 'showcase'
-      ? DEFAULTS.showcase.splitWidths.length
-      : config.parts
-  const partWidth =
-    config.preset === 'featured'
-      ? config.featuredWidth
-      : config.preset === 'guide'
-        ? guideSize
-        : config.preset === 'showcase'
-          ? DEFAULTS.showcase.splitWidths[0]
-          : config.partWidth
-  const totalTargetWidth = splitWidths
-    ? splitWidths.reduce((sum, width) => sum + width, 0)
-    : parts * partWidth
-  const sampleGifWidth = splitWidths ? Math.max(...splitWidths) : partWidth
+  const presetPlan = resolvePresetPlan(config)
 
   if (config.disableOptimizations) {
     const message =
@@ -152,10 +132,10 @@ export async function convertVideo(
       srcWidth: probe.width,
       srcHeight: probe.height,
       duration: probe.duration,
-      parts,
-      partWidth,
-      totalTargetWidth,
-      sampleGifWidth,
+      parts: presetPlan.jobCount,
+      partWidth: presetPlan.partWidth,
+      totalTargetWidth: presetPlan.totalTargetWidth,
+      sampleGifWidth: presetPlan.sampleGifWidth,
       minGifFps: config.minGifFps,
       maxGifKb: config.maxGifKb,
       precheckBppf: config.precheckBppf,
@@ -175,7 +155,7 @@ export async function convertVideo(
     emit(`worker-${workerIndex + 1}:${stage}`, message)
   }
 
-  emit('convert', `Starting ${parts} conversion task(s).`)
+  emit('convert', `Starting ${presetPlan.jobCount} conversion task(s).`)
 
   const buildPartPayload = (
     partIndex: number,
@@ -214,9 +194,9 @@ export async function convertVideo(
     lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
     startOffsetSec: probe.startOffsetSec,
     partIndex,
-    parts,
-    partWidth,
-    splitWidths,
+    parts: presetPlan.jobCount,
+    partWidth: presetPlan.partWidth,
+    splitWidths: presetPlan.splitWidths,
   })
 
   const runSplitBatch = async (
@@ -239,7 +219,7 @@ export async function convertVideo(
     emit('convert', label)
     const batchMinFps = Math.min(config.minGifFps, Math.max(1, Math.floor(batchGifFps)))
     return Promise.all(
-      Array.from({ length: parts }, (_, index) =>
+      Array.from({ length: presetPlan.jobCount }, (_, index) =>
         pool.runTask(
           'convertPart',
           buildPartPayload(index, {
@@ -312,7 +292,7 @@ export async function convertVideo(
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
           startOffsetSec: probe.startOffsetSec,
-          guideSize,
+          guideSize: presetPlan.guideSize,
         },
         {
           onProgress: workerProgress(0),
@@ -321,10 +301,10 @@ export async function convertVideo(
       ),
     ]
   } else {
-    if (!isSplitPreset) {
+    if (!presetPlan.isSplit) {
       throw new Error(`Unsupported split preset: ${config.preset}`)
     }
-    const splitPresetLabel = config.preset === 'showcase' ? 'Showcase' : 'Workshop'
+    const splitPresetLabel = presetPlan.label
     const canRunSharedFpsPass =
       config.retryAllowFpsDrop &&
       !config.disableOptimizations &&
@@ -394,7 +374,7 @@ export async function convertVideo(
         }
         emit(
           'convert',
-          `${splitPresetLabel} pass 2/2: enforcing shared fps=${finalFps} for all ${parts} parts.`,
+          `${splitPresetLabel} pass 2/2: enforcing shared fps=${finalFps} for all ${presetPlan.jobCount} parts.`,
         )
         resultData = await runSplitBatch(
           finalFps,

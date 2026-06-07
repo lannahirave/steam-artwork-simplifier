@@ -1,6 +1,5 @@
 import { useState } from 'react'
 import { useIntl } from 'react-intl'
-import { getDefaultWorkerCount } from '../../lib/defaults'
 import type { ConversionConfig } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
@@ -40,6 +39,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onCancelConversion,
     onDownloadZip,
     onResetConvertState,
+    onUpdateWorkshopParts,
   } = actions
   const {
     convertDisabled,
@@ -54,6 +54,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     resultsGridClassName,
     getColorReductionPercent,
     downloadBlob: onDownloadBlob,
+    presetPlan,
   } = meta
   const progressText = progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')
   const runLogsText = logs.join('\n')
@@ -113,7 +114,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
               />
             </label>
 
-            {config.preset === 'workshop' && (
+            {presetPlan.preset === 'workshop' && (
               <>
                 <label title="Number of output slices for workshop preset.">
                   {intl.formatMessage({ id: 'convert.parts' })}
@@ -123,11 +124,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     max={12}
                     value={config.parts}
                     onChange={(event) =>
-                      setConfig((prev) => ({
-                        ...prev,
-                        parts: Number.parseInt(event.target.value, 10) || 1,
-                        workerCount: getDefaultWorkerCount(Number.parseInt(event.target.value, 10) || 1),
-                      }))
+                      onUpdateWorkshopParts(Number.parseInt(event.target.value, 10) || 1)
                     }
                   />
                 </label>
@@ -145,7 +142,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </>
             )}
 
-            {config.preset === 'featured' && (
+            {presetPlan.preset === 'featured' && (
               <label title="Width in pixels of the featured output GIF.">
                 {intl.formatMessage({ id: 'convert.featuredWidth' })}
                 <input
@@ -159,14 +156,14 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </label>
             )}
 
-            {config.preset === 'guide' && (
+            {presetPlan.preset === 'guide' && (
               <label title="Guide preset outputs a centered square GIF at 195x195.">
                 {intl.formatMessage({ id: 'convert.guideSize' })}
                 <input value={intl.formatMessage({ id: 'convert.fixed.guideSize' })} disabled />
               </label>
             )}
 
-            {config.preset === 'showcase' && (
+            {presetPlan.preset === 'showcase' && (
               <>
                 <label title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
                   {intl.formatMessage({ id: 'convert.showcaseSplit' })}
