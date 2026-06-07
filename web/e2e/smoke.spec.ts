@@ -12,6 +12,31 @@ async function expectSpotlightFitsPanel(page: Page, targetName: string): Promise
   await expect(page.locator(`[data-onboarding-target="${targetName}"]`)).toBeInViewport()
   await expect(page.locator('.onboarding-spotlight')).toHaveCSS('opacity', '1')
 
+  await expect.poll(async () => {
+    const metrics = await page.evaluate((name) => {
+      const target = document.querySelector(`[data-onboarding-target="${name}"]`)
+      const spotlight = document.querySelector('.onboarding-spotlight')
+      if (!target || !spotlight) {
+        return null
+      }
+
+      const targetRect = target.getBoundingClientRect()
+      const spotlightRect = spotlight.getBoundingClientRect()
+      const visibleTargetTop = Math.max(56, targetRect.top - 10)
+      const visibleTargetBottom = Math.min(window.innerHeight - 16, targetRect.bottom + 10)
+      return {
+        topDelta: Math.abs(spotlightRect.top - visibleTargetTop),
+        bottomDelta: Math.abs(spotlightRect.bottom - visibleTargetBottom),
+        spotlightHeight: spotlightRect.height,
+      }
+    }, targetName)
+
+    if (!metrics) {
+      return false
+    }
+    return metrics.topDelta <= 1 && metrics.bottomDelta <= 1 && metrics.spotlightHeight >= 96
+  }).toBe(true)
+
   const metrics = await page.evaluate((name) => {
     const target = document.querySelector(`[data-onboarding-target="${name}"]`)
     const spotlight = document.querySelector('.onboarding-spotlight')
@@ -23,13 +48,20 @@ async function expectSpotlightFitsPanel(page: Page, targetName: string): Promise
     const spotlightRect = spotlight.getBoundingClientRect()
     return {
       targetHeight: targetRect.height,
+      targetTop: targetRect.top,
+      targetBottom: targetRect.bottom,
       spotlightHeight: spotlightRect.height,
+      spotlightTop: spotlightRect.top,
+      spotlightBottom: spotlightRect.bottom,
     }
   }, targetName)
 
   expect(metrics).not.toBeNull()
-  expect(metrics!.spotlightHeight).toBeLessThanOrEqual(metrics!.targetHeight + 24)
-  expect(metrics!.spotlightHeight).toBeLessThanOrEqual(584)
+  const visibleTargetTop = Math.max(56, metrics!.targetTop - 10)
+  const visibleTargetBottom = Math.min(await page.evaluate(() => window.innerHeight - 16), metrics!.targetBottom + 10)
+  expect(metrics!.spotlightTop).toBeCloseTo(visibleTargetTop, 0)
+  expect(metrics!.spotlightBottom).toBeCloseTo(visibleTargetBottom, 0)
+  expect(metrics!.spotlightHeight).toBeGreaterThanOrEqual(96)
 }
 
 test('renders convert tab by default', async ({ page }) => {

@@ -258,10 +258,7 @@ function App() {
       const padding = 10
       const highlightTop = Math.max(56, rect.top - padding)
       const visibleBottom = Math.min(window.innerHeight - 16, rect.bottom + padding)
-      const highlightHeight = Math.max(
-        96,
-        Math.min(rect.height + padding * 2, visibleBottom - highlightTop, 560),
-      )
+      const highlightHeight = Math.max(96, visibleBottom - highlightTop)
       spotlight.style.opacity = '1'
       spotlight.style.transform = `translate(${Math.max(8, rect.left - padding)}px, ${highlightTop}px)`
       spotlight.style.width = `${Math.min(window.innerWidth - 16, rect.width + padding * 2)}px`
