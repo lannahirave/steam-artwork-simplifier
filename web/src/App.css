@@ -103,7 +103,9 @@ textarea {
 }
 
 .global-nav-brand,
-.global-nav-link {
+.global-nav-link,
+.nav-help {
+  appearance: none;
   border: 0;
   background: transparent;
   color: rgba(255, 255, 255, 0.88);
@@ -133,16 +135,52 @@ textarea {
   line-height: 1;
 }
 
-.global-nav-link {
+.global-nav-link,
+.nav-help,
+.nav-source {
+  position: relative;
   color: rgba(255, 255, 255, 0.72);
-  transition: color 180ms ease;
+  text-decoration: none;
+  transition: color 160ms ease;
+}
+
+.global-nav-link::after,
+.nav-help::after,
+.nav-source::after {
+  content: '';
+  position: absolute;
+  right: 0;
+  bottom: -0.38rem;
+  left: 0;
+  height: 1px;
+  background: currentColor;
+  opacity: 0;
+  transform: scaleX(0.4);
+  transform-origin: center;
+  transition:
+    opacity 160ms ease,
+    transform 160ms ease;
 }
 
 .global-nav-link.active,
 .global-nav-link:hover,
 .global-nav-brand:hover,
+.nav-help:hover,
 .nav-source:hover {
   color: var(--ink-inverse);
+}
+
+.global-nav-link.active::after,
+.global-nav-link:hover::after,
+.nav-help:hover::after,
+.nav-source:hover::after {
+  opacity: 0.72;
+  transform: scaleX(1);
+}
+
+.global-nav button:not(:disabled):hover {
+  background: transparent;
+  transform: none;
 }
 
 .global-nav-actions {
@@ -157,23 +195,11 @@ textarea {
 }
 
 .nav-source {
-  color: rgba(255, 255, 255, 0.82);
-  text-decoration: none;
+  color: rgba(255, 255, 255, 0.72);
 }
 
 .nav-help {
-  min-height: 1.85rem;
-  padding: 0.25rem 0.68rem;
-  border-color: rgba(255, 255, 255, 0.18);
-  background: rgba(255, 255, 255, 0.06);
-  color: rgba(255, 255, 255, 0.86);
-  font-weight: 600;
-}
-
-.nav-help:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: var(--ink-inverse);
-  transform: none;
+  font-weight: 400;
 }
 
 .shell {
@@ -838,19 +864,24 @@ input:focus-visible,
 select:focus-visible,
 textarea:focus-visible,
 button:focus-visible,
-.hero-link:focus-visible,
-.global-nav-brand:focus-visible,
-.global-nav-link:focus-visible,
-.nav-source:focus-visible {
+.hero-link:focus-visible {
   outline: none;
   border-color: rgba(0, 113, 227, 0.46);
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
 }
 
+.global-nav-brand:focus-visible,
+.global-nav-link:focus-visible,
+.nav-help:focus-visible,
+.nav-source:focus-visible {
+  outline: 2px solid var(--apple-blue);
+  outline-offset: 0.35rem;
+  border-radius: 2px;
+  box-shadow: none;
+}
+
 .nav-help:focus-visible {
-  outline: none;
-  border-color: rgba(41, 151, 255, 0.68);
-  box-shadow: 0 0 0 4px rgba(41, 151, 255, 0.2);
+  color: var(--ink-inverse);
 }
 
 input[type='file'] {
