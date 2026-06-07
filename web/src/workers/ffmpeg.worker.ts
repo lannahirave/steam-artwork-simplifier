@@ -72,6 +72,7 @@ function buildSearchOptions(
     disableOptimizations: payload.disableOptimizations,
     maxGifKb: payload.maxGifKb,
     targetGifKb: payload.targetGifKb,
+    optimizationMode: payload.optimizationMode,
     standardRetriesEnabled: payload.standardRetriesEnabled,
     retryAllowFpsDrop: payload.retryAllowFpsDrop,
     retryAllowColorDrop: payload.retryAllowColorDrop,

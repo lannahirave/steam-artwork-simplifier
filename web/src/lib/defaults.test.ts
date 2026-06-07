@@ -7,6 +7,7 @@ describe('preset defaults', () => {
     expect(config.preset).toBe('workshop')
     expect(config.parts).toBe(5)
     expect(config.partWidth).toBe(150)
+    expect(config.optimizationMode).toBe('hybrid')
   })
 
   it('switches to featured limits and worker count', () => {

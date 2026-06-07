@@ -1,4 +1,9 @@
-import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from '../lib/sizeStrategy'
+import {
+  buildLossyCandidates,
+  buildOptimizationCandidates,
+  buildQualityRecoveryCandidates,
+  shouldTryQualityRecovery,
+} from '../lib/sizeStrategy'
 import type { ArtifactStatus } from '../lib/types'
 import { encodeGif, type EncodeGifOptions } from './gifFrameEncoder'
 import type { WorkerProgressSink } from './workerMessaging'
@@ -21,6 +26,7 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
+  optimizationMode: 'hybrid' | 'quality-first' | 'fast-fit'
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowColorDrop: boolean
@@ -112,160 +118,105 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     }
   }
 
-  if (options.standardRetriesEnabled) {
-    const standardCandidates = buildStandardCandidates(options.gifFps, options.minGifFps, {
-      allowFpsDrop: options.retryAllowFpsDrop,
-      allowColorDrop: options.retryAllowColorDrop,
-    })
-    for (let i = 0; i < standardCandidates.length; i += 1) {
-      const candidate = standardCandidates[i]
+  const standardCandidates = buildOptimizationCandidates({
+    mode: options.optimizationMode,
+    currentFps: options.gifFps,
+    currentSizeKb: bestSize,
+    targetGifKb: options.targetGifKb,
+    maxGifKb: options.maxGifKb,
+    minGifFps: options.minGifFps,
+    allowFpsDrop: options.retryAllowFpsDrop,
+    allowColorDrop: options.retryAllowColorDrop,
+    standardRetriesEnabled: options.standardRetriesEnabled,
+  })
+
+  for (let i = 0; i < standardCandidates.length; i += 1) {
+    const candidate = standardCandidates[i]
+    options.postProgress(
+      options.requestId,
+      candidate.phase,
+      `Trying ${candidate.phase} ${i + 1}/${standardCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}. ${candidate.reason}`,
+    )
+    const attemptBytes = await encodeAttempt(
+      options,
+      `${candidate.phase}-${candidate.fps}-${candidate.colors}-${options.requestId}`,
+      `fps=${candidate.fps},${options.baseFilter}`,
+      candidate.fps,
+      candidate.colors,
+    )
+    const attemptSize = attemptBytes.byteLength / 1024
+    if (attemptSize < bestSize) {
+      bestBytes = attemptBytes
+      bestSize = attemptSize
+      bestFps = candidate.fps
+      bestColors = candidate.colors
+      bestStatus = 'recompressed'
       options.postProgress(
         options.requestId,
-        'standard',
-        `Trying standard ${i + 1}/${standardCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}`,
+        candidate.phase,
+        `Improved with fps=${candidate.fps}, colors=${candidate.colors}: ${bestSize.toFixed(1)}KB`,
+      )
+    }
+
+    if (bestSize <= options.targetGifKb || (options.optimizationMode === 'fast-fit' && bestSize <= options.maxGifKb)) {
+      break
+    }
+  }
+
+  if (
+    options.optimizationMode === 'hybrid' &&
+    bestSize <= options.maxGifKb &&
+    shouldTryQualityRecovery(bestSize, options.targetGifKb)
+  ) {
+    const recoveryCandidates = buildQualityRecoveryCandidates({
+      fps: bestFps,
+      colors: bestColors,
+      allowColorDrop: options.retryAllowColorDrop,
+    })
+    for (let i = 0; i < recoveryCandidates.length; i += 1) {
+      const candidate = recoveryCandidates[i]
+      options.postProgress(
+        options.requestId,
+        'quality-recovery',
+        `Trying recovery ${i + 1}/${recoveryCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}.`,
       )
       const attemptBytes = await encodeAttempt(
         options,
-        `standard-${candidate.fps}-${candidate.colors}-${options.requestId}`,
+        `recovery-${candidate.fps}-${candidate.colors}-${options.requestId}`,
         `fps=${candidate.fps},${options.baseFilter}`,
         candidate.fps,
         candidate.colors,
       )
       const attemptSize = attemptBytes.byteLength / 1024
-      if (attemptSize < bestSize) {
+      if (attemptSize > options.maxGifKb) {
+        options.postProgress(
+          options.requestId,
+          'quality-recovery',
+          `Recovery stopped: ${attemptSize.toFixed(1)}KB would exceed max ${options.maxGifKb}KB.`,
+        )
+        break
+      }
+      if (attemptSize > bestSize) {
         bestBytes = attemptBytes
         bestSize = attemptSize
-        bestFps = candidate.fps
         bestColors = candidate.colors
         bestStatus = 'recompressed'
         options.postProgress(
           options.requestId,
-          'standard',
-          `Improved with fps=${candidate.fps}, colors=${candidate.colors}: ${bestSize.toFixed(1)}KB`,
+          'quality-recovery',
+          `Recovered quality to colors=${candidate.colors}: ${bestSize.toFixed(1)}KB.`,
         )
       }
-
-      if (bestSize <= options.targetGifKb) {
-        return {
-          bytes: bestBytes,
-          sizeKb: bestSize,
-          status: bestStatus,
-          finalFps: bestFps,
-          finalColors: bestColors,
-        }
-      }
-    }
-  }
-
-  if (options.retryAllowFpsDrop && bestSize > options.targetGifKb) {
-    const visitedFps = new Set<number>()
-    for (let i = 0; i < 3; i += 1) {
-      const targetKb = bestSize > options.maxGifKb ? options.maxGifKb : options.targetGifKb
-      const nextFps = estimateFpsForKbTarget(
-        bestFps,
-        bestSize,
-        targetKb,
-        options.minGifFps,
-      )
-      if (nextFps >= bestFps || visitedFps.has(nextFps)) {
-        break
-      }
-      visitedFps.add(nextFps)
-
-      const removedFrames = Math.max(0, bestFps - nextFps)
-      options.postProgress(
-        options.requestId,
-        'standard',
-        `FPS-fit: estimated ${removedFrames} FPS reduction needed to reach ${targetKb.toFixed(1)}KB (try fps=${nextFps}).`,
-      )
-
-      const attemptBytes = await encodeAttempt(
-        options,
-        `fpsfit-${nextFps}-${options.requestId}`,
-        `fps=${nextFps},${options.baseFilter}`,
-        nextFps,
-        256,
-      )
-      const attemptSize = attemptBytes.byteLength / 1024
-      if (attemptSize < bestSize) {
-        bestBytes = attemptBytes
-        bestSize = attemptSize
-        bestFps = nextFps
-        bestColors = 256
-        bestStatus = 'recompressed'
-        options.postProgress(
-          options.requestId,
-          'standard',
-          `FPS-fit improved output: ${bestSize.toFixed(1)}KB at ${nextFps}fps.`,
-        )
-
-        if (!options.standardRetriesEnabled && bestSize <= options.maxGifKb) {
-          return {
-            bytes: bestBytes,
-            sizeKb: bestSize,
-            status: bestStatus,
-            finalFps: bestFps,
-            finalColors: bestColors,
-          }
-        }
-      }
-
-      if (bestSize <= options.targetGifKb) {
-        return {
-          bytes: bestBytes,
-          sizeKb: bestSize,
-          status: bestStatus,
-          finalFps: bestFps,
-          finalColors: bestColors,
-        }
-      }
-    }
-  }
-
-  if (options.retryAllowFpsDrop && bestSize > options.maxGifKb) {
-    const fpsFloor = Math.max(1, options.minGifFps)
-    const totalSweepSteps = Math.max(0, bestFps - fpsFloor)
-    if (totalSweepSteps > 0) {
-      options.postProgress(
-        options.requestId,
-        'standard',
-        `FPS-priority sweep: trying lower FPS values before any color reduction (${totalSweepSteps} step(s)).`,
-      )
-    }
-
-    for (let fps = bestFps - 1; fps >= fpsFloor; fps -= 1) {
-      const sweepIndex = bestFps - fps
-      options.postProgress(
-        options.requestId,
-        'standard',
-        `FPS-priority ${sweepIndex}/${totalSweepSteps}: fps=${fps}, colors=256`,
-      )
-
-      const attemptBytes = await encodeAttempt(
-        options,
-        `fps-priority-${fps}-${options.requestId}`,
-        `fps=${fps},${options.baseFilter}`,
-        fps,
-        256,
-      )
-      const attemptSize = attemptBytes.byteLength / 1024
-      if (attemptSize < bestSize) {
-        bestBytes = attemptBytes
-        bestSize = attemptSize
-        bestFps = fps
-        bestColors = 256
-        bestStatus = 'recompressed'
-        options.postProgress(
-          options.requestId,
-          'standard',
-          `FPS-priority improved output: ${bestSize.toFixed(1)}KB at ${fps}fps.`,
-        )
-      }
-
-      if (bestSize <= options.maxGifKb) {
+      if (!shouldTryQualityRecovery(bestSize, options.targetGifKb)) {
         break
       }
     }
+  } else if (options.optimizationMode === 'hybrid' && bestSize <= options.maxGifKb) {
+    options.postProgress(
+      options.requestId,
+      'quality-recovery',
+      `Recovery skipped: ${bestSize.toFixed(1)}KB is within 10% of target ${options.targetGifKb}KB.`,
+    )
   }
 
   if (bestSize <= options.maxGifKb || !options.lossyOversize) {

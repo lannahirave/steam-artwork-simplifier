@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { buildLossyCandidates, buildStandardCandidates, estimateFpsForKbTarget } from './sizeStrategy'
+import {
+  analyzeSplitPartWeights,
+  buildLossyCandidates,
+  buildOptimizationCandidates,
+  buildQualityRecoveryCandidates,
+  buildStandardCandidates,
+  estimateFpsForKbTarget,
+  shouldTryQualityRecovery,
+} from './sizeStrategy'
 
 describe('size strategy', () => {
   it('prefers fps-only reduction before color ladder', () => {
@@ -53,5 +61,74 @@ describe('size strategy', () => {
   it('respects min fps while estimating fps target', () => {
     const fps = estimateFpsForKbTarget(12, 12000, 1000, 8)
     expect(fps).toBe(8)
+  })
+
+  it('tries hybrid fast-fit before the long quality ladder', () => {
+    const candidates = buildOptimizationCandidates({
+      mode: 'hybrid',
+      currentFps: 30,
+      currentSizeKb: 9000,
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      minGifFps: 10,
+      allowFpsDrop: true,
+      allowColorDrop: true,
+      standardRetriesEnabled: true,
+    })
+
+    expect(candidates[0]).toMatchObject({
+      phase: 'fast-fit',
+      fps: 16,
+      colors: 256,
+    })
+    expect(candidates.some((candidate) => candidate.phase === 'quality-first')).toBe(true)
+  })
+
+  it('runs recovery only when output is more than ten percent under target', () => {
+    expect(shouldTryQualityRecovery(4000, 4500)).toBe(true)
+    expect(shouldTryQualityRecovery(4100, 4500)).toBe(false)
+  })
+
+  it('builds quality recovery candidates at the same fps with higher color quality', () => {
+    const candidates = buildQualityRecoveryCandidates({
+      fps: 16,
+      colors: 64,
+      allowColorDrop: true,
+    })
+
+    expect(candidates[0]).toMatchObject({
+      phase: 'quality-recovery',
+      fps: 16,
+      colors: 96,
+    })
+    expect(candidates.every((candidate) => candidate.fps === 16)).toBe(true)
+  })
+
+  it('preserves quality-first candidate ordering', () => {
+    const candidates = buildOptimizationCandidates({
+      mode: 'quality-first',
+      currentFps: 15,
+      currentSizeKb: 7000,
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      minGifFps: 13,
+      allowFpsDrop: true,
+      allowColorDrop: true,
+      standardRetriesEnabled: true,
+    })
+
+    expect(candidates[0]).toMatchObject({ phase: 'quality-first', fps: 14, colors: 256 })
+    expect(candidates[1]).toMatchObject({ phase: 'quality-first', fps: 13, colors: 256 })
+  })
+
+  it('marks split parts above average by more than ten percent as heavy', () => {
+    const weights = analyzeSplitPartWeights([
+      { index: 0, name: 'part-1.gif', sizeKb: 3000 },
+      { index: 1, name: 'part-2.gif', sizeKb: 3000 },
+      { index: 2, name: 'part-3.gif', sizeKb: 4200 },
+    ])
+
+    expect(weights[2].heavy).toBe(true)
+    expect(weights[0].heavy).toBe(false)
   })
 })

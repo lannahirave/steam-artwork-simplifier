@@ -1,6 +1,7 @@
 export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
 
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
+export type OptimizationMode = 'hybrid' | 'quality-first' | 'fast-fit'
 
 export interface ConversionConfig {
   preset: Preset
@@ -12,6 +13,7 @@ export interface ConversionConfig {
   disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
+  optimizationMode: OptimizationMode
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowColorDrop: boolean
@@ -109,6 +111,7 @@ export interface ConvertPayloadBase {
   disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
+  optimizationMode: OptimizationMode
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowColorDrop: boolean
