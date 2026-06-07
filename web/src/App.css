@@ -1152,7 +1152,7 @@ button:disabled {
 .results-grid.showcase-strip {
   display: flex;
   align-items: flex-start;
-  gap: 0.3rem;
+  gap: 0;
   overflow-x: auto;
   padding-bottom: 0.35rem;
 }
@@ -1174,7 +1174,11 @@ button:disabled {
   width: fit-content;
   min-width: 0;
   gap: 0.25rem;
-  padding: 0.3rem;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: transparent;
 }
 
 .results-grid.workshop-strip .result-card img,
@@ -1183,19 +1187,23 @@ button:disabled {
   width: auto;
   height: auto;
   max-width: none;
+  border-radius: 0;
 }
 
 .compact-caption {
   font-size: 0.72rem;
   line-height: 1.33;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  max-width: 100%;
+  padding: 0 0.2rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .download-row.compact,
 .gif-meta.compact {
   gap: 0.35rem;
+  padding: 0 0.2rem;
+  flex-wrap: wrap;
 }
 
 .gif-size,
@@ -1207,6 +1215,8 @@ button:disabled {
   display: flex;
   justify-content: space-between;
   gap: 0.5rem;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .compact-download {
