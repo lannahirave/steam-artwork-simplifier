@@ -1201,9 +1201,16 @@ button:disabled {
 
 .download-row.compact,
 .gif-meta.compact {
-  gap: 0.35rem;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 0.2rem;
   padding: 0 0.2rem;
-  flex-wrap: wrap;
+  justify-content: stretch;
+  max-width: 100%;
+}
+
+.download-row.compact {
+  align-items: stretch;
 }
 
 .gif-size,
@@ -1220,9 +1227,19 @@ button:disabled {
 }
 
 .compact-download {
+  width: 100%;
   min-height: 2rem;
-  padding: 0.35rem 0.7rem;
+  min-width: 0;
+  padding: 0.35rem 0.2rem;
   font-size: 0.8rem;
+  overflow-wrap: anywhere;
+}
+
+.download-row.compact .gif-size,
+.gif-meta.compact span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  word-break: break-word;
 }
 
 .output-list {
