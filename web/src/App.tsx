@@ -3,10 +3,10 @@ import { useIntl } from 'react-intl'
 import './App.css'
 import {
   GUIDE_SECTIONS,
-  MAX_SAFE_WASM_WORKERS,
   getIsolationState,
   type TabKey,
 } from './agents/appAgents'
+import { MAX_SAFE_WASM_WORKERS } from './lib/presetPlan'
 import { ConvertPanel } from './components/panels/ConvertPanel'
 import { GuidesPanel } from './components/panels/GuidesPanel'
 import { PatchToolsPanel } from './components/panels/PatchToolsPanel'

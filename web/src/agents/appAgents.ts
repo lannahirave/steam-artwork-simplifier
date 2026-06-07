@@ -1,19 +1,9 @@
-import { DEFAULTS } from '../lib/defaults'
-import type { ConversionArtifact, ConversionConfig } from '../lib/types'
+import type { ConversionArtifact } from '../lib/types'
 
 export type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
 export type ThemeMode = 'auto' | 'light' | 'dark'
 
-export const MAX_SAFE_WASM_WORKERS = 3
 export const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
-export const GUIDE_SIZE = 195
-
-const ESTIMATE_BPPF_BASELINES: Record<ConversionConfig['preset'], number> = {
-  workshop: 0.16,
-  featured: 0.18,
-  guide: 0.21,
-  showcase: 0.16,
-}
 
 export interface GuideSection {
   key: string
@@ -193,30 +183,6 @@ export function cleanupArtifactViews(items: ArtifactView[]): void {
 export function getColorReductionPercent(finalColors: number): number {
   const clamped = Math.min(256, Math.max(0, finalColors))
   return Math.max(0, Math.round((1 - clamped / 256) * 100))
-}
-
-export function resolveEstimateBppf(config: ConversionConfig): number {
-  return Math.max(config.precheckBppf, ESTIMATE_BPPF_BASELINES[config.preset])
-}
-
-export function getPresetSplitWidths(config: ConversionConfig): number[] {
-  if (config.preset === 'showcase') {
-    return [...DEFAULTS.showcase.splitWidths]
-  }
-  if (config.preset === 'workshop') {
-    return Array.from({ length: config.parts }, () => config.partWidth)
-  }
-  if (config.preset === 'featured') {
-    return [config.featuredWidth]
-  }
-  return [GUIDE_SIZE]
-}
-
-export function getPresetJobCount(config: ConversionConfig): number {
-  if (config.preset === 'workshop' || config.preset === 'showcase') {
-    return getPresetSplitWidths(config).length
-  }
-  return 1
 }
 
 export function parseWorkerStage(stage: string): WorkerStageEvent | null {

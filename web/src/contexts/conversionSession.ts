@@ -6,26 +6,23 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react'
-import { applyPreset, computeTargetHeight, getDefaultConfig, getDefaultWorkerCount } from '../lib/defaults'
+import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from '../lib/defaults'
 import { convertVideo, type ConversionProgress } from '../lib/conversion'
 import { estimateFpsForTargetKb, estimateGifKb } from '../lib/precheck'
 import type { ConversionConfig } from '../lib/types'
 import { createZip } from '../lib/zip'
 import { FFmpegWorkerPool } from '../lib/workerPool'
 import { isSupportedConversionSource } from '../lib/validation'
+import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
+import type { PresetPlan } from '../lib/presetPlan'
 import {
-  GUIDE_SIZE,
-  MAX_SAFE_WASM_WORKERS,
   cleanupArtifactViews,
   downloadBlob,
   formatElapsed,
   getBaseProgress,
   getColorReductionPercent,
-  getPresetJobCount,
-  getPresetSplitWidths,
   getWorkerStageWeight,
   parseWorkerStage,
-  resolveEstimateBppf,
   toArtifactViews,
   type ArtifactView,
 } from '../agents/appAgents'
@@ -56,6 +53,7 @@ export interface ConvertActions {
   onCancelConversion: () => void
   onDownloadZip: () => void
   onResetConvertState: () => void
+  onUpdateWorkshopParts: (parts: number) => void
 }
 
 export interface ConvertMeta {
@@ -71,6 +69,7 @@ export interface ConvertMeta {
   resultsGridClassName: string
   getColorReductionPercent: (finalColors: number) => number
   downloadBlob: (name: string, blob: Blob) => void
+  presetPlan: PresetPlan
 }
 
 export interface ConvertContextValue {
@@ -111,15 +110,6 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
         ? 'results-grid showcase-strip'
         : 'results-grid',
   }
-}
-
-function getEffectiveWorkerCount(config: ConversionConfig): number {
-  const requestedJobs = getPresetJobCount(config)
-  const splitPreset = config.preset === 'workshop' || config.preset === 'showcase'
-  if (!splitPreset) {
-    return 1
-  }
-  return Math.max(1, Math.min(config.workerCount, MAX_SAFE_WASM_WORKERS, requestedJobs))
 }
 
 export function useConversionSession(): ConvertContextValue {
@@ -175,6 +165,7 @@ export function useConversionSession(): ConvertContextValue {
   }, [busy])
 
   const { isCompactStrip, resultsGridClassName } = getArtifactLayoutClassName(artifactViews)
+  const presetPlan = resolvePresetPlan(config)
   const optimizationDisabled = config.disableOptimizations
   const standardRetriesEffective = !optimizationDisabled && config.standardRetriesEnabled
   const retryControlsDisabled = optimizationDisabled || !config.standardRetriesEnabled
@@ -245,16 +236,15 @@ export function useConversionSession(): ConvertContextValue {
       return
     }
 
-    const requestedJobs = getPresetJobCount(config)
-    const effectiveWorkerCount = getEffectiveWorkerCount(config)
+    const plan = resolvePresetPlan(config)
     const runtimeConfig: ConversionConfig = {
       ...config,
-      workerCount: effectiveWorkerCount,
+      workerCount: plan.effectiveWorkerCount,
     }
     const extraWarnings: string[] = []
     setLastConversionSourceName(sourceFile.name)
 
-    totalJobsRef.current = requestedJobs
+    totalJobsRef.current = plan.jobCount
     workerWeightsRef.current = {}
     resetConvertState()
     const startedAt = Date.now()
@@ -345,9 +335,17 @@ export function useConversionSession(): ConvertContextValue {
       const next = applyPreset(prev, nextPreset)
       return {
         ...next,
-        workerCount: getDefaultWorkerCount(getPresetJobCount(next)),
+        workerCount: getDefaultWorkerCount(resolvePresetPlan(next).jobCount),
       }
     })
+  }
+
+  function updateWorkshopParts(parts: number): void {
+    setConfig((prev) => ({
+      ...prev,
+      parts,
+      workerCount: getDefaultWorkerCount(parts),
+    }))
   }
 
   function handleSourceFileChange(event: ChangeEvent<HTMLInputElement>): void {
@@ -380,8 +378,8 @@ export function useConversionSession(): ConvertContextValue {
     setFpsEstimateInfo('')
     setEstimatingFps(true)
     try {
-      const effectiveWorkerCount = getEffectiveWorkerCount(config)
-      const pool = ensurePool(effectiveWorkerCount)
+      const plan = resolvePresetPlan(config)
+      const pool = ensurePool(plan.effectiveWorkerCount)
       const sourceBytes = new Uint8Array(await sourceFile.arrayBuffer())
       const probe = await pool.runTask('probe', {
         fileName: sourceFile.name,
@@ -390,18 +388,10 @@ export function useConversionSession(): ConvertContextValue {
         timeoutMs: 45_000,
       })
 
-      const splitWidths = getPresetSplitWidths(config)
-      const perGifWidth =
-        config.preset === 'guide'
-          ? GUIDE_SIZE
-          : Math.max(...splitWidths)
-      const totalTargetWidth = splitWidths.reduce((sum, width) => sum + width, 0)
-      const targetHeight =
-        config.preset === 'guide'
-          ? GUIDE_SIZE
-          : computeTargetHeight(probe.width, probe.height, totalTargetWidth)
+      const perGifWidth = plan.sampleGifWidth
+      const targetHeight = computePresetTargetHeight(config, probe.width, probe.height)
       const duration = Math.max(0.1, probe.duration)
-      const estimateBppf = resolveEstimateBppf(config)
+      const estimateBppf = plan.estimateBppf
 
       const estimatedFromTarget = estimateFpsForTargetKb(
         perGifWidth,
@@ -489,6 +479,7 @@ export function useConversionSession(): ConvertContextValue {
       onCancelConversion: cancelConversion,
       onDownloadZip: () => void downloadZip(),
       onResetConvertState: resetConvertState,
+      onUpdateWorkshopParts: updateWorkshopParts,
     },
     meta: {
       convertDisabled: busy || !sourceFile,
@@ -503,6 +494,7 @@ export function useConversionSession(): ConvertContextValue {
       resultsGridClassName,
       getColorReductionPercent,
       downloadBlob,
+      presetPlan,
     },
   }
 }
