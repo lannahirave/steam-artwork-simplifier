@@ -340,13 +340,6 @@ textarea {
   border-color: rgba(255, 255, 255, 0.42);
 }
 
-.hero-signals {
-  width: min(980px, 100%);
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
-}
-
 .onboarding-card {
   position: fixed;
   top: 4.25rem;
@@ -451,8 +444,6 @@ textarea {
   background: var(--apple-blue-dark);
 }
 
-.signal-card,
-.hero-note-card,
 .spotlight-panel,
 .config-group,
 .raw-mode-card,
@@ -465,38 +456,13 @@ textarea {
   border-radius: var(--radius-panel);
 }
 
-.signal-card {
-  min-height: 8.5rem;
-  padding: 1.4rem;
-  background: var(--surface-dark);
-  border: 1px solid var(--line-inverse);
-  display: grid;
-  align-content: start;
-  gap: 0.55rem;
-  text-align: left;
-}
-
-.signal-card strong {
-  font-family: var(--font-display);
-  font-size: 1.35rem;
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-}
-
-.signal-card span {
-  color: rgba(255, 255, 255, 0.72);
-  line-height: 1.47;
-}
-
 .overview-band {
   background: var(--page-muted);
   color: var(--ink);
   padding-top: clamp(2.5rem, 5vw, 4rem);
   padding-bottom: clamp(2.5rem, 5vw, 4rem);
   display: grid;
-  grid-template-columns: minmax(0, 1.1fr) minmax(320px, 0.9fr);
-  gap: 1.25rem;
-  align-items: start;
+  justify-items: start;
 }
 
 .overview-copy,
@@ -575,19 +541,6 @@ textarea {
   background: var(--apple-blue);
 }
 
-.hero-note-grid {
-  display: grid;
-  gap: 1rem;
-}
-
-.hero-note-card {
-  min-height: 10rem;
-  padding: 1.35rem;
-  background: var(--surface);
-  box-shadow: var(--shadow-soft);
-}
-
-.hero-note-card h3,
 .config-group > h3,
 .warn-box h3,
 .log-box h3,
@@ -600,13 +553,6 @@ textarea {
   font-weight: 600;
   line-height: 1.19;
   letter-spacing: -0.02em;
-}
-
-.hero-note-card p {
-  margin: 0;
-  font-size: 1rem;
-  line-height: 1.47;
-  color: var(--ink-soft);
 }
 
 .control-deck {
@@ -1442,14 +1388,9 @@ button:disabled {
     display: none;
   }
 
-  .hero-signals,
   .tab-rail,
   .lossy-group-fields {
     grid-template-columns: 1fr;
-  }
-
-  .signal-card {
-    min-height: auto;
   }
 }
 
