@@ -167,7 +167,7 @@ export async function encodeGif(options: EncodeGifOptions): Promise<Uint8Array> 
     return gifBytes
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`GIF encode failed via gifski.\n\n${message}`)
+    throw new Error(`GIF encode failed via gifski.\n\n${message}`, { cause: error })
   } finally {
     await Promise.all(framePaths.map((path) => safeDelete(options.ffmpeg, path)))
   }
