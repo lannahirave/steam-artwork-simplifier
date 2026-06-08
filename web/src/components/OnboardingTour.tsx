@@ -34,6 +34,7 @@ const ONBOARDING_STEPS: Array<{
     body: 'onboarding.guides.body',
   },
 ]
+const TOUR_SCROLL_TOP_OFFSET = 76
 
 interface OnboardingTourProps {
   open: boolean
@@ -135,10 +136,13 @@ export function OnboardingTour(props: OnboardingTourProps) {
       const target = document.querySelector<HTMLElement>(
         `[data-onboarding-target="${step.tab}"]`,
       )
-      target?.scrollIntoView({
-        behavior: 'smooth',
-        block: 'center',
-      })
+      if (target) {
+        const targetTop = target.getBoundingClientRect().top + window.scrollY - TOUR_SCROLL_TOP_OFFSET
+        window.scrollTo({
+          top: Math.max(0, targetTop),
+          behavior: 'smooth',
+        })
+      }
     }
 
     const positionTimeout = window.setTimeout(positionTourTarget, 260)
