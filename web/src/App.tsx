@@ -6,7 +6,7 @@ import {
   getIsolationState,
   type TabKey,
 } from './agents/appAgents'
-import { QUICK_FACTS, STUDIO_SIGNALS, TAB_DETAILS } from './appShellCatalog'
+import { TAB_DETAILS } from './appShellCatalog'
 import { OnboardingTour } from './components/OnboardingTour'
 import { ConvertPanel } from './components/panels/ConvertPanel'
 import { GuidesPanel } from './components/panels/GuidesPanel'
@@ -15,7 +15,6 @@ import { SteamHelpersPanel } from './components/panels/SteamHelpersPanel'
 import { ConvertProvider } from './contexts/convertContext'
 import { PatchToolsProvider } from './contexts/patchToolsContext'
 import { SteamHelpersProvider } from './contexts/steamHelpersContext'
-import type { MessageId } from './i18n/messages'
 import { getStoredOnboardingComplete } from './onboardingStorage'
 
 const APP_VERSION = __APP_VERSION__
@@ -137,15 +136,6 @@ function App() {
               </a>
             </div>
           </div>
-
-          <div className="hero-signals" aria-label="Studio signals">
-            {STUDIO_SIGNALS.map((signal) => (
-              <article key={signal.value} className="signal-card">
-                <strong>{intl.formatMessage({ id: signal.value as MessageId }, signal.values)}</strong>
-                <span>{intl.formatMessage({ id: signal.label as MessageId })}</span>
-              </article>
-            ))}
-          </div>
         </section>
 
         <section className="overview-band" aria-label="Workbench overview">
@@ -158,14 +148,6 @@ function App() {
                 <li key={point}>{intl.formatMessage({ id: point })}</li>
               ))}
             </ul>
-          </div>
-          <div className="hero-note-grid">
-            {QUICK_FACTS.map((note) => (
-              <article key={note.title} className="hero-note-card">
-                <h3>{intl.formatMessage({ id: note.title as MessageId })}</h3>
-                <p>{intl.formatMessage({ id: note.body as MessageId })}</p>
-              </article>
-            ))}
           </div>
         </section>
 
