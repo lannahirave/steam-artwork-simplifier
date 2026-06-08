@@ -149,6 +149,13 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
     'true',
   )
 
+  await page.getByRole('button', { name: 'Help', exact: true }).click()
+  await expect(page.getByLabel('Onboarding guide')).toBeVisible()
+  await expect(page.getByText('Step 1 of 5')).toBeVisible()
+  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Take a quick tour' })).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByLabel('Onboarding guide')).toBeHidden()
+
   await page.reload()
   await expect(page.getByLabel('Onboarding guide')).toBeHidden()
 

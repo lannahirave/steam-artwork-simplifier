@@ -26,9 +26,11 @@ function App() {
   const [showOnboarding, setShowOnboarding] = useState(
     () => isolationState.ok && !getStoredOnboardingComplete(),
   )
+  const [onboardingRun, setOnboardingRun] = useState(0)
   const activeTab = TAB_DETAILS[tab]
 
   function reopenOnboarding(): void {
+    setOnboardingRun((current) => current + 1)
     setShowOnboarding(true)
   }
 
@@ -190,6 +192,7 @@ function App() {
         </section>
 
         <OnboardingTour
+          key={onboardingRun}
           open={showOnboarding}
           onOpenChange={setShowOnboarding}
           onSelectTab={setTab}
