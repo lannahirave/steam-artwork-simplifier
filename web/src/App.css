@@ -114,7 +114,7 @@ textarea {
 }
 
 .global-nav-brand {
-  font-size: 0.75rem;
+  font-size: 1rem;
   letter-spacing: -0.01em;
   white-space: nowrap;
 }
@@ -131,7 +131,7 @@ textarea {
 .nav-help,
 .nav-source,
 .nav-version {
-  font-size: 0.75rem;
+  font-size: 1rem;
   line-height: 1;
 }
 
