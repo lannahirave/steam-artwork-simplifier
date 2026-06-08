@@ -171,7 +171,7 @@ export async function runProbe(
       '\n\n' +
       'ffmpeg log tail:\n' +
       tailLogOutput(ffmpegLogBuffer)
-    throw new Error(withLogs)
+    throw new Error(withLogs, { cause: error })
   } finally {
     await safeDelete(ffmpeg, probeFrameName)
     await safeDelete(ffmpeg, inputName)

@@ -4,6 +4,7 @@ import type { ConversionConfig, OptimizationMode } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
+import { SwitchCard } from '../SwitchCard'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
@@ -237,17 +238,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
               />
             </label>
 
-            <label title="Estimate output size before encoding and stop early if likely too large.">
-              <span className="toggle-row">
-                <input
-                  type="checkbox"
-                  checked={precheckEffective}
-                  disabled={optimizationDisabled}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, precheckEnabled: event.target.checked }))}
-                />
-                {intl.formatMessage({ id: 'convert.enablePrecheck' })}
-              </span>
-            </label>
+            <SwitchCard
+              checked={precheckEffective}
+              disabled={optimizationDisabled}
+              label={intl.formatMessage({ id: 'convert.enablePrecheck' })}
+              title="Estimate output size before encoding and stop early if likely too large."
+              onChange={(checked) => setConfig((prev) => ({ ...prev, precheckEnabled: checked }))}
+            />
           </div>
         </section>
 
@@ -307,47 +304,29 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </select>
             </label>
 
-            <label className="toggle" title="Enable standard recompression retries after initial encode.">
-              <input
-                type="checkbox"
-                checked={standardRetriesEffective}
-                disabled={optimizationDisabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, standardRetriesEnabled: event.target.checked }))
-                }
-              />
-              {intl.formatMessage({ id: 'convert.standardRetries' })}
-            </label>
+            <SwitchCard
+              checked={standardRetriesEffective}
+              disabled={optimizationDisabled}
+              label={intl.formatMessage({ id: 'convert.standardRetries' })}
+              title="Enable standard recompression retries after initial encode."
+              onChange={(checked) => setConfig((prev) => ({ ...prev, standardRetriesEnabled: checked }))}
+            />
 
-            <label
-              className="toggle"
+            <SwitchCard
+              checked={retryFpsEffective}
+              disabled={retryControlsDisabled}
+              label={intl.formatMessage({ id: 'convert.fpsReduction' })}
               title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
-            >
-              <input
-                type="checkbox"
-                checked={retryFpsEffective}
-                disabled={retryControlsDisabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, retryAllowFpsDrop: event.target.checked }))
-                }
-              />
-              {intl.formatMessage({ id: 'convert.fpsReduction' })}
-            </label>
+              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowFpsDrop: checked }))}
+            />
 
-            <label
-              className="toggle"
+            <SwitchCard
+              checked={retryColorEffective}
+              disabled={retryControlsDisabled}
+              label={intl.formatMessage({ id: 'convert.colorReduction' })}
               title="Allow standard retries to reduce palette colors for smaller output."
-            >
-              <input
-                type="checkbox"
-                checked={retryColorEffective}
-                disabled={retryControlsDisabled}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, retryAllowColorDrop: event.target.checked }))
-                }
-              />
-              {intl.formatMessage({ id: 'convert.colorReduction' })}
-            </label>
+              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowColorDrop: checked }))}
+            />
 
             {optimizationDisabled && (
               <p className="config-note">
@@ -364,15 +343,14 @@ export function ConvertPanel(props: ConvertPanelProps) {
               className="lossy-group"
               title="Extra lossy profiles used only when output is still above max GIF size."
             >
-              <label className="toggle lossy-group-toggle" title="Enable extra lossy profiles when GIF is still above max size.">
-                <input
-                  type="checkbox"
-                  checked={lossyEffective}
-                  disabled={optimizationDisabled}
-                  onChange={(event) => setConfig((prev) => ({ ...prev, lossyOversize: event.target.checked }))}
-                />
-                {intl.formatMessage({ id: 'convert.lossyFallback' })}
-              </label>
+              <SwitchCard
+                className="lossy-group-toggle"
+                checked={lossyEffective}
+                disabled={optimizationDisabled}
+                label={intl.formatMessage({ id: 'convert.lossyFallback' })}
+                title="Enable extra lossy profiles when GIF is still above max size."
+                onChange={(checked) => setConfig((prev) => ({ ...prev, lossyOversize: checked }))}
+              />
               <small className="field-note lossy-group-note">
                 {intl.formatMessage({ id: lossyEffective ? 'convert.lossyOn' : 'convert.lossyOff' })}
               </small>
