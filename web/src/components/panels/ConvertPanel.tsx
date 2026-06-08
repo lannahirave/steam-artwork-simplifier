@@ -402,23 +402,19 @@ export function ConvertPanel(props: ConvertPanelProps) {
               />
             </label>
 
-            <label className="toggle" title="Patch the last byte of each output file with the configured EOF byte.">
-              <input
-                type="checkbox"
-                checked={config.eofPatchEnabled}
-                onChange={(event) => setConfig((prev) => ({ ...prev, eofPatchEnabled: event.target.checked }))}
-              />
-              {intl.formatMessage({ id: 'convert.patchOutputEof' })}
-            </label>
+            <SwitchCard
+              checked={config.eofPatchEnabled}
+              label={intl.formatMessage({ id: 'convert.patchOutputEof' })}
+              title="Patch the last byte of each output file with the configured EOF byte."
+              onChange={(checked) => setConfig((prev) => ({ ...prev, eofPatchEnabled: checked }))}
+            />
 
-            <label className="toggle" title="Rewrite GIF header logical width/height metadata on outputs.">
-              <input
-                type="checkbox"
-                checked={config.headerPatchEnabled}
-                onChange={(event) => setConfig((prev) => ({ ...prev, headerPatchEnabled: event.target.checked }))}
-              />
-              {intl.formatMessage({ id: 'convert.patchHeader' })}
-            </label>
+            <SwitchCard
+              checked={config.headerPatchEnabled}
+              label={intl.formatMessage({ id: 'convert.patchHeader' })}
+              title="Rewrite GIF header logical width/height metadata on outputs."
+              onChange={(checked) => setConfig((prev) => ({ ...prev, headerPatchEnabled: checked }))}
+            />
 
             {config.headerPatchEnabled && (
               <>
