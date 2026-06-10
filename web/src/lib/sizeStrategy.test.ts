@@ -1,11 +1,14 @@
 import { describe, expect, it } from 'vitest'
 import {
   analyzeSplitPartWeights,
+  allItemsFit,
   buildLossyCandidates,
   buildOptimizationCandidates,
   buildQualityRecoveryCandidates,
+  buildSharedFpsRecoveryCandidates,
   buildStandardCandidates,
   estimateFpsForKbTarget,
+  selectBatchRecoveryBudget,
   shouldTryQualityRecovery,
 } from './sizeStrategy'
 
@@ -130,5 +133,21 @@ describe('size strategy', () => {
 
     expect(weights[2].heavy).toBe(true)
     expect(weights[0].heavy).toBe(false)
+  })
+
+  it('starts batch recovery only after every part satisfies a budget', () => {
+    expect(allItemsFit([{ sizeKb: 3200 }, { sizeKb: 4499 }], 4500)).toBe(true)
+    expect(allItemsFit([{ sizeKb: 3200 }, { sizeKb: 4501 }], 4500)).toBe(false)
+  })
+
+  it('prefers target budget for recovery and falls back to max budget', () => {
+    expect(selectBatchRecoveryBudget([{ sizeKb: 3354 }, { sizeKb: 4181 }], 4500, 5000)).toBe(4500)
+    expect(selectBatchRecoveryBudget([{ sizeKb: 4700 }, { sizeKb: 4900 }], 4500, 5000)).toBe(5000)
+    expect(selectBatchRecoveryBudget([{ sizeKb: 4700 }, { sizeKb: 5100 }], 4500, 5000)).toBeNull()
+  })
+
+  it('builds shared fps recovery candidates upward from the fitted fps', () => {
+    expect(buildSharedFpsRecoveryCandidates(10, 15)).toEqual([11, 12, 13, 14, 15])
+    expect(buildSharedFpsRecoveryCandidates(15, 15)).toEqual([])
   })
 })

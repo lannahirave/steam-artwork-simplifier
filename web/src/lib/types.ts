@@ -112,6 +112,8 @@ export interface ConvertPayloadBase {
   maxGifKb: number
   targetGifKb: number
   optimizationMode: OptimizationMode
+  enableQualityRecovery: boolean
+  fixedColors?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowColorDrop: boolean

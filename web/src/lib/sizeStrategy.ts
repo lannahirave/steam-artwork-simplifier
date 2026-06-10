@@ -31,6 +31,10 @@ const RECOVERY_COLORS = [256, 224, 192, 160, 128, 96, 64, 48, 32, 24, 16, 12] as
 export const RECOVERY_UNDER_TARGET_RATIO = 0.9
 export const HEAVY_PART_RATIO = 1.1
 
+export interface SizeBoundItem {
+  sizeKb: number
+}
+
 export interface StandardCandidateOptions {
   allowFpsDrop?: boolean
   allowColorDrop?: boolean
@@ -212,6 +216,34 @@ export function buildOptimizationCandidates(input: {
 
 export function shouldTryQualityRecovery(sizeKb: number, targetGifKb: number): boolean {
   return sizeKb < targetGifKb * RECOVERY_UNDER_TARGET_RATIO
+}
+
+export function allItemsFit(items: SizeBoundItem[], budgetKb: number): boolean {
+  return items.every((item) => item.sizeKb <= budgetKb)
+}
+
+export function selectBatchRecoveryBudget(
+  items: SizeBoundItem[],
+  targetGifKb: number,
+  maxGifKb: number,
+): number | null {
+  if (allItemsFit(items, targetGifKb)) {
+    return targetGifKb
+  }
+  if (allItemsFit(items, maxGifKb)) {
+    return maxGifKb
+  }
+  return null
+}
+
+export function buildSharedFpsRecoveryCandidates(currentFps: number, maxFps: number): number[] {
+  const start = Math.max(1, Math.floor(currentFps) + 1)
+  const end = Math.max(start - 1, Math.floor(maxFps))
+  const out: number[] = []
+  for (let fps = start; fps <= end; fps += 1) {
+    out.push(fps)
+  }
+  return out
 }
 
 export function buildQualityRecoveryCandidates(input: {
