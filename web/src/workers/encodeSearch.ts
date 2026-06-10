@@ -27,6 +27,8 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   maxGifKb: number
   targetGifKb: number
   optimizationMode: 'hybrid' | 'quality-first' | 'fast-fit'
+  enableQualityRecovery: boolean
+  fixedColors?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowColorDrop: boolean
@@ -80,13 +82,13 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
 
   options.postProgress(options.requestId, 'convert', 'Starting initial encode...')
   let bestFps = options.gifFps
-  let bestColors = 256
+  let bestColors = options.fixedColors ?? 256
   let bestBytes = await encodeAttempt(
     options,
     `initial-${options.requestId}`,
     `fps=${options.gifFps},${options.baseFilter}`,
     options.gifFps,
-    256,
+    bestColors,
   )
   let bestSize = bestBytes.byteLength / 1024
   let bestStatus: ArtifactStatus = 'original'
@@ -164,6 +166,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
   }
 
   if (
+    options.enableQualityRecovery &&
     options.optimizationMode === 'hybrid' &&
     bestSize <= options.maxGifKb &&
     shouldTryQualityRecovery(bestSize, options.targetGifKb)
@@ -211,7 +214,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
         break
       }
     }
-  } else if (options.optimizationMode === 'hybrid' && bestSize <= options.maxGifKb) {
+  } else if (options.enableQualityRecovery && options.optimizationMode === 'hybrid' && bestSize <= options.maxGifKb) {
     options.postProgress(
       options.requestId,
       'quality-recovery',

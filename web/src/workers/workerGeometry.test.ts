@@ -14,6 +14,7 @@ const basePayload = {
   maxGifKb: 5000,
   targetGifKb: 4500,
   optimizationMode: 'hybrid' as const,
+  enableQualityRecovery: true,
   standardRetriesEnabled: false,
   retryAllowFpsDrop: true,
   retryAllowColorDrop: true,

@@ -2,8 +2,12 @@ import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
 import {
   analyzeSplitPartWeights,
+  allItemsFit,
+  buildQualityRecoveryCandidates,
+  buildSharedFpsRecoveryCandidates,
   estimateFpsForKbTarget,
   orderSplitPartIndicesByWeight,
+  selectBatchRecoveryBudget,
 } from './sizeStrategy'
 import { FFmpegWorkerPool } from './workerPool'
 import { resolvePresetPlan } from './presetPlan'
@@ -177,6 +181,8 @@ export async function convertVideo(
         | 'maxGifKb'
         | 'targetGifKb'
         | 'optimizationMode'
+        | 'enableQualityRecovery'
+        | 'fixedColors'
       >
     > = {},
   ): ConvertPartPayload => ({
@@ -192,6 +198,8 @@ export async function convertVideo(
     maxGifKb: overrides.maxGifKb ?? config.maxGifKb,
     targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
     optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
+    enableQualityRecovery: overrides.enableQualityRecovery ?? true,
+    fixedColors: overrides.fixedColors,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
     retryAllowColorDrop: overrides.retryAllowColorDrop ?? config.retryAllowColorDrop,
@@ -220,6 +228,8 @@ export async function convertVideo(
         | 'maxGifKb'
         | 'targetGifKb'
         | 'optimizationMode'
+        | 'enableQualityRecovery'
+        | 'fixedColors'
       >
     > = {},
     partOrder?: number[],
@@ -246,6 +256,148 @@ export async function convertVideo(
     )
   }
 
+  const partIndexFromName = (name: string): number => {
+    const match = /_part_(\d+)\.gif$/i.exec(name)
+    return match ? Number.parseInt(match[1], 10) - 1 : 0
+  }
+
+  const runFixedSplitPart = async (
+    partIndex: number,
+    fps: number,
+    colors: number,
+    label: string,
+  ): Promise<WorkerArtifactData> => {
+    emit('convert', label)
+    const result = await pool.runTask(
+      'convertPart',
+      buildPartPayload(partIndex, {
+        gifFps: fps,
+        minGifFps: Math.min(config.minGifFps, Math.max(1, Math.floor(fps))),
+        retryAllowFpsDrop: false,
+        disableOptimizations: true,
+        standardRetriesEnabled: false,
+        retryAllowColorDrop: false,
+        lossyOversize: false,
+        lossyMaxAttempts: 1,
+        maxGifKb: Number.MAX_SAFE_INTEGER,
+        targetGifKb: Number.MAX_SAFE_INTEGER,
+        enableQualityRecovery: false,
+        fixedColors: colors,
+      }),
+      {
+        onProgress: workerProgress(partIndex),
+        timeoutMs: 6 * 60_000,
+      },
+    )
+    return {
+      ...result,
+      status: fps === config.gifFps && colors === 256 ? result.status : 'recompressed',
+    }
+  }
+
+  const recoverSplitBatch = async (
+    items: WorkerArtifactData[],
+    partOrder: number[],
+    label: string,
+  ): Promise<WorkerArtifactData[]> => {
+    if (config.optimizationMode !== 'hybrid' || config.disableOptimizations || isStillImage) {
+      return items
+    }
+
+    const budgetKb = selectBatchRecoveryBudget(items, config.targetGifKb, config.maxGifKb)
+    if (budgetKb === null) {
+      emit('quality-recovery', `${label} recovery skipped: at least one part still exceeds ${config.maxGifKb}KB.`)
+      return items
+    }
+
+    let currentItems = [...items]
+    let currentFps = Math.min(...currentItems.map((item) => item.finalFps))
+    emit(
+      'quality-recovery',
+      `${label} batch fit satisfied under ${budgetKb}KB; trying shared FPS recovery before color recovery.`,
+    )
+
+    if (config.retryAllowFpsDrop && currentFps < config.gifFps) {
+      for (const fps of buildSharedFpsRecoveryCandidates(currentFps, config.gifFps)) {
+        const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
+        const attempt = await Promise.all(
+          partOrder.map((partIndex) => {
+            const current = byIndex.get(partIndex)
+            const colors = current?.finalColors ?? 256
+            return runFixedSplitPart(
+              partIndex,
+              fps,
+              colors,
+              `${label} FPS recovery: trying shared fps=${fps} for part ${partIndex + 1}.`,
+            )
+          }),
+        )
+        if (!allItemsFit(attempt, budgetKb)) {
+          const largest = attempt.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
+          emit(
+            'quality-recovery',
+            `${label} FPS recovery stopped: shared fps=${fps} would make ${largest.name} ${largest.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+          )
+          break
+        }
+        currentItems = attempt
+        currentFps = fps
+        emit('quality-recovery', `${label} accepted shared fps=${fps}; all parts fit under ${budgetKb}KB.`)
+      }
+    }
+
+    if (!config.retryAllowColorDrop) {
+      return currentItems
+    }
+
+    const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
+    for (const partIndex of partOrder) {
+      let current = byIndex.get(partIndex)
+      if (!current) {
+        continue
+      }
+      const headroom = budgetKb - current.sizeKb
+      if (current.finalColors >= 256 || headroom <= 0) {
+        continue
+      }
+      emit(
+        'quality-recovery',
+        `${label} color recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
+      )
+
+      const candidates = buildQualityRecoveryCandidates({
+        fps: currentFps,
+        colors: current.finalColors,
+        allowColorDrop: true,
+      })
+      for (const candidate of candidates) {
+        const attempt = await runFixedSplitPart(
+          partIndex,
+          currentFps,
+          candidate.colors,
+          `${label} color recovery: trying ${current.name} at colors=${candidate.colors}.`,
+        )
+        if (attempt.sizeKb > budgetKb) {
+          emit(
+            'quality-recovery',
+            `${label} color recovery stopped for ${current.name}: colors=${candidate.colors} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+          )
+          break
+        }
+        byIndex.set(partIndex, attempt)
+        current = attempt
+        emit(
+          'quality-recovery',
+          `${label} accepted ${current.name} at colors=${candidate.colors}: ${current.sizeKb.toFixed(1)}KB.`,
+        )
+      }
+    }
+
+    return Array.from(byIndex.entries())
+      .sort(([left], [right]) => left - right)
+      .map(([, item]) => item)
+  }
+
   let resultData: WorkerArtifactData[]
   if (config.preset === 'featured') {
     resultData = [
@@ -264,6 +416,7 @@ export async function convertVideo(
           maxGifKb: config.maxGifKb,
           targetGifKb: config.targetGifKb,
           optimizationMode: config.optimizationMode,
+          enableQualityRecovery: true,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowColorDrop: config.retryAllowColorDrop,
@@ -296,6 +449,7 @@ export async function convertVideo(
           maxGifKb: config.maxGifKb,
           targetGifKb: config.targetGifKb,
           optimizationMode: config.optimizationMode,
+          enableQualityRecovery: true,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowColorDrop: config.retryAllowColorDrop,
@@ -342,6 +496,7 @@ export async function convertVideo(
           retryAllowColorDrop: false,
           lossyOversize: false,
           lossyMaxAttempts: 1,
+          enableQualityRecovery: false,
           maxGifKb: Number.MAX_SAFE_INTEGER,
           targetGifKb: Number.MAX_SAFE_INTEGER,
         },
@@ -408,10 +563,13 @@ export async function convertVideo(
           finalFps,
           false,
           `${splitPresetLabel} pass 2/2: final conversion at shared fps=${finalFps}.`,
-          {},
+          {
+            enableQualityRecovery: false,
+          },
           prioritizedPartOrder,
         )
       }
+      resultData = await recoverSplitBatch(resultData, prioritizedPartOrder, splitPresetLabel)
     }
   }
 
