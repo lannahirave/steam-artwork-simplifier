@@ -6,6 +6,11 @@ import {
   recordQualityBinaryProbe,
 } from '../lib/gifskiQuality'
 import type { FixedQualitySearch } from '../lib/types'
+import {
+  buildGifFrameCacheKey,
+  type DecodedGifFrames,
+  type GifFrameCache,
+} from './gifFrameCache'
 import { encodeWithGifski } from './gifskiRuntime'
 import { parsePngDimensions, safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
 import type { WorkerProgressSink } from './workerMessaging'
@@ -26,19 +31,13 @@ export interface EncodeGifOptions {
   fps: number
   quality: number
   startOffsetSec?: number
+  frameCache?: GifFrameCache
 }
 
 export interface EncodeGifCandidateResult {
   quality: number
   bytes: Uint8Array
   sizeKb: number
-}
-
-interface DecodedGifFrames {
-  frames: Uint8Array[]
-  width: number
-  height: number
-  count: number
 }
 
 async function execWithContext(
@@ -108,6 +107,13 @@ async function withDecodedGifFrames<T>(
   options: Omit<EncodeGifOptions, 'quality'>,
   run: (frames: DecodedGifFrames) => Promise<T>,
 ): Promise<T> {
+  const cacheKey = options.frameCache ? buildGifFrameCacheKey(options) : null
+  const cachedFrames = cacheKey ? options.frameCache?.get(cacheKey) : undefined
+  if (cachedFrames) {
+    options.postProgress(options.requestId, 'frames', `Reusing decoded frame sequence at ${options.fps}fps.`)
+    return run(cachedFrames)
+  }
+
   const framePrefix = `frames-${options.outputTag}`
   const framePattern = `${framePrefix}-%05d.png`
   let framePaths: string[] = []
@@ -167,12 +173,17 @@ async function withDecodedGifFrames<T>(
       rgbaFrames.push(await decodePngToRgba(frameBytes, dims.width, dims.height))
     }
 
-    return await run({
+    const decodedFrames = {
       frames: rgbaFrames,
       width: dims.width,
       height: dims.height,
       count: framePaths.length,
-    })
+    }
+    if (cacheKey) {
+      options.frameCache?.set(cacheKey, decodedFrames)
+    }
+
+    return await run(decodedFrames)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     throw new Error(`GIF encode failed via gifski.\n\n${message}`, { cause: error })

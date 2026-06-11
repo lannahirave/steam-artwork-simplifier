@@ -5,6 +5,7 @@ import {
   shouldTryQualityRecovery,
 } from '../lib/sizeStrategy'
 import type { ArtifactStatus } from '../lib/types'
+import { createGifFrameCache, type GifFrameCache } from './gifFrameCache'
 import {
   encodeGif,
   encodeGifCandidates,
@@ -53,6 +54,7 @@ function encodeAttempt(
   vf: string,
   fps: number,
   quality: number,
+  frameCache?: GifFrameCache,
 ): Promise<Uint8Array> {
   return encodeGif({
     ffmpeg: options.ffmpeg,
@@ -65,12 +67,14 @@ function encodeAttempt(
     fps,
     quality,
     startOffsetSec: options.startOffsetSec,
+    frameCache,
   })
 }
 
 async function encodeFixedQualitySearch(
   options: SearchEncodeOptions,
   vf: string,
+  frameCache?: GifFrameCache,
 ): Promise<BestEncodeResult> {
   if (!options.fixedQualitySearch) {
     throw new Error('Fixed quality search requested without a search range.')
@@ -88,6 +92,7 @@ async function encodeFixedQualitySearch(
       vf,
       fps: options.gifFps,
       startOffsetSec: options.startOffsetSec,
+      frameCache,
     },
     options.fixedQualitySearch,
     budgetKb,
@@ -111,6 +116,7 @@ async function encodeFixedQualitySearch(
 async function encodeFixedQualityCandidates(
   options: SearchEncodeOptions,
   vf: string,
+  frameCache?: GifFrameCache,
 ): Promise<BestEncodeResult> {
   const qualities = options.fixedQualityCandidates?.length
     ? options.fixedQualityCandidates
@@ -126,6 +132,7 @@ async function encodeFixedQualityCandidates(
       vf,
       fps: options.gifFps,
       startOffsetSec: options.startOffsetSec,
+      frameCache,
     },
     qualities,
     options.fixedQualityMaxKb,
@@ -152,6 +159,8 @@ async function encodeFixedQualityCandidates(
 }
 
 export async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncodeResult> {
+  const frameCache = createGifFrameCache()
+
   if (options.isStillImage) {
     options.postProgress(options.requestId, 'convert', 'Static image source detected: resize-only encode.')
     const bytes = await encodeAttempt(
@@ -160,6 +169,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       options.baseFilter,
       1,
       100,
+      frameCache,
     )
     const sizeKb = bytes.byteLength / 1024
     return {
@@ -173,7 +183,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
 
   if (options.fixedQualityCandidates?.length) {
     options.postProgress(options.requestId, 'convert', 'Starting fixed quality candidate search...')
-    return encodeFixedQualityCandidates(options, `fps=${options.gifFps},${options.baseFilter}`)
+    return encodeFixedQualityCandidates(options, `fps=${options.gifFps},${options.baseFilter}`, frameCache)
   }
 
   if (options.fixedQualitySearch) {
@@ -182,7 +192,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       'convert',
       `Starting fixed quality binary search (${options.fixedQualitySearch.lowExclusive + 1}-${options.fixedQualitySearch.highInclusive}).`,
     )
-    return encodeFixedQualitySearch(options, `fps=${options.gifFps},${options.baseFilter}`)
+    return encodeFixedQualitySearch(options, `fps=${options.gifFps},${options.baseFilter}`, frameCache)
   }
 
   options.postProgress(options.requestId, 'convert', 'Starting initial encode...')
@@ -194,6 +204,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     `fps=${options.gifFps},${options.baseFilter}`,
     options.gifFps,
     bestQuality,
+    frameCache,
   )
   let bestSize = bestBytes.byteLength / 1024
   let bestStatus: ArtifactStatus = 'original'
@@ -250,6 +261,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       `fps=${candidate.fps},${options.baseFilter}`,
       candidate.fps,
       candidate.quality,
+      frameCache,
     )
     const attemptSize = attemptBytes.byteLength / 1024
     if (attemptSize < bestSize) {
@@ -294,6 +306,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
         `fps=${candidate.fps},${options.baseFilter}`,
         candidate.fps,
         candidate.quality,
+        frameCache,
       )
       const attemptSize = attemptBytes.byteLength / 1024
       if (attemptSize > options.maxGifKb) {
@@ -364,6 +377,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       vfParts.join(','),
       candidate.fps,
       candidate.quality,
+      frameCache,
     )
 
     const attemptSize = attemptBytes.byteLength / 1024
