@@ -191,7 +191,7 @@ export function useConversionSession(): ConvertContextValue {
   }
 
   function updateProgressView(entry: ConversionProgress): void {
-    setProgressLabel(`[${entry.stage}] ${entry.message}`)
+    setProgressLabel(`[${entry.time}] [${entry.stage}] ${entry.message}`)
 
     const workerStage = parseWorkerStage(entry.stage)
     if (workerStage) {

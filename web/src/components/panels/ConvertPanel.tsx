@@ -56,7 +56,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     downloadBlob: onDownloadBlob,
     presetPlan,
   } = meta
-  const progressText = progress.map((entry) => `[${entry.stage}] ${entry.message}`).join('\n')
+  const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
 
   async function copyText(section: 'progress', text: string): Promise<void> {
     if (!text) {

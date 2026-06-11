@@ -22,6 +22,7 @@ import { isLikelyImageSource } from './validation'
 export interface ConversionProgress {
   stage: string
   message: string
+  time: string
 }
 
 export interface ConversionExecutionResult extends ConversionResult {
@@ -41,6 +42,14 @@ function bytesToBlob(bytes: Uint8Array, type: string): Blob {
   copy.set(bytes)
   const buffer: ArrayBuffer = copy.buffer
   return new Blob([buffer], { type })
+}
+
+function formatLogTime(date = new Date()): string {
+  const hours = String(date.getHours()).padStart(2, '0')
+  const minutes = String(date.getMinutes()).padStart(2, '0')
+  const seconds = String(date.getSeconds()).padStart(2, '0')
+  const millis = String(date.getMilliseconds()).padStart(3, '0')
+  return `${hours}:${minutes}:${seconds}.${millis}`
 }
 
 function toArtifact(data: WorkerArtifactData): ConversionArtifact {
@@ -101,9 +110,10 @@ export async function convertVideo(
   const warnings: string[] = []
 
   const emit = (stage: string, message: string): void => {
-    const line = `[${stage}] ${message}`
+    const time = formatLogTime()
+    const line = `[${time}] [${stage}] ${message}`
     logs.push(line)
-    options.onProgress?.({ stage, message })
+    options.onProgress?.({ stage, message, time })
   }
 
   emit('init', `Preparing ${config.workerCount} ffmpeg worker(s).`)
