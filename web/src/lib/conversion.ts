@@ -52,7 +52,7 @@ function toArtifact(data: WorkerArtifactData): ConversionArtifact {
     height: data.height,
     status: data.status,
     finalFps: data.finalFps,
-    finalColors: data.finalColors,
+    finalQuality: data.finalQuality,
   }
 }
 
@@ -172,14 +172,14 @@ export async function convertVideo(
         | 'retryAllowFpsDrop'
         | 'disableOptimizations'
         | 'standardRetriesEnabled'
-        | 'retryAllowColorDrop'
+        | 'retryAllowQualityDrop'
         | 'lossyOversize'
         | 'lossyMaxAttempts'
         | 'maxGifKb'
         | 'targetGifKb'
         | 'optimizationMode'
         | 'enableQualityRecovery'
-        | 'fixedColors'
+        | 'fixedQuality'
       >
     > = {},
   ): ConvertPartPayload => ({
@@ -196,10 +196,10 @@ export async function convertVideo(
     targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
     optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
     enableQualityRecovery: overrides.enableQualityRecovery ?? true,
-    fixedColors: overrides.fixedColors,
+    fixedQuality: overrides.fixedQuality,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
-    retryAllowColorDrop: overrides.retryAllowColorDrop ?? config.retryAllowColorDrop,
+    retryAllowQualityDrop: overrides.retryAllowQualityDrop ?? config.retryAllowQualityDrop,
     lossyOversize: overrides.lossyOversize ?? config.lossyOversize,
     lossyLevel: config.lossyLevel,
     lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
@@ -219,14 +219,14 @@ export async function convertVideo(
         ConvertPartPayload,
         | 'disableOptimizations'
         | 'standardRetriesEnabled'
-        | 'retryAllowColorDrop'
+        | 'retryAllowQualityDrop'
         | 'lossyOversize'
         | 'lossyMaxAttempts'
         | 'maxGifKb'
         | 'targetGifKb'
         | 'optimizationMode'
         | 'enableQualityRecovery'
-        | 'fixedColors'
+        | 'fixedQuality'
       >
     > = {},
     partOrder?: number[],
@@ -256,7 +256,7 @@ export async function convertVideo(
   const runFixedSplitPart = async (
     partIndex: number,
     fps: number,
-    colors: number,
+    quality: number,
     label: string,
   ): Promise<WorkerArtifactData> => {
     emit('convert', label)
@@ -268,13 +268,13 @@ export async function convertVideo(
         retryAllowFpsDrop: false,
         disableOptimizations: true,
         standardRetriesEnabled: false,
-        retryAllowColorDrop: false,
+        retryAllowQualityDrop: false,
         lossyOversize: false,
         lossyMaxAttempts: 1,
         maxGifKb: Number.MAX_SAFE_INTEGER,
         targetGifKb: Number.MAX_SAFE_INTEGER,
         enableQualityRecovery: false,
-        fixedColors: colors,
+        fixedQuality: quality,
       }),
       {
         onProgress: workerProgress(partIndex),
@@ -283,7 +283,7 @@ export async function convertVideo(
     )
     return {
       ...result,
-      status: fps === config.gifFps && colors === 256 ? result.status : 'recompressed',
+      status: fps === config.gifFps && quality === 100 ? result.status : 'recompressed',
     }
   }
 
@@ -308,7 +308,7 @@ export async function convertVideo(
           enableQualityRecovery: true,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
-          retryAllowColorDrop: config.retryAllowColorDrop,
+          retryAllowQualityDrop: config.retryAllowQualityDrop,
           lossyOversize: config.lossyOversize,
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
@@ -341,7 +341,7 @@ export async function convertVideo(
           enableQualityRecovery: true,
           standardRetriesEnabled: config.standardRetriesEnabled,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
-          retryAllowColorDrop: config.retryAllowColorDrop,
+          retryAllowQualityDrop: config.retryAllowQualityDrop,
           lossyOversize: config.lossyOversize,
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
@@ -382,7 +382,7 @@ export async function convertVideo(
         {
           disableOptimizations: true,
           standardRetriesEnabled: false,
-          retryAllowColorDrop: false,
+          retryAllowQualityDrop: false,
           lossyOversize: false,
           lossyMaxAttempts: 1,
           enableQualityRecovery: false,
@@ -467,7 +467,7 @@ export async function convertVideo(
           maxGifKb: config.maxGifKb,
           originalFps: config.gifFps,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
-          retryAllowColorDrop: config.retryAllowColorDrop,
+          retryAllowQualityDrop: config.retryAllowQualityDrop,
           runFixedSplitPart,
           emit,
         })

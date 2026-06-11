@@ -74,10 +74,10 @@ function buildSearchOptions(
     targetGifKb: payload.targetGifKb,
     optimizationMode: payload.optimizationMode,
     enableQualityRecovery: payload.enableQualityRecovery,
-    fixedColors: payload.fixedColors,
+    fixedQuality: payload.fixedQuality,
     standardRetriesEnabled: payload.standardRetriesEnabled,
     retryAllowFpsDrop: payload.retryAllowFpsDrop,
-    retryAllowColorDrop: payload.retryAllowColorDrop,
+    retryAllowQualityDrop: payload.retryAllowQualityDrop,
     lossyOversize: payload.lossyOversize,
     lossyLevel: payload.lossyLevel,
     lossyMaxAttempts: payload.lossyMaxAttempts,
@@ -110,7 +110,7 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
       height: geometry.targetHeight,
       status: best.status,
       finalFps: best.finalFps,
-      finalColors: best.finalColors,
+      finalQuality: best.finalQuality,
     }
   } finally {
     await safeDelete(ffmpeg, inputName)
@@ -140,7 +140,7 @@ async function runConvertFeatured(
       height: geometry.height,
       status: best.status,
       finalFps: best.finalFps,
-      finalColors: best.finalColors,
+      finalQuality: best.finalQuality,
     }
   } finally {
     await safeDelete(ffmpeg, inputName)
@@ -170,7 +170,7 @@ async function runConvertGuide(
       height: geometry.height,
       status: best.status,
       finalFps: best.finalFps,
-      finalColors: best.finalColors,
+      finalQuality: best.finalQuality,
     }
   } finally {
     await safeDelete(ffmpeg, inputName)

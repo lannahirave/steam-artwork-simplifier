@@ -13,7 +13,7 @@ interface BestEncodeResult {
   sizeKb: number
   status: ArtifactStatus
   finalFps: number
-  finalColors: number
+  finalQuality: number
 }
 
 export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | 'ffmpegLogBuffer'> {
@@ -28,10 +28,10 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   targetGifKb: number
   optimizationMode: 'hybrid' | 'quality-first' | 'fast-fit'
   enableQualityRecovery: boolean
-  fixedColors?: number
+  fixedQuality?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
-  retryAllowColorDrop: boolean
+  retryAllowQualityDrop: boolean
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
@@ -44,7 +44,7 @@ function encodeAttempt(
   outputTag: string,
   vf: string,
   fps: number,
-  maxColors: number,
+  quality: number,
 ): Promise<Uint8Array> {
   return encodeGif({
     ffmpeg: options.ffmpeg,
@@ -55,7 +55,7 @@ function encodeAttempt(
     outputTag,
     vf,
     fps,
-    maxColors,
+    quality,
     startOffsetSec: options.startOffsetSec,
   })
 }
@@ -68,7 +68,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       `still-${options.requestId}`,
       options.baseFilter,
       1,
-      256,
+      100,
     )
     const sizeKb = bytes.byteLength / 1024
     return {
@@ -76,19 +76,19 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       sizeKb,
       status: 'original',
       finalFps: 1,
-      finalColors: 256,
+      finalQuality: 100,
     }
   }
 
   options.postProgress(options.requestId, 'convert', 'Starting initial encode...')
   let bestFps = options.gifFps
-  let bestColors = options.fixedColors ?? 256
+  let bestQuality = options.fixedQuality ?? 100
   let bestBytes = await encodeAttempt(
     options,
     `initial-${options.requestId}`,
     `fps=${options.gifFps},${options.baseFilter}`,
     options.gifFps,
-    bestColors,
+    bestQuality,
   )
   let bestSize = bestBytes.byteLength / 1024
   let bestStatus: ArtifactStatus = 'original'
@@ -106,7 +106,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       sizeKb: bestSize,
       status: bestStatus,
       finalFps: bestFps,
-      finalColors: bestColors,
+      finalQuality: bestQuality,
     }
   }
 
@@ -116,7 +116,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       sizeKb: bestSize,
       status: bestStatus,
       finalFps: bestFps,
-      finalColors: bestColors,
+      finalQuality: bestQuality,
     }
   }
 
@@ -128,7 +128,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     maxGifKb: options.maxGifKb,
     minGifFps: options.minGifFps,
     allowFpsDrop: options.retryAllowFpsDrop,
-    allowColorDrop: options.retryAllowColorDrop,
+    allowQualityDrop: options.retryAllowQualityDrop,
     standardRetriesEnabled: options.standardRetriesEnabled,
   })
 
@@ -137,26 +137,26 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     options.postProgress(
       options.requestId,
       candidate.phase,
-      `Trying ${candidate.phase} ${i + 1}/${standardCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}. ${candidate.reason}`,
+      `Trying ${candidate.phase} ${i + 1}/${standardCandidates.length}: fps=${candidate.fps}, quality=${candidate.quality}. ${candidate.reason}`,
     )
     const attemptBytes = await encodeAttempt(
       options,
-      `${candidate.phase}-${candidate.fps}-${candidate.colors}-${options.requestId}`,
+      `${candidate.phase}-${candidate.fps}-${candidate.quality}-${options.requestId}`,
       `fps=${candidate.fps},${options.baseFilter}`,
       candidate.fps,
-      candidate.colors,
+      candidate.quality,
     )
     const attemptSize = attemptBytes.byteLength / 1024
     if (attemptSize < bestSize) {
       bestBytes = attemptBytes
       bestSize = attemptSize
       bestFps = candidate.fps
-      bestColors = candidate.colors
+      bestQuality = candidate.quality
       bestStatus = 'recompressed'
       options.postProgress(
         options.requestId,
         candidate.phase,
-        `Improved with fps=${candidate.fps}, colors=${candidate.colors}: ${bestSize.toFixed(1)}KB`,
+        `Improved with fps=${candidate.fps}, quality=${candidate.quality}: ${bestSize.toFixed(1)}KB`,
       )
     }
 
@@ -173,22 +173,22 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
   ) {
     const recoveryCandidates = buildQualityRecoveryCandidates({
       fps: bestFps,
-      colors: bestColors,
-      allowColorDrop: options.retryAllowColorDrop,
+      quality: bestQuality,
+      allowQualityDrop: options.retryAllowQualityDrop,
     })
     for (let i = 0; i < recoveryCandidates.length; i += 1) {
       const candidate = recoveryCandidates[i]
       options.postProgress(
         options.requestId,
         'quality-recovery',
-        `Trying recovery ${i + 1}/${recoveryCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}.`,
+        `Trying recovery ${i + 1}/${recoveryCandidates.length}: fps=${candidate.fps}, quality=${candidate.quality}.`,
       )
       const attemptBytes = await encodeAttempt(
         options,
-        `recovery-${candidate.fps}-${candidate.colors}-${options.requestId}`,
+        `recovery-${candidate.fps}-${candidate.quality}-${options.requestId}`,
         `fps=${candidate.fps},${options.baseFilter}`,
         candidate.fps,
-        candidate.colors,
+        candidate.quality,
       )
       const attemptSize = attemptBytes.byteLength / 1024
       if (attemptSize > options.maxGifKb) {
@@ -202,12 +202,12 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       if (attemptSize > bestSize) {
         bestBytes = attemptBytes
         bestSize = attemptSize
-        bestColors = candidate.colors
+        bestQuality = candidate.quality
         bestStatus = 'recompressed'
         options.postProgress(
           options.requestId,
           'quality-recovery',
-          `Recovered quality to colors=${candidate.colors}: ${bestSize.toFixed(1)}KB.`,
+          `Recovered quality=${candidate.quality}: ${bestSize.toFixed(1)}KB.`,
         )
       }
       if (!shouldTryQualityRecovery(bestSize, options.targetGifKb)) {
@@ -228,7 +228,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       sizeKb: bestSize,
       status: bestStatus,
       finalFps: bestFps,
-      finalColors: bestColors,
+      finalQuality: bestQuality,
     }
   }
 
@@ -245,7 +245,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     options.postProgress(
       options.requestId,
       'lossy',
-      `Trying lossy ${i + 1}/${lossyCandidates.length}: fps=${candidate.fps}, colors=${candidate.colors}`,
+      `Trying lossy ${i + 1}/${lossyCandidates.length}: fps=${candidate.fps}, quality=${candidate.quality}`,
     )
     const vfParts = [`fps=${candidate.fps}`]
     if (candidate.prefilter) {
@@ -255,10 +255,10 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
 
     const attemptBytes = await encodeAttempt(
       options,
-      `lossy-${candidate.fps}-${candidate.colors}-${options.requestId}`,
+      `lossy-${candidate.fps}-${candidate.quality}-${options.requestId}`,
       vfParts.join(','),
       candidate.fps,
-      candidate.colors,
+      candidate.quality,
     )
 
     const attemptSize = attemptBytes.byteLength / 1024
@@ -266,12 +266,12 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       bestBytes = attemptBytes
       bestSize = attemptSize
       bestFps = candidate.fps
-      bestColors = candidate.colors
+      bestQuality = candidate.quality
       bestStatus = 'lossy'
       options.postProgress(
         options.requestId,
         'lossy',
-        `Improved with fps=${candidate.fps}, colors=${candidate.colors}: ${bestSize.toFixed(1)}KB`,
+        `Improved with fps=${candidate.fps}, quality=${candidate.quality}: ${bestSize.toFixed(1)}KB`,
       )
     }
 
@@ -281,7 +281,7 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
         sizeKb: bestSize,
         status: bestStatus,
         finalFps: bestFps,
-        finalColors: bestColors,
+        finalQuality: bestQuality,
       }
     }
   }
@@ -291,6 +291,6 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
     sizeKb: bestSize,
     status: bestStatus,
     finalFps: bestFps,
-    finalColors: bestColors,
+    finalQuality: bestQuality,
   }
 }

@@ -20,7 +20,7 @@ import {
   downloadBlob,
   formatElapsed,
   getBaseProgress,
-  getColorReductionPercent,
+  getQualityReductionPercent,
   getWorkerStageWeight,
   parseWorkerStage,
   toArtifactViews,
@@ -63,11 +63,11 @@ export interface ConvertMeta {
   retryControlsDisabled: boolean
   precheckEffective: boolean
   retryFpsEffective: boolean
-  retryColorEffective: boolean
+  retryQualityEffective: boolean
   lossyEffective: boolean
   isCompactStrip: boolean
   resultsGridClassName: string
-  getColorReductionPercent: (finalColors: number) => number
+  getQualityReductionPercent: (finalQuality: number) => number
   downloadBlob: (name: string, blob: Blob) => void
   presetPlan: PresetPlan
 }
@@ -171,7 +171,7 @@ export function useConversionSession(): ConvertContextValue {
   const retryControlsDisabled = optimizationDisabled || !config.standardRetriesEnabled
   const precheckEffective = !optimizationDisabled && config.precheckEnabled
   const retryFpsEffective = standardRetriesEffective && config.retryAllowFpsDrop
-  const retryColorEffective = standardRetriesEffective && config.retryAllowColorDrop
+  const retryQualityEffective = standardRetriesEffective && config.retryAllowQualityDrop
   const lossyEffective = !optimizationDisabled && config.lossyOversize
 
   function resetConvertState(): void {
@@ -488,11 +488,11 @@ export function useConversionSession(): ConvertContextValue {
       retryControlsDisabled,
       precheckEffective,
       retryFpsEffective,
-      retryColorEffective,
+      retryQualityEffective,
       lossyEffective,
       isCompactStrip,
       resultsGridClassName,
-      getColorReductionPercent,
+      getQualityReductionPercent,
       downloadBlob,
       presetPlan,
     },

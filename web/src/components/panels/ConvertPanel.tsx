@@ -48,11 +48,11 @@ export function ConvertPanel(props: ConvertPanelProps) {
     retryControlsDisabled,
     precheckEffective,
     retryFpsEffective,
-    retryColorEffective,
+    retryQualityEffective,
     lossyEffective,
     isCompactStrip,
     resultsGridClassName,
-    getColorReductionPercent,
+    getQualityReductionPercent,
     downloadBlob: onDownloadBlob,
     presetPlan,
   } = meta
@@ -321,11 +321,11 @@ export function ConvertPanel(props: ConvertPanelProps) {
             />
 
             <SwitchCard
-              checked={retryColorEffective}
+              checked={retryQualityEffective}
               disabled={retryControlsDisabled}
-              label={intl.formatMessage({ id: 'convert.colorReduction' })}
-              title="Allow standard retries to reduce palette colors for smaller output."
-              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowColorDrop: checked }))}
+              label={intl.formatMessage({ id: 'convert.qualityReduction' })}
+              title="Allow standard retries to reduce gifski quality for smaller output."
+              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowQualityDrop: checked }))}
             />
 
             {optimizationDisabled && (
@@ -550,8 +550,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   <span>{intl.formatMessage({ id: 'convert.fpsMeta' }, { fps: item.artifact.finalFps })}</span>
                   <span>
                     {intl.formatMessage(
-                      { id: 'convert.colorReductionMeta' },
-                      { percent: getColorReductionPercent(item.artifact.finalColors) },
+                      { id: 'convert.qualityReductionMeta' },
+                      { percent: getQualityReductionPercent(item.artifact.finalQuality) },
                     )}
                   </span>
                 </div>
