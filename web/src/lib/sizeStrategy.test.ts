@@ -3,6 +3,7 @@ import {
   analyzeSplitPartWeights,
   allItemsFit,
   buildLossyCandidates,
+  buildIntermediateColorRecoveryCandidates,
   buildOptimizationCandidates,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
@@ -105,6 +106,23 @@ describe('size strategy', () => {
       colors: 96,
     })
     expect(candidates.every((candidate) => candidate.fps === 16)).toBe(true)
+  })
+
+  it('starts color recovery above the current color value', () => {
+    const candidates = buildQualityRecoveryCandidates({
+      fps: 10,
+      colors: 128,
+      allowColorDrop: true,
+    })
+
+    expect(candidates.map((candidate) => candidate.colors)).toEqual([160, 192, 224, 256])
+  })
+
+  it('builds intermediate color candidates between accepted and rejected values', () => {
+    const candidates = buildIntermediateColorRecoveryCandidates(128, 160)
+
+    expect(candidates.length).toBeGreaterThan(0)
+    expect(candidates.every((colors) => colors > 128 && colors < 160)).toBe(true)
   })
 
   it('preserves quality-first candidate ordering', () => {
