@@ -2,8 +2,10 @@ import {
   allItemsFit,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
+  getNextQualityRecoveryProbe,
   selectBatchRecoveryBudget,
 } from './sizeStrategy'
+import { clampGifskiQuality } from './gifskiQuality'
 import type { WorkerArtifactData } from './types'
 
 export interface SplitRecoveryOptions {
@@ -32,8 +34,9 @@ async function recoverPartQuality(
   options: SplitRecoveryOptions,
 ): Promise<WorkerArtifactData> {
   let accepted = current
-  let acceptedQuality = current.finalQuality
+  let acceptedQuality = clampGifskiQuality(current.finalQuality)
   const headroom = budgetKb - current.sizeKb
+  const attemptedQualities = new Set<number>()
 
   if (acceptedQuality >= 100 || headroom <= 0) {
     return accepted
@@ -45,25 +48,34 @@ async function recoverPartQuality(
   )
 
   const tryCandidate = async (quality: number, kind: string): Promise<boolean> => {
+    const candidateQuality = clampGifskiQuality(quality)
+    if (candidateQuality <= acceptedQuality || attemptedQualities.has(candidateQuality)) {
+      return false
+    }
+    attemptedQualities.add(candidateQuality)
+
     const attempt = await options.runFixedSplitPart(
       partIndex,
       fps,
-      quality,
-      `${options.label} quality recovery: trying ${current.name} at quality=${quality}.`,
+      candidateQuality,
+      `${options.label} quality recovery: trying ${current.name} at quality=${candidateQuality}.`,
     )
     if (attempt.sizeKb > budgetKb) {
       options.emit(
         'quality-recovery',
-        `${options.label} ${kind} quality recovery rejected for ${current.name}: quality=${quality} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+        `${options.label} ${kind} quality recovery rejected for ${current.name}: quality=${candidateQuality} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
       )
       return false
     }
 
-    accepted = attempt
-    acceptedQuality = quality
+    accepted = {
+      ...attempt,
+      finalQuality: candidateQuality,
+    }
+    acceptedQuality = candidateQuality
     options.emit(
       'quality-recovery',
-      `${options.label} accepted ${current.name} at quality=${quality}: ${attempt.sizeKb.toFixed(1)}KB.`,
+      `${options.label} accepted ${current.name} at quality=${candidateQuality}: ${attempt.sizeKb.toFixed(1)}KB.`,
     )
     return true
   }
@@ -72,14 +84,15 @@ async function recoverPartQuality(
     let low = acceptedLow
     let high = rejectedHigh
 
-    while (high - low > 1) {
-      const quality = Math.floor((low + high) / 2)
+    let quality = getNextQualityRecoveryProbe(low, high)
+    while (quality !== null) {
       const fit = await tryCandidate(quality, 'intermediate')
       if (fit) {
         low = quality
       } else {
         high = quality
       }
+      quality = getNextQualityRecoveryProbe(low, high)
     }
   }
 

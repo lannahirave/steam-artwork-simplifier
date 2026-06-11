@@ -51,6 +51,7 @@ describe('split batch quality recovery', () => {
   })
 
   it('keeps best accepted intermediate quality when the coarse ladder overshoots', async () => {
+    const attempts: number[] = []
     const result = await recoverSplitBatchQuality({
       items: [artifact(1, 3354.5, 68)],
       partOrder: [0],
@@ -62,6 +63,7 @@ describe('split batch quality recovery', () => {
       retryAllowQualityDrop: true,
       emit: () => undefined,
       runFixedSplitPart: async (partIndex, fps, quality) => {
+        attempts.push(quality)
         const sizeKb = quality === 76 ? 4700 : 3354.5 + (quality - 68) * 140
         return artifact(partIndex + 1, sizeKb, quality, fps)
       },
@@ -71,6 +73,26 @@ describe('split batch quality recovery', () => {
     expect(result[0].finalQuality).toBeLessThan(76)
     expect(result[0].finalQuality).toBe(75)
     expect(result[0].sizeKb).toBeLessThanOrEqual(4500)
+    expect(attempts).toEqual([76, 72, 74, 75])
+    expect(new Set(attempts).size).toBe(attempts.length)
+  })
+
+  it('logs quality recovery details', async () => {
+    const logs: string[] = []
+    await recoverSplitBatchQuality({
+      items: [artifact(1, 3354.5, 68)],
+      partOrder: [0],
+      label: 'Workshop',
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      originalFps: 10,
+      retryAllowFpsDrop: true,
+      retryAllowQualityDrop: true,
+      emit: (_stage, message) => logs.push(message),
+      runFixedSplitPart: async (partIndex, fps, quality) => artifact(partIndex + 1, 4200, quality, fps),
+    })
+
+    expect(logs.some((message) => message.includes('quality='))).toBe(true)
   })
 
   it('recovers shared fps only when all parts still fit', async () => {
