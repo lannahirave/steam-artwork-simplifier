@@ -16,7 +16,7 @@ export interface ConversionConfig {
   optimizationMode: OptimizationMode
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
-  retryAllowColorDrop: boolean
+  retryAllowQualityDrop: boolean
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
@@ -51,7 +51,7 @@ export interface ConversionArtifact {
   height: number
   status: ArtifactStatus
   finalFps: number
-  finalColors: number
+  finalQuality: number
 }
 
 export interface ConversionResult {
@@ -113,10 +113,10 @@ export interface ConvertPayloadBase {
   targetGifKb: number
   optimizationMode: OptimizationMode
   enableQualityRecovery: boolean
-  fixedColors?: number
+  fixedQuality?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
-  retryAllowColorDrop: boolean
+  retryAllowQualityDrop: boolean
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
@@ -154,7 +154,7 @@ export interface WorkerArtifactData {
   height: number
   status: ArtifactStatus
   finalFps: number
-  finalColors: number
+  finalQuality: number
 }
 
 export interface WorkerProgressData {

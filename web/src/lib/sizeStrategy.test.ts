@@ -3,7 +3,7 @@ import {
   analyzeSplitPartWeights,
   allItemsFit,
   buildLossyCandidates,
-  buildIntermediateColorRecoveryCandidates,
+  buildIntermediateQualityRecoveryCandidates,
   buildOptimizationCandidates,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
@@ -14,12 +14,12 @@ import {
 } from './sizeStrategy'
 
 describe('size strategy', () => {
-  it('prefers fps-only reduction before color ladder', () => {
+  it('prefers fps-only reduction before quality ladder', () => {
     const candidates = buildStandardCandidates(15, 13)
-    expect(candidates[0]).toEqual({ fps: 14, colors: 256 })
-    expect(candidates[1]).toEqual({ fps: 13, colors: 256 })
-    expect(candidates.some((candidate) => candidate.fps === 15 && candidate.colors === 224)).toBe(true)
-    expect(candidates.some((candidate) => candidate.fps === 13 && candidate.colors === 32)).toBe(true)
+    expect(candidates[0]).toEqual({ fps: 14, quality: 100 })
+    expect(candidates[1]).toEqual({ fps: 13, quality: 100 })
+    expect(candidates.some((candidate) => candidate.fps === 15 && candidate.quality === 92)).toBe(true)
+    expect(candidates.some((candidate) => candidate.fps === 13 && candidate.quality === 32)).toBe(true)
   })
 
   it('caps lossy candidates to max attempts', () => {
@@ -39,21 +39,21 @@ describe('size strategy', () => {
     expect(candidates.every((candidate) => candidate.fps === 18)).toBe(true)
   })
 
-  it('can disable fps reduction while keeping color reduction', () => {
+  it('can disable fps reduction while keeping quality reduction', () => {
     const candidates = buildStandardCandidates(15, 10, {
       allowFpsDrop: false,
-      allowColorDrop: true,
+      allowQualityDrop: true,
     })
     expect(candidates.every((candidate) => candidate.fps === 15)).toBe(true)
-    expect(candidates.some((candidate) => candidate.colors === 96)).toBe(true)
+    expect(candidates.some((candidate) => candidate.quality === 48)).toBe(true)
   })
 
-  it('can disable color reduction while keeping fps reduction', () => {
+  it('can disable quality reduction while keeping fps reduction', () => {
     const candidates = buildStandardCandidates(15, 13, {
       allowFpsDrop: true,
-      allowColorDrop: false,
+      allowQualityDrop: false,
     })
-    expect(candidates.every((candidate) => candidate.colors === 256)).toBe(true)
+    expect(candidates.every((candidate) => candidate.quality === 100)).toBe(true)
     expect(candidates.some((candidate) => candidate.fps === 13)).toBe(true)
   })
 
@@ -76,14 +76,14 @@ describe('size strategy', () => {
       maxGifKb: 5000,
       minGifFps: 10,
       allowFpsDrop: true,
-      allowColorDrop: true,
+      allowQualityDrop: true,
       standardRetriesEnabled: true,
     })
 
     expect(candidates[0]).toMatchObject({
       phase: 'fast-fit',
       fps: 16,
-      colors: 256,
+      quality: 100,
     })
     expect(candidates.some((candidate) => candidate.phase === 'quality-first')).toBe(true)
   })
@@ -93,36 +93,36 @@ describe('size strategy', () => {
     expect(shouldTryQualityRecovery(4100, 4500)).toBe(false)
   })
 
-  it('builds quality recovery candidates at the same fps with higher color quality', () => {
+  it('builds quality recovery candidates at the same fps with higher quality', () => {
     const candidates = buildQualityRecoveryCandidates({
       fps: 16,
-      colors: 64,
-      allowColorDrop: true,
+      quality: 48,
+      allowQualityDrop: true,
     })
 
     expect(candidates[0]).toMatchObject({
       phase: 'quality-recovery',
       fps: 16,
-      colors: 96,
+      quality: 58,
     })
     expect(candidates.every((candidate) => candidate.fps === 16)).toBe(true)
   })
 
-  it('starts color recovery above the current color value', () => {
+  it('starts quality recovery above the current quality value', () => {
     const candidates = buildQualityRecoveryCandidates({
       fps: 10,
-      colors: 128,
-      allowColorDrop: true,
+      quality: 68,
+      allowQualityDrop: true,
     })
 
-    expect(candidates.map((candidate) => candidate.colors)).toEqual([160, 192, 224, 256])
+    expect(candidates.map((candidate) => candidate.quality)).toEqual([76, 84, 92, 100])
   })
 
-  it('builds intermediate color candidates between accepted and rejected values', () => {
-    const candidates = buildIntermediateColorRecoveryCandidates(128, 160)
+  it('builds intermediate quality candidates between accepted and rejected values', () => {
+    const candidates = buildIntermediateQualityRecoveryCandidates(68, 76)
 
     expect(candidates.length).toBeGreaterThan(0)
-    expect(candidates.every((colors) => colors > 128 && colors < 160)).toBe(true)
+    expect(candidates.every((quality) => quality > 68 && quality < 76)).toBe(true)
   })
 
   it('preserves quality-first candidate ordering', () => {
@@ -134,12 +134,12 @@ describe('size strategy', () => {
       maxGifKb: 5000,
       minGifFps: 13,
       allowFpsDrop: true,
-      allowColorDrop: true,
+      allowQualityDrop: true,
       standardRetriesEnabled: true,
     })
 
-    expect(candidates[0]).toMatchObject({ phase: 'quality-first', fps: 14, colors: 256 })
-    expect(candidates[1]).toMatchObject({ phase: 'quality-first', fps: 13, colors: 256 })
+    expect(candidates[0]).toMatchObject({ phase: 'quality-first', fps: 14, quality: 100 })
+    expect(candidates[1]).toMatchObject({ phase: 'quality-first', fps: 13, quality: 100 })
   })
 
   it('marks split parts above average by more than ten percent as heavy', () => {

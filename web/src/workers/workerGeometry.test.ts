@@ -17,7 +17,7 @@ const basePayload = {
   enableQualityRecovery: true,
   standardRetriesEnabled: false,
   retryAllowFpsDrop: true,
-  retryAllowColorDrop: true,
+  retryAllowQualityDrop: true,
   lossyOversize: true,
   lossyLevel: 2,
   lossyMaxAttempts: 24,

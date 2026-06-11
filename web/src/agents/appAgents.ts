@@ -1,4 +1,5 @@
 import type { ConversionArtifact } from '../lib/types'
+export { getQualityReductionPercent } from '../lib/gifskiQuality'
 
 export type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
 export type ThemeMode = 'auto' | 'light' | 'dark'
@@ -26,7 +27,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Review all 5 previews, then download single files or ZIP.',
     ],
     tip:
-      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before color reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
+      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before Quality reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
   },
   {
     key: 'featured',
@@ -36,7 +37,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Switch preset to Featured (single 630px).',
       'Upload source media (video, gif, png, webp, jpg, jpeg, bmp).',
       'Tune Featured Width and FPS if needed.',
-      'Run conversion and check size/FPS/color metadata under output.',
+      'Run conversion and check size/FPS/quality metadata under output.',
       'Download originalFileName_featured.gif directly or as part of ZIP.',
     ],
     tip:
@@ -81,7 +82,7 @@ export const GUIDE_SECTIONS: GuideSection[] = [
       'Enable standard retries if you want extra target-size chasing.',
       'Use Worker Count 2-3 for speed, or 1 for stability debugging.',
     ],
-    tip: 'Current pipeline prioritizes FPS drops first and only reduces colors later if still oversize.',
+    tip: 'Current pipeline prioritizes FPS drops first and only reduces quality later if still oversize.',
   },
   {
     key: 'patch',
@@ -178,11 +179,6 @@ export function cleanupArtifactViews(items: ArtifactView[]): void {
   for (const item of items) {
     URL.revokeObjectURL(item.url)
   }
-}
-
-export function getColorReductionPercent(finalColors: number): number {
-  const clamped = Math.min(256, Math.max(0, finalColors))
-  return Math.max(0, Math.round((1 - clamped / 256) * 100))
 }
 
 export function parseWorkerStage(stage: string): WorkerStageEvent | null {

@@ -1,5 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { mapColorsToGifskiQuality } from '../lib/gifskiQuality'
+import { clampGifskiQuality } from '../lib/gifskiQuality'
 import { encodeWithGifski } from './gifskiRuntime'
 import { parsePngDimensions, safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
 import type { WorkerProgressSink } from './workerMessaging'
@@ -18,7 +18,7 @@ export interface EncodeGifOptions {
   outputTag: string
   vf: string
   fps: number
-  maxColors: number
+  quality: number
   startOffsetSec?: number
 }
 
@@ -145,7 +145,7 @@ export async function encodeGif(options: EncodeGifOptions): Promise<Uint8Array> 
       rgbaFrames.push(await decodePngToRgba(frameBytes, dims.width, dims.height))
     }
 
-    const quality = mapColorsToGifskiQuality(options.maxColors)
+    const quality = clampGifskiQuality(options.quality)
     options.postProgress(
       options.requestId,
       'gifski',

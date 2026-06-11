@@ -14,8 +14,8 @@ export interface SplitRecoveryOptions {
   maxGifKb: number
   originalFps: number
   retryAllowFpsDrop: boolean
-  retryAllowColorDrop: boolean
-  runFixedSplitPart: (partIndex: number, fps: number, colors: number, label: string) => Promise<WorkerArtifactData>
+  retryAllowQualityDrop: boolean
+  runFixedSplitPart: (partIndex: number, fps: number, quality: number, label: string) => Promise<WorkerArtifactData>
   emit: (stage: string, message: string) => void
 }
 
@@ -24,7 +24,7 @@ export function partIndexFromName(name: string): number {
   return match ? Number.parseInt(match[1], 10) - 1 : 0
 }
 
-async function recoverPartColors(
+async function recoverPartQuality(
   current: WorkerArtifactData,
   partIndex: number,
   fps: number,
@@ -32,38 +32,38 @@ async function recoverPartColors(
   options: SplitRecoveryOptions,
 ): Promise<WorkerArtifactData> {
   let accepted = current
-  let acceptedColors = current.finalColors
+  let acceptedQuality = current.finalQuality
   const headroom = budgetKb - current.sizeKb
 
-  if (acceptedColors >= 256 || headroom <= 0) {
+  if (acceptedQuality >= 100 || headroom <= 0) {
     return accepted
   }
 
   options.emit(
     'quality-recovery',
-    `${options.label} color recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
+    `${options.label} quality recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
   )
 
-  const tryCandidate = async (colors: number, kind: string): Promise<boolean> => {
+  const tryCandidate = async (quality: number, kind: string): Promise<boolean> => {
     const attempt = await options.runFixedSplitPart(
       partIndex,
       fps,
-      colors,
-      `${options.label} color recovery: trying ${current.name} at colors=${colors}.`,
+      quality,
+      `${options.label} quality recovery: trying ${current.name} at quality=${quality}.`,
     )
     if (attempt.sizeKb > budgetKb) {
       options.emit(
         'quality-recovery',
-        `${options.label} ${kind} color recovery rejected for ${current.name}: colors=${colors} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+        `${options.label} ${kind} quality recovery rejected for ${current.name}: quality=${quality} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
       )
       return false
     }
 
     accepted = attempt
-    acceptedColors = colors
+    acceptedQuality = quality
     options.emit(
       'quality-recovery',
-      `${options.label} accepted ${current.name} at colors=${colors}: ${attempt.sizeKb.toFixed(1)}KB.`,
+      `${options.label} accepted ${current.name} at quality=${quality}: ${attempt.sizeKb.toFixed(1)}KB.`,
     )
     return true
   }
@@ -73,34 +73,34 @@ async function recoverPartColors(
     let high = rejectedHigh
 
     while (high - low > 1) {
-      const colors = Math.floor((low + high) / 2)
-      const fit = await tryCandidate(colors, 'intermediate')
+      const quality = Math.floor((low + high) / 2)
+      const fit = await tryCandidate(quality, 'intermediate')
       if (fit) {
-        low = colors
+        low = quality
       } else {
-        high = colors
+        high = quality
       }
     }
   }
 
   const ladderCandidates = buildQualityRecoveryCandidates({
     fps,
-    colors: acceptedColors,
-    allowColorDrop: true,
+    quality: acceptedQuality,
+    allowQualityDrop: true,
   })
 
   for (const candidate of ladderCandidates) {
-    const previousAcceptedColors = acceptedColors
-    const fit = await tryCandidate(candidate.colors, 'ladder')
+    const previousAcceptedQuality = acceptedQuality
+    const fit = await tryCandidate(candidate.quality, 'ladder')
     if (!fit) {
-      await refineBetweenAcceptedAndRejected(previousAcceptedColors, candidate.colors)
+      await refineBetweenAcceptedAndRejected(previousAcceptedQuality, candidate.quality)
       break
     }
   }
 
   options.emit(
     'quality-recovery',
-    `${options.label} final color recovery for ${current.name}: colors=${accepted.finalColors}, ${accepted.sizeKb.toFixed(1)}KB.`,
+    `${options.label} final quality recovery for ${current.name}: quality=${accepted.finalQuality}, ${accepted.sizeKb.toFixed(1)}KB.`,
   )
   return accepted
 }
@@ -126,11 +126,11 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
       const attempt = await Promise.all(
         options.partOrder.map((partIndex) => {
           const current = byIndex.get(partIndex)
-          const colors = current?.finalColors ?? 256
+          const quality = current?.finalQuality ?? 100
           return options.runFixedSplitPart(
             partIndex,
             fps,
-            colors,
+            quality,
             `${options.label} FPS recovery: trying shared fps=${fps} for part ${partIndex + 1}.`,
           )
         }),
@@ -149,7 +149,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
     }
   }
 
-  if (!options.retryAllowColorDrop) {
+  if (!options.retryAllowQualityDrop) {
     return currentItems
   }
 
@@ -159,7 +159,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
     if (!current) {
       continue
     }
-    const recovered = await recoverPartColors(current, partIndex, currentFps, budgetKb, options)
+    const recovered = await recoverPartQuality(current, partIndex, currentFps, budgetKb, options)
     byIndex.set(partIndex, recovered)
   }
 

@@ -12,7 +12,7 @@ function artifactView(name: string): ArtifactView {
       height: 1,
       status: 'original',
       finalFps: 1,
-      finalColors: 256,
+      finalQuality: 100,
     },
     url: `blob:${name}`,
   }

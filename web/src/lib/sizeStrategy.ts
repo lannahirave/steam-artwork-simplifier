@@ -1,8 +1,9 @@
 import type { OptimizationMode } from './types'
+import { MAX_GIFSKI_QUALITY, clampGifskiQuality } from './gifskiQuality'
 
 export interface StandardCandidate {
   fps: number
-  colors: number
+  quality: number
 }
 
 export type EncodeCandidatePhase = 'fast-fit' | 'quality-recovery' | 'quality-first' | 'lossy'
@@ -10,13 +11,13 @@ export type EncodeCandidatePhase = 'fast-fit' | 'quality-recovery' | 'quality-fi
 export interface EncodeCandidate {
   phase: EncodeCandidatePhase
   fps: number
-  colors: number
+  quality: number
   reason: string
 }
 
 export interface LossyCandidate {
   fps: number
-  colors: number
+  quality: number
   dither: string
   statsMode: 'single' | 'diff'
   prefilter: string
@@ -26,8 +27,8 @@ export interface LossyCandidateOptions {
   allowFpsDrop?: boolean
 }
 
-const STANDARD_COLORS = [224, 192, 160, 128, 96, 64, 48, 32] as const
-const RECOVERY_COLORS = [256, 224, 192, 160, 128, 96, 64, 48, 32, 24, 16, 12] as const
+const STANDARD_QUALITIES = [92, 84, 76, 68, 58, 48, 40, 32, 24, 16, 12] as const
+const RECOVERY_QUALITIES = [100, 92, 84, 76, 68, 58, 48, 40, 32, 24, 16, 12] as const
 export const RECOVERY_UNDER_TARGET_RATIO = 0.9
 export const HEAVY_PART_RATIO = 1.1
 
@@ -37,7 +38,7 @@ export interface SizeBoundItem {
 
 export interface StandardCandidateOptions {
   allowFpsDrop?: boolean
-  allowColorDrop?: boolean
+  allowQualityDrop?: boolean
 }
 
 export function estimateFpsForKbTarget(
@@ -67,9 +68,9 @@ export function buildStandardCandidates(
   options: StandardCandidateOptions = {},
 ): StandardCandidate[] {
   const allowFpsDrop = options.allowFpsDrop ?? true
-  const allowColorDrop = options.allowColorDrop ?? true
+  const allowQualityDrop = options.allowQualityDrop ?? true
 
-  if (!allowFpsDrop && !allowColorDrop) {
+  if (!allowFpsDrop && !allowQualityDrop) {
     return []
   }
 
@@ -83,34 +84,35 @@ export function buildStandardCandidates(
 
   const unique = new Set<string>()
   const out: StandardCandidate[] = []
-  const pushCandidate = (fps: number, colors: number): void => {
-    if (fps === baseFps && colors === 256) {
+  const pushCandidate = (fps: number, quality: number): void => {
+    const clampedQuality = clampGifskiQuality(quality)
+    if (fps === baseFps && clampedQuality === MAX_GIFSKI_QUALITY) {
       // Initial encode already uses this combination.
       return
     }
-    const key = `${fps}:${colors}`
+    const key = `${fps}:${clampedQuality}`
     if (unique.has(key)) {
       return
     }
     unique.add(key)
-    out.push({ fps, colors })
+    out.push({ fps, quality: clampedQuality })
   }
 
-  // Prefer FPS-only reduction before touching palette colors.
+  // Prefer FPS-only reduction before touching encode quality.
   for (const fps of reducedFpsCandidates) {
-    pushCandidate(fps, 256)
+    pushCandidate(fps, MAX_GIFSKI_QUALITY)
   }
 
-  if (allowColorDrop) {
-    for (const colors of STANDARD_COLORS) {
-      pushCandidate(baseFps, colors)
+  if (allowQualityDrop) {
+    for (const quality of STANDARD_QUALITIES) {
+      pushCandidate(baseFps, quality)
     }
   }
 
-  if (allowFpsDrop && allowColorDrop) {
+  if (allowFpsDrop && allowQualityDrop) {
     for (const fps of reducedFpsCandidates) {
-      for (const colors of STANDARD_COLORS) {
-        pushCandidate(fps, colors)
+      for (const quality of STANDARD_QUALITIES) {
+        pushCandidate(fps, quality)
       }
     }
   }
@@ -122,13 +124,13 @@ function toEncodeCandidate(candidate: StandardCandidate, phase: EncodeCandidateP
   return {
     phase,
     fps: candidate.fps,
-    colors: candidate.colors,
+    quality: candidate.quality,
     reason,
   }
 }
 
 function pushUniqueCandidate(candidates: EncodeCandidate[], seen: Set<string>, candidate: EncodeCandidate): void {
-  const key = `${candidate.fps}:${candidate.colors}`
+  const key = `${candidate.fps}:${candidate.quality}`
   if (seen.has(key)) {
     return
   }
@@ -142,7 +144,7 @@ function estimateFastFitCandidate(input: {
   maxGifKb: number
   minGifFps: number
   allowFpsDrop: boolean
-  allowColorDrop: boolean
+  allowQualityDrop: boolean
 }): StandardCandidate | null {
   if (input.allowFpsDrop) {
     const estimatedFps = estimateFpsForKbTarget(
@@ -152,20 +154,20 @@ function estimateFastFitCandidate(input: {
       input.minGifFps,
     )
     if (estimatedFps < input.currentFps) {
-      return { fps: estimatedFps, colors: 256 }
+      return { fps: estimatedFps, quality: MAX_GIFSKI_QUALITY }
     }
   }
 
-  if (!input.allowColorDrop) {
+  if (!input.allowQualityDrop) {
     return null
   }
 
   const ratio = input.maxGifKb / input.currentSizeKb
-  const estimatedColors = Math.max(32, Math.min(224, Math.floor(256 * ratio)))
-  const colorCandidate = STANDARD_COLORS.find((colors) => colors <= estimatedColors) ?? STANDARD_COLORS[STANDARD_COLORS.length - 1]
+  const estimatedQuality = Math.max(12, Math.min(92, Math.floor(MAX_GIFSKI_QUALITY * ratio)))
+  const qualityCandidate = STANDARD_QUALITIES.find((quality) => quality <= estimatedQuality) ?? STANDARD_QUALITIES[STANDARD_QUALITIES.length - 1]
   return {
     fps: input.currentFps,
-    colors: colorCandidate,
+    quality: qualityCandidate,
   }
 }
 
@@ -177,7 +179,7 @@ export function buildOptimizationCandidates(input: {
   maxGifKb: number
   minGifFps: number
   allowFpsDrop: boolean
-  allowColorDrop: boolean
+  allowQualityDrop: boolean
   standardRetriesEnabled: boolean
 }): EncodeCandidate[] {
   if (!input.standardRetriesEnabled && input.mode === 'quality-first') {
@@ -201,7 +203,7 @@ export function buildOptimizationCandidates(input: {
   if (input.mode !== 'fast-fit' && input.standardRetriesEnabled) {
     for (const candidate of buildStandardCandidates(input.currentFps, input.minGifFps, {
       allowFpsDrop: input.allowFpsDrop,
-      allowColorDrop: input.allowColorDrop,
+      allowQualityDrop: input.allowQualityDrop,
     })) {
       pushUniqueCandidate(
         candidates,
@@ -246,34 +248,31 @@ export function buildSharedFpsRecoveryCandidates(currentFps: number, maxFps: num
   return out
 }
 
-export function buildIntermediateColorRecoveryCandidates(acceptedColors: number, rejectedColors: number): number[] {
-  const low = Math.max(1, Math.min(Math.floor(acceptedColors), Math.floor(rejectedColors)))
-  const high = Math.min(256, Math.max(Math.floor(acceptedColors), Math.floor(rejectedColors)))
+export function buildIntermediateQualityRecoveryCandidates(acceptedQuality: number, rejectedQuality: number): number[] {
+  const low = Math.max(1, Math.min(Math.floor(acceptedQuality), Math.floor(rejectedQuality)))
+  const high = Math.min(MAX_GIFSKI_QUALITY, Math.max(Math.floor(acceptedQuality), Math.floor(rejectedQuality)))
   const out: number[] = []
-  for (let colors = low + 1; colors < high; colors += 8) {
-    out.push(colors)
-  }
-  if (out[out.length - 1] !== high - 1 && high - 1 > low) {
-    out.push(high - 1)
+  for (let quality = low + 1; quality < high; quality += 1) {
+    out.push(quality)
   }
   return out
 }
 
 export function buildQualityRecoveryCandidates(input: {
   fps: number
-  colors: number
-  allowColorDrop: boolean
+  quality: number
+  allowQualityDrop: boolean
 }): EncodeCandidate[] {
-  if (!input.allowColorDrop) {
+  if (!input.allowQualityDrop) {
     return []
   }
-  return RECOVERY_COLORS
-    .filter((colors) => colors > input.colors)
+  return RECOVERY_QUALITIES
+    .filter((quality) => quality > input.quality)
     .sort((a, b) => a - b)
-    .map((colors) => ({
+    .map((quality) => ({
       phase: 'quality-recovery',
       fps: input.fps,
-      colors,
+      quality,
       reason: 'Recovering quality while preserving output timing.',
     }))
 }
@@ -330,8 +329,8 @@ export function buildLossyCandidates(
 
   const level = Math.min(3, Math.max(1, lossyLevel))
 
-  const colorsCandidates =
-    level === 1 ? [64, 48, 32, 24] : level === 2 ? [64, 48, 32, 24, 16] : [64, 48, 32, 24, 16, 12]
+  const qualityCandidates =
+    level === 1 ? [48, 40, 32, 24] : level === 2 ? [48, 40, 32, 24, 16] : [48, 40, 32, 24, 16, 12]
   const ditherCandidates =
     level === 1
       ? ['bayer:bayer_scale=5', 'none']
@@ -346,15 +345,15 @@ export function buildLossyCandidates(
     for (const prefilter of prefilters) {
       for (const statsMode of statsModes) {
         for (const dither of ditherCandidates) {
-          for (const colors of colorsCandidates) {
-            const key = `${fps}:${colors}:${dither}:${statsMode}:${prefilter}`
+          for (const quality of qualityCandidates) {
+            const key = `${fps}:${quality}:${dither}:${statsMode}:${prefilter}`
             if (unique.has(key)) {
               continue
             }
             unique.add(key)
             out.push({
               fps,
-              colors,
+              quality,
               dither,
               statsMode,
               prefilter,
