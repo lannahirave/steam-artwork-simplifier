@@ -248,15 +248,6 @@ export function buildSharedFpsRecoveryCandidates(currentFps: number, maxFps: num
   return out
 }
 
-export function getNextQualityRecoveryProbe(acceptedQuality: number, rejectedQuality: number): number | null {
-  const low = clampGifskiQuality(acceptedQuality)
-  const high = clampGifskiQuality(rejectedQuality)
-  if (high - low <= 1) {
-    return null
-  }
-  return Math.floor((low + high) / 2)
-}
-
 export function buildQualityRecoveryCandidates(input: {
   fps: number
   quality: number
