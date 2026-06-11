@@ -246,6 +246,19 @@ export function buildSharedFpsRecoveryCandidates(currentFps: number, maxFps: num
   return out
 }
 
+export function buildIntermediateColorRecoveryCandidates(acceptedColors: number, rejectedColors: number): number[] {
+  const low = Math.max(1, Math.min(Math.floor(acceptedColors), Math.floor(rejectedColors)))
+  const high = Math.min(256, Math.max(Math.floor(acceptedColors), Math.floor(rejectedColors)))
+  const out: number[] = []
+  for (let colors = low + 1; colors < high; colors += 8) {
+    out.push(colors)
+  }
+  if (out[out.length - 1] !== high - 1 && high - 1 > low) {
+    out.push(high - 1)
+  }
+  return out
+}
+
 export function buildQualityRecoveryCandidates(input: {
   fps: number
   colors: number
