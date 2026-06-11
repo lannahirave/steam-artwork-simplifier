@@ -1,5 +1,11 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import { clampGifskiQuality } from '../lib/gifskiQuality'
+import {
+  clampGifskiQuality,
+  createQualityBinarySearch,
+  nextQualityBinaryProbe,
+  recordQualityBinaryProbe,
+} from '../lib/gifskiQuality'
+import type { FixedQualitySearch } from '../lib/types'
 import { encodeWithGifski } from './gifskiRuntime'
 import { parsePngDimensions, safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
 import type { WorkerProgressSink } from './workerMessaging'
@@ -26,6 +32,13 @@ export interface EncodeGifCandidateResult {
   quality: number
   bytes: Uint8Array
   sizeKb: number
+}
+
+interface DecodedGifFrames {
+  frames: Uint8Array[]
+  width: number
+  height: number
+  count: number
 }
 
 async function execWithContext(
@@ -91,11 +104,10 @@ async function listFramePaths(ffmpeg: FFmpeg, prefix: string): Promise<string[]>
     .sort((a, b) => a.localeCompare(b))
 }
 
-export async function encodeGifCandidates(
+async function withDecodedGifFrames<T>(
   options: Omit<EncodeGifOptions, 'quality'>,
-  qualities: number[],
-  stopAfterFirstFitKb?: number,
-): Promise<EncodeGifCandidateResult[]> {
+  run: (frames: DecodedGifFrames) => Promise<T>,
+): Promise<T> {
   const framePrefix = `frames-${options.outputTag}`
   const framePattern = `${framePrefix}-%05d.png`
   let framePaths: string[] = []
@@ -155,6 +167,57 @@ export async function encodeGifCandidates(
       rgbaFrames.push(await decodePngToRgba(frameBytes, dims.width, dims.height))
     }
 
+    return await run({
+      frames: rgbaFrames,
+      width: dims.width,
+      height: dims.height,
+      count: framePaths.length,
+    })
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    throw new Error(`GIF encode failed via gifski.\n\n${message}`, { cause: error })
+  } finally {
+    await Promise.all(framePaths.map((path) => safeDelete(options.ffmpeg, path)))
+  }
+}
+
+async function encodeFrameSet(
+  options: Omit<EncodeGifOptions, 'quality'>,
+  frames: DecodedGifFrames,
+  requestedQuality: number,
+): Promise<EncodeGifCandidateResult> {
+  const quality = clampGifskiQuality(requestedQuality)
+  options.postProgress(
+    options.requestId,
+    'gifski',
+    `Encoding ${frames.count} frame(s) with quality ${quality}.`,
+  )
+
+  const gifBytes = await encodeWithGifski({
+    frames: frames.frames,
+    width: frames.width,
+    height: frames.height,
+    fps: options.fps,
+    quality,
+  })
+
+  if (!hasGifSignature(gifBytes)) {
+    throw new Error('gifski produced output without a valid GIF signature.')
+  }
+
+  return {
+    quality,
+    bytes: gifBytes,
+    sizeKb: gifBytes.byteLength / 1024,
+  }
+}
+
+export async function encodeGifCandidates(
+  options: Omit<EncodeGifOptions, 'quality'>,
+  qualities: number[],
+  stopAfterFirstFitKb?: number,
+): Promise<EncodeGifCandidateResult[]> {
+  return withDecodedGifFrames(options, async (frames) => {
     const seen = new Set<number>()
     const results: EncodeGifCandidateResult[] = []
     for (const requestedQuality of qualities) {
@@ -163,27 +226,9 @@ export async function encodeGifCandidates(
         continue
       }
       seen.add(quality)
-      options.postProgress(
-        options.requestId,
-        'gifski',
-        `Encoding ${framePaths.length} frame(s) with quality ${quality}.`,
-      )
-
-      const gifBytes = await encodeWithGifski({
-        frames: rgbaFrames,
-        width: dims.width,
-        height: dims.height,
-        fps: options.fps,
-        quality,
-      })
-
-      if (!hasGifSignature(gifBytes)) {
-        throw new Error('gifski produced output without a valid GIF signature.')
-      }
-
-      const sizeKb = gifBytes.byteLength / 1024
-      results.push({ quality, bytes: gifBytes, sizeKb })
-      if (stopAfterFirstFitKb !== undefined && sizeKb <= stopAfterFirstFitKb) {
+      const result = await encodeFrameSet(options, frames, quality)
+      results.push(result)
+      if (stopAfterFirstFitKb !== undefined && result.sizeKb <= stopAfterFirstFitKb) {
         break
       }
     }
@@ -193,12 +238,54 @@ export async function encodeGifCandidates(
     }
 
     return results
-  } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    throw new Error(`GIF encode failed via gifski.\n\n${message}`, { cause: error })
-  } finally {
-    await Promise.all(framePaths.map((path) => safeDelete(options.ffmpeg, path)))
-  }
+  })
+}
+
+export async function encodeGifQualitySearch(
+  options: Omit<EncodeGifOptions, 'quality'>,
+  search: FixedQualitySearch,
+  budgetKb: number,
+): Promise<EncodeGifCandidateResult> {
+  return withDecodedGifFrames(options, async (frames) => {
+    let state = createQualityBinarySearch(search.lowExclusive, search.highInclusive)
+    let bestFit: EncodeGifCandidateResult | null = null
+    let lastResult: EncodeGifCandidateResult | null = null
+
+    if (state.high <= state.low) {
+      throw new Error(`Invalid quality search range: ${state.low}..${state.high}.`)
+    }
+
+    let quality = nextQualityBinaryProbe(state)
+    while (quality !== null) {
+      const result = await encodeFrameSet(options, frames, quality)
+      lastResult = result
+
+      const accepted = result.sizeKb <= budgetKb
+      state = recordQualityBinaryProbe(state, quality, accepted)
+      if (accepted) {
+        bestFit = !bestFit || result.quality > bestFit.quality ? result : bestFit
+        options.postProgress(
+          options.requestId,
+          'quality-recovery',
+          `Binary quality probe accepted: quality=${quality}, ${result.sizeKb.toFixed(1)}KB <= ${budgetKb}KB.`,
+        )
+      } else {
+        options.postProgress(
+          options.requestId,
+          'quality-recovery',
+          `Binary quality probe rejected: quality=${quality}, ${result.sizeKb.toFixed(1)}KB > ${budgetKb}KB.`,
+        )
+      }
+      quality = nextQualityBinaryProbe(state)
+    }
+
+    const selected = bestFit ?? lastResult
+    if (!selected) {
+      throw new Error('No GIF quality search probes were produced.')
+    }
+
+    return selected
+  })
 }
 
 export async function encodeGif(options: EncodeGifOptions): Promise<Uint8Array> {

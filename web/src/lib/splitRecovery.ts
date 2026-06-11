@@ -5,7 +5,7 @@ import {
   selectBatchRecoveryBudget,
 } from './sizeStrategy'
 import { clampGifskiQuality } from './gifskiQuality'
-import type { WorkerArtifactData } from './types'
+import type { FixedQualitySearch, WorkerArtifactData } from './types'
 
 export interface SplitRecoveryOptions {
   items: WorkerArtifactData[]
@@ -20,7 +20,7 @@ export interface SplitRecoveryOptions {
   runFixedSplitPartQualitySearch: (
     partIndex: number,
     fps: number,
-    qualities: number[],
+    search: FixedQualitySearch,
     budgetKb: number,
     label: string,
   ) => Promise<WorkerArtifactData>
@@ -77,27 +77,21 @@ async function recoverPartQuality(
     return true
   }
 
-  const buildDescendingQualityRange = (lowExclusive: number, highInclusive: number): number[] => {
-    const low = clampGifskiQuality(lowExclusive)
-    const high = clampGifskiQuality(highInclusive)
-    const out: number[] = []
-    for (let quality = high; quality > low; quality -= 1) {
-      out.push(quality)
-    }
-    return out
-  }
-
   const searchQualityRange = async (acceptedLow: number, highInclusive: number): Promise<WorkerArtifactData | null> => {
-    const qualities = buildDescendingQualityRange(acceptedLow, highInclusive)
-    if (qualities.length === 0) {
+    const low = clampGifskiQuality(acceptedLow)
+    const high = clampGifskiQuality(highInclusive)
+    if (high <= low) {
       return null
     }
     const attempt = await options.runFixedSplitPartQualitySearch(
       partIndex,
       fps,
-      qualities,
+      {
+        lowExclusive: low,
+        highInclusive: high,
+      },
       budgetKb,
-      `${options.label} quality recovery: searching ${current.name} from quality=${qualities[0]} down to quality=${qualities[qualities.length - 1]}.`,
+      `${options.label} quality recovery: binary searching ${current.name} quality ${low + 1}-${high}.`,
     )
     return acceptAttempt(attempt, 'range') ? attempt : null
   }

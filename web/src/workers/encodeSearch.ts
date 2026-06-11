@@ -5,7 +5,12 @@ import {
   shouldTryQualityRecovery,
 } from '../lib/sizeStrategy'
 import type { ArtifactStatus } from '../lib/types'
-import { encodeGif, encodeGifCandidates, type EncodeGifOptions } from './gifFrameEncoder'
+import {
+  encodeGif,
+  encodeGifCandidates,
+  encodeGifQualitySearch,
+  type EncodeGifOptions,
+} from './gifFrameEncoder'
 import type { WorkerProgressSink } from './workerMessaging'
 
 interface BestEncodeResult {
@@ -30,6 +35,7 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   enableQualityRecovery: boolean
   fixedQuality?: number
   fixedQualityCandidates?: number[]
+  fixedQualitySearch?: { lowExclusive: number; highInclusive: number }
   fixedQualityMaxKb?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
@@ -60,6 +66,46 @@ function encodeAttempt(
     quality,
     startOffsetSec: options.startOffsetSec,
   })
+}
+
+async function encodeFixedQualitySearch(
+  options: SearchEncodeOptions,
+  vf: string,
+): Promise<BestEncodeResult> {
+  if (!options.fixedQualitySearch) {
+    throw new Error('Fixed quality search requested without a search range.')
+  }
+
+  const budgetKb = options.fixedQualityMaxKb ?? Number.MAX_SAFE_INTEGER
+  const selected = await encodeGifQualitySearch(
+    {
+      ffmpeg: options.ffmpeg,
+      ffmpegLogBuffer: options.ffmpegLogBuffer,
+      postProgress: options.postProgress,
+      requestId: options.requestId,
+      inputName: options.inputName,
+      outputTag: `fixed-quality-search-${options.requestId}`,
+      vf,
+      fps: options.gifFps,
+      startOffsetSec: options.startOffsetSec,
+    },
+    options.fixedQualitySearch,
+    budgetKb,
+  )
+
+  options.postProgress(
+    options.requestId,
+    'convert',
+    `Fixed quality search selected quality=${selected.quality}: ${selected.sizeKb.toFixed(1)}KB.`,
+  )
+
+  return {
+    bytes: selected.bytes,
+    sizeKb: selected.sizeKb,
+    status: selected.quality === 100 ? 'original' : 'recompressed',
+    finalFps: options.gifFps,
+    finalQuality: selected.quality,
+  }
 }
 
 async function encodeFixedQualityCandidates(
@@ -128,6 +174,15 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
   if (options.fixedQualityCandidates?.length) {
     options.postProgress(options.requestId, 'convert', 'Starting fixed quality candidate search...')
     return encodeFixedQualityCandidates(options, `fps=${options.gifFps},${options.baseFilter}`)
+  }
+
+  if (options.fixedQualitySearch) {
+    options.postProgress(
+      options.requestId,
+      'convert',
+      `Starting fixed quality binary search (${options.fixedQualitySearch.lowExclusive + 1}-${options.fixedQualitySearch.highInclusive}).`,
+    )
+    return encodeFixedQualitySearch(options, `fps=${options.gifFps},${options.baseFilter}`)
   }
 
   options.postProgress(options.requestId, 'convert', 'Starting initial encode...')
