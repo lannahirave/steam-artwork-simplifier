@@ -2,7 +2,6 @@ import {
   allItemsFit,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
-  getNextQualityRecoveryProbe,
   selectBatchRecoveryBudget,
 } from './sizeStrategy'
 import { clampGifskiQuality } from './gifskiQuality'
@@ -18,6 +17,13 @@ export interface SplitRecoveryOptions {
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean
   runFixedSplitPart: (partIndex: number, fps: number, quality: number, label: string) => Promise<WorkerArtifactData>
+  runFixedSplitPartQualitySearch: (
+    partIndex: number,
+    fps: number,
+    qualities: number[],
+    budgetKb: number,
+    label: string,
+  ) => Promise<WorkerArtifactData>
   emit: (stage: string, message: string) => void
 }
 
@@ -36,7 +42,6 @@ async function recoverPartQuality(
   let accepted = current
   let acceptedQuality = clampGifskiQuality(current.finalQuality)
   const headroom = budgetKb - current.sizeKb
-  const attemptedQualities = new Set<number>()
 
   if (acceptedQuality >= 100 || headroom <= 0) {
     return accepted
@@ -47,19 +52,11 @@ async function recoverPartQuality(
     `${options.label} quality recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
   )
 
-  const tryCandidate = async (quality: number, kind: string): Promise<boolean> => {
-    const candidateQuality = clampGifskiQuality(quality)
-    if (candidateQuality <= acceptedQuality || attemptedQualities.has(candidateQuality)) {
+  const acceptAttempt = (attempt: WorkerArtifactData, kind: string): boolean => {
+    const candidateQuality = clampGifskiQuality(attempt.finalQuality)
+    if (candidateQuality <= acceptedQuality) {
       return false
     }
-    attemptedQualities.add(candidateQuality)
-
-    const attempt = await options.runFixedSplitPart(
-      partIndex,
-      fps,
-      candidateQuality,
-      `${options.label} quality recovery: trying ${current.name} at quality=${candidateQuality}.`,
-    )
     if (attempt.sizeKb > budgetKb) {
       options.emit(
         'quality-recovery',
@@ -80,20 +77,29 @@ async function recoverPartQuality(
     return true
   }
 
-  const refineBetweenAcceptedAndRejected = async (acceptedLow: number, rejectedHigh: number): Promise<void> => {
-    let low = acceptedLow
-    let high = rejectedHigh
-
-    let quality = getNextQualityRecoveryProbe(low, high)
-    while (quality !== null) {
-      const fit = await tryCandidate(quality, 'intermediate')
-      if (fit) {
-        low = quality
-      } else {
-        high = quality
-      }
-      quality = getNextQualityRecoveryProbe(low, high)
+  const buildDescendingQualityRange = (lowExclusive: number, highInclusive: number): number[] => {
+    const low = clampGifskiQuality(lowExclusive)
+    const high = clampGifskiQuality(highInclusive)
+    const out: number[] = []
+    for (let quality = high; quality > low; quality -= 1) {
+      out.push(quality)
     }
+    return out
+  }
+
+  const searchQualityRange = async (acceptedLow: number, highInclusive: number): Promise<WorkerArtifactData | null> => {
+    const qualities = buildDescendingQualityRange(acceptedLow, highInclusive)
+    if (qualities.length === 0) {
+      return null
+    }
+    const attempt = await options.runFixedSplitPartQualitySearch(
+      partIndex,
+      fps,
+      qualities,
+      budgetKb,
+      `${options.label} quality recovery: searching ${current.name} from quality=${qualities[0]} down to quality=${qualities[qualities.length - 1]}.`,
+    )
+    return acceptAttempt(attempt, 'range') ? attempt : null
   }
 
   const ladderCandidates = buildQualityRecoveryCandidates({
@@ -104,9 +110,8 @@ async function recoverPartQuality(
 
   for (const candidate of ladderCandidates) {
     const previousAcceptedQuality = acceptedQuality
-    const fit = await tryCandidate(candidate.quality, 'ladder')
-    if (!fit) {
-      await refineBetweenAcceptedAndRejected(previousAcceptedQuality, candidate.quality)
+    const fit = await searchQualityRange(previousAcceptedQuality, candidate.quality)
+    if (!fit || acceptedQuality < candidate.quality) {
       break
     }
   }
@@ -136,18 +141,37 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   if (options.retryAllowFpsDrop && currentFps < options.originalFps) {
     for (const fps of buildSharedFpsRecoveryCandidates(currentFps, options.originalFps)) {
       const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
-      const attempt = await Promise.all(
-        options.partOrder.map((partIndex) => {
-          const current = byIndex.get(partIndex)
-          const quality = current?.finalQuality ?? 100
-          return options.runFixedSplitPart(
-            partIndex,
-            fps,
-            quality,
-            `${options.label} FPS recovery: trying shared fps=${fps} for part ${partIndex + 1}.`,
-          )
-        }),
+      const limiterPartIndex = options.partOrder[0]
+      const limiterCurrent = byIndex.get(limiterPartIndex)
+      const limiterAttempt = await options.runFixedSplitPart(
+        limiterPartIndex,
+        fps,
+        limiterCurrent?.finalQuality ?? 100,
+        `${options.label} FPS recovery probe: trying shared fps=${fps} on part ${limiterPartIndex + 1}.`,
       )
+      if (limiterAttempt.sizeKb > budgetKb) {
+        options.emit(
+          'quality-recovery',
+          `${options.label} FPS recovery stopped: shared fps=${fps} would make ${limiterAttempt.name} ${limiterAttempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+        )
+        break
+      }
+
+      const remainingAttempts = await Promise.all(
+        options.partOrder
+          .filter((partIndex) => partIndex !== limiterPartIndex)
+          .map((partIndex) => {
+            const current = byIndex.get(partIndex)
+            const quality = current?.finalQuality ?? 100
+            return options.runFixedSplitPart(
+              partIndex,
+              fps,
+              quality,
+              `${options.label} FPS recovery: trying shared fps=${fps} for part ${partIndex + 1}.`,
+            )
+          }),
+      )
+      const attempt = [limiterAttempt, ...remainingAttempts]
       if (!allItemsFit(attempt, budgetKb)) {
         const largest = attempt.reduce((current, item) => (item.sizeKb > current.sizeKb ? item : current))
         options.emit(

@@ -75,6 +75,8 @@ function buildSearchOptions(
     optimizationMode: payload.optimizationMode,
     enableQualityRecovery: payload.enableQualityRecovery,
     fixedQuality: payload.fixedQuality,
+    fixedQualityCandidates: payload.fixedQualityCandidates,
+    fixedQualityMaxKb: payload.fixedQualityMaxKb,
     standardRetriesEnabled: payload.standardRetriesEnabled,
     retryAllowFpsDrop: payload.retryAllowFpsDrop,
     retryAllowQualityDrop: payload.retryAllowQualityDrop,

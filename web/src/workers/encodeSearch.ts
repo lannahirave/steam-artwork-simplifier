@@ -5,7 +5,7 @@ import {
   shouldTryQualityRecovery,
 } from '../lib/sizeStrategy'
 import type { ArtifactStatus } from '../lib/types'
-import { encodeGif, type EncodeGifOptions } from './gifFrameEncoder'
+import { encodeGif, encodeGifCandidates, type EncodeGifOptions } from './gifFrameEncoder'
 import type { WorkerProgressSink } from './workerMessaging'
 
 interface BestEncodeResult {
@@ -29,6 +29,8 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   optimizationMode: 'hybrid' | 'quality-first' | 'fast-fit'
   enableQualityRecovery: boolean
   fixedQuality?: number
+  fixedQualityCandidates?: number[]
+  fixedQualityMaxKb?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean
@@ -60,6 +62,49 @@ function encodeAttempt(
   })
 }
 
+async function encodeFixedQualityCandidates(
+  options: SearchEncodeOptions,
+  vf: string,
+): Promise<BestEncodeResult> {
+  const qualities = options.fixedQualityCandidates?.length
+    ? options.fixedQualityCandidates
+    : [options.fixedQuality ?? 100]
+  const results = await encodeGifCandidates(
+    {
+      ffmpeg: options.ffmpeg,
+      ffmpegLogBuffer: options.ffmpegLogBuffer,
+      postProgress: options.postProgress,
+      requestId: options.requestId,
+      inputName: options.inputName,
+      outputTag: `fixed-quality-${options.requestId}`,
+      vf,
+      fps: options.gifFps,
+      startOffsetSec: options.startOffsetSec,
+    },
+    qualities,
+    options.fixedQualityMaxKb,
+  )
+  const budgetKb = options.fixedQualityMaxKb
+  const selected =
+    budgetKb === undefined
+      ? results[0]
+      : (results.find((result) => result.sizeKb <= budgetKb) ?? results[results.length - 1])
+
+  options.postProgress(
+    options.requestId,
+    'convert',
+    `Fixed quality search selected quality=${selected.quality}: ${selected.sizeKb.toFixed(1)}KB.`,
+  )
+
+  return {
+    bytes: selected.bytes,
+    sizeKb: selected.sizeKb,
+    status: selected.quality === 100 ? 'original' : 'recompressed',
+    finalFps: options.gifFps,
+    finalQuality: selected.quality,
+  }
+}
+
 export async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncodeResult> {
   if (options.isStillImage) {
     options.postProgress(options.requestId, 'convert', 'Static image source detected: resize-only encode.')
@@ -78,6 +123,11 @@ export async function searchBestEncode(options: SearchEncodeOptions): Promise<Be
       finalFps: 1,
       finalQuality: 100,
     }
+  }
+
+  if (options.fixedQualityCandidates?.length) {
+    options.postProgress(options.requestId, 'convert', 'Starting fixed quality candidate search...')
+    return encodeFixedQualityCandidates(options, `fps=${options.gifFps},${options.baseFilter}`)
   }
 
   options.postProgress(options.requestId, 'convert', 'Starting initial encode...')

@@ -114,6 +114,8 @@ export interface ConvertPayloadBase {
   optimizationMode: OptimizationMode
   enableQualityRecovery: boolean
   fixedQuality?: number
+  fixedQualityCandidates?: number[]
+  fixedQualityMaxKb?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean

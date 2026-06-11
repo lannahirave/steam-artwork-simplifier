@@ -180,6 +180,8 @@ export async function convertVideo(
         | 'optimizationMode'
         | 'enableQualityRecovery'
         | 'fixedQuality'
+        | 'fixedQualityCandidates'
+        | 'fixedQualityMaxKb'
       >
     > = {},
   ): ConvertPartPayload => ({
@@ -197,6 +199,8 @@ export async function convertVideo(
     optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
     enableQualityRecovery: overrides.enableQualityRecovery ?? true,
     fixedQuality: overrides.fixedQuality,
+    fixedQualityCandidates: overrides.fixedQualityCandidates,
+    fixedQualityMaxKb: overrides.fixedQualityMaxKb,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
     retryAllowQualityDrop: overrides.retryAllowQualityDrop ?? config.retryAllowQualityDrop,
@@ -227,6 +231,8 @@ export async function convertVideo(
         | 'optimizationMode'
         | 'enableQualityRecovery'
         | 'fixedQuality'
+        | 'fixedQualityCandidates'
+        | 'fixedQualityMaxKb'
       >
     > = {},
     partOrder?: number[],
@@ -284,6 +290,42 @@ export async function convertVideo(
     return {
       ...result,
       status: fps === config.gifFps && quality === 100 ? result.status : 'recompressed',
+    }
+  }
+
+  const runFixedSplitPartQualitySearch = async (
+    partIndex: number,
+    fps: number,
+    qualities: number[],
+    budgetKb: number,
+    label: string,
+  ): Promise<WorkerArtifactData> => {
+    emit('convert', label)
+    const result = await pool.runTask(
+      'convertPart',
+      buildPartPayload(partIndex, {
+        gifFps: fps,
+        minGifFps: Math.min(config.minGifFps, Math.max(1, Math.floor(fps))),
+        retryAllowFpsDrop: false,
+        disableOptimizations: true,
+        standardRetriesEnabled: false,
+        retryAllowQualityDrop: false,
+        lossyOversize: false,
+        lossyMaxAttempts: 1,
+        maxGifKb: Number.MAX_SAFE_INTEGER,
+        targetGifKb: Number.MAX_SAFE_INTEGER,
+        enableQualityRecovery: false,
+        fixedQualityCandidates: qualities,
+        fixedQualityMaxKb: budgetKb,
+      }),
+      {
+        onProgress: workerProgress(partIndex),
+        timeoutMs: 6 * 60_000,
+      },
+    )
+    return {
+      ...result,
+      status: fps === config.gifFps && result.finalQuality === 100 ? result.status : 'recompressed',
     }
   }
 
@@ -469,6 +511,7 @@ export async function convertVideo(
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowQualityDrop: config.retryAllowQualityDrop,
           runFixedSplitPart,
+          runFixedSplitPartQualitySearch,
           emit,
         })
       }
