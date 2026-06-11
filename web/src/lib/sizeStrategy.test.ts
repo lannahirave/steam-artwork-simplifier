@@ -3,12 +3,12 @@ import {
   analyzeSplitPartWeights,
   allItemsFit,
   buildLossyCandidates,
-  buildIntermediateQualityRecoveryCandidates,
   buildOptimizationCandidates,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
   buildStandardCandidates,
   estimateFpsForKbTarget,
+  getNextQualityRecoveryProbe,
   selectBatchRecoveryBudget,
   shouldTryQualityRecovery,
 } from './sizeStrategy'
@@ -118,11 +118,10 @@ describe('size strategy', () => {
     expect(candidates.map((candidate) => candidate.quality)).toEqual([76, 84, 92, 100])
   })
 
-  it('builds intermediate quality candidates between accepted and rejected values', () => {
-    const candidates = buildIntermediateQualityRecoveryCandidates(68, 76)
-
-    expect(candidates.length).toBeGreaterThan(0)
-    expect(candidates.every((quality) => quality > 68 && quality < 76)).toBe(true)
+  it('plans the next binary quality probe between accepted and rejected values', () => {
+    expect(getNextQualityRecoveryProbe(68, 76)).toBe(72)
+    expect(getNextQualityRecoveryProbe(72, 76)).toBe(74)
+    expect(getNextQualityRecoveryProbe(75, 76)).toBeNull()
   })
 
   it('preserves quality-first candidate ordering', () => {

@@ -248,14 +248,13 @@ export function buildSharedFpsRecoveryCandidates(currentFps: number, maxFps: num
   return out
 }
 
-export function buildIntermediateQualityRecoveryCandidates(acceptedQuality: number, rejectedQuality: number): number[] {
-  const low = Math.max(1, Math.min(Math.floor(acceptedQuality), Math.floor(rejectedQuality)))
-  const high = Math.min(MAX_GIFSKI_QUALITY, Math.max(Math.floor(acceptedQuality), Math.floor(rejectedQuality)))
-  const out: number[] = []
-  for (let quality = low + 1; quality < high; quality += 1) {
-    out.push(quality)
+export function getNextQualityRecoveryProbe(acceptedQuality: number, rejectedQuality: number): number | null {
+  const low = clampGifskiQuality(acceptedQuality)
+  const high = clampGifskiQuality(rejectedQuality)
+  if (high - low <= 1) {
+    return null
   }
-  return out
+  return Math.floor((low + high) / 2)
 }
 
 export function buildQualityRecoveryCandidates(input: {
