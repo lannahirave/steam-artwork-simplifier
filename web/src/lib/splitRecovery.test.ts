@@ -23,8 +23,10 @@ describe('split batch quality recovery', () => {
         artifact(1, 4181.8, 224),
         artifact(2, 2537.7, 128),
         artifact(3, 3354.5, 128),
+        artifact(4, 2738.0, 128),
+        artifact(5, 4160.3, 256),
       ],
-      partOrder: [1, 2, 0],
+      partOrder: [1, 2, 3, 0, 4],
       label: 'Workshop',
       targetGifKb: 4500,
       maxGifKb: 5000,
@@ -34,16 +36,18 @@ describe('split batch quality recovery', () => {
       emit: () => undefined,
       runFixedSplitPart: async (partIndex, fps, colors) => {
         attempts.push({ partIndex, fps, colors })
-        const base = [4181.8, 2537.7, 3354.5][partIndex]
-        const sizeKb = base + (colors - 128) * 12
+        const base = [4181.8, 2537.7, 3354.5, 2738.0, 4160.3][partIndex]
+        const sizeGrowthKbByColor = [12, 9, 8, 10, 6][partIndex]
+        const sizeKb = base + (colors - 128) * sizeGrowthKbByColor
         return artifact(partIndex + 1, sizeKb, colors, fps)
       },
     })
 
     expect(result[1].finalColors).toBeGreaterThan(128)
     expect(result[2].finalColors).toBeGreaterThan(128)
+    expect(result[3].finalColors).toBeGreaterThan(128)
     expect(result.every((item) => item.sizeKb <= 4500)).toBe(true)
-    expect(attempts.some((attempt) => attempt.colors > 128)).toBe(true)
+    expect(attempts.filter((attempt) => attempt.colors > 128).length).toBeGreaterThanOrEqual(3)
   })
 
   it('keeps best accepted intermediate color when the coarse ladder overshoots', async () => {
@@ -65,6 +69,7 @@ describe('split batch quality recovery', () => {
 
     expect(result[0].finalColors).toBeGreaterThan(128)
     expect(result[0].finalColors).toBeLessThan(160)
+    expect(result[0].finalColors).toBe(159)
     expect(result[0].sizeKb).toBeLessThanOrEqual(4500)
   })
 

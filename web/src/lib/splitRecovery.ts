@@ -1,6 +1,5 @@
 import {
   allItemsFit,
-  buildIntermediateColorRecoveryCandidates,
   buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
   selectBatchRecoveryBudget,
@@ -69,6 +68,21 @@ async function recoverPartColors(
     return true
   }
 
+  const refineBetweenAcceptedAndRejected = async (acceptedLow: number, rejectedHigh: number): Promise<void> => {
+    let low = acceptedLow
+    let high = rejectedHigh
+
+    while (high - low > 1) {
+      const colors = Math.floor((low + high) / 2)
+      const fit = await tryCandidate(colors, 'intermediate')
+      if (fit) {
+        low = colors
+      } else {
+        high = colors
+      }
+    }
+  }
+
   const ladderCandidates = buildQualityRecoveryCandidates({
     fps,
     colors: acceptedColors,
@@ -79,13 +93,15 @@ async function recoverPartColors(
     const previousAcceptedColors = acceptedColors
     const fit = await tryCandidate(candidate.colors, 'ladder')
     if (!fit) {
-      for (const colors of buildIntermediateColorRecoveryCandidates(previousAcceptedColors, candidate.colors)) {
-        await tryCandidate(colors, 'intermediate')
-      }
+      await refineBetweenAcceptedAndRejected(previousAcceptedColors, candidate.colors)
       break
     }
   }
 
+  options.emit(
+    'quality-recovery',
+    `${options.label} final color recovery for ${current.name}: colors=${accepted.finalColors}, ${accepted.sizeKb.toFixed(1)}KB.`,
+  )
   return accepted
 }
 
@@ -98,9 +114,10 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
 
   let currentItems = [...options.items]
   let currentFps = Math.min(...currentItems.map((item) => item.finalFps))
+  const budgetName = allItemsFit(options.items, options.targetGifKb) ? 'target' : 'max'
   options.emit(
     'quality-recovery',
-    `${options.label} batch fit satisfied under ${budgetKb}KB; trying shared FPS recovery before color recovery.`,
+    `${options.label} batch fit satisfied; using ${budgetName} recovery budget ${budgetKb}KB before quality recovery.`,
   )
 
   if (options.retryAllowFpsDrop && currentFps < options.originalFps) {
