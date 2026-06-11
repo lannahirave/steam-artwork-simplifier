@@ -14,6 +14,7 @@ import type {
   ConversionConfig,
   ConversionInput,
   ConversionResult,
+  FixedQualitySearch,
   SourceProbe,
   WorkerArtifactData,
 } from './types'
@@ -191,6 +192,7 @@ export async function convertVideo(
         | 'enableQualityRecovery'
         | 'fixedQuality'
         | 'fixedQualityCandidates'
+        | 'fixedQualitySearch'
         | 'fixedQualityMaxKb'
       >
     > = {},
@@ -210,6 +212,7 @@ export async function convertVideo(
     enableQualityRecovery: overrides.enableQualityRecovery ?? true,
     fixedQuality: overrides.fixedQuality,
     fixedQualityCandidates: overrides.fixedQualityCandidates,
+    fixedQualitySearch: overrides.fixedQualitySearch,
     fixedQualityMaxKb: overrides.fixedQualityMaxKb,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
@@ -242,6 +245,7 @@ export async function convertVideo(
         | 'enableQualityRecovery'
         | 'fixedQuality'
         | 'fixedQualityCandidates'
+        | 'fixedQualitySearch'
         | 'fixedQualityMaxKb'
       >
     > = {},
@@ -306,7 +310,7 @@ export async function convertVideo(
   const runFixedSplitPartQualitySearch = async (
     partIndex: number,
     fps: number,
-    qualities: number[],
+    search: FixedQualitySearch,
     budgetKb: number,
     label: string,
   ): Promise<WorkerArtifactData> => {
@@ -325,7 +329,7 @@ export async function convertVideo(
         maxGifKb: Number.MAX_SAFE_INTEGER,
         targetGifKb: Number.MAX_SAFE_INTEGER,
         enableQualityRecovery: false,
-        fixedQualityCandidates: qualities,
+        fixedQualitySearch: search,
         fixedQualityMaxKb: budgetKb,
       }),
       {

@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest'
+import {
+  createQualityBinarySearch,
+  nextQualityBinaryProbe,
+  recordQualityBinaryProbe,
+} from './gifskiQuality'
 import { recoverSplitBatchQuality } from './splitRecovery'
-import type { WorkerArtifactData } from './types'
+import type { FixedQualitySearch, WorkerArtifactData } from './types'
 
 function artifact(part: number, sizeKb: number, finalQuality: number, finalFps = 10): WorkerArtifactData {
   return {
@@ -13,6 +18,42 @@ function artifact(part: number, sizeKb: number, finalQuality: number, finalFps =
     finalFps,
     finalQuality,
   }
+}
+
+function fakeBinaryQualitySearch(input: {
+  partIndex: number
+  fps: number
+  search: FixedQualitySearch
+  budgetKb: number
+  sizeFor: (partIndex: number, quality: number) => number
+  attempts?: Array<{ partIndex: number; fps: number; quality: number }>
+  onAttempt?: (attempt: { partIndex: number; fps: number; quality: number }) => void
+}): WorkerArtifactData {
+  let state = createQualityBinarySearch(input.search.lowExclusive, input.search.highInclusive)
+  let probe = nextQualityBinaryProbe(state)
+  let best: WorkerArtifactData | null = null
+  let last: WorkerArtifactData | null = null
+
+  while (probe !== null) {
+    const attemptRecord = { partIndex: input.partIndex, fps: input.fps, quality: probe }
+    input.attempts?.push(attemptRecord)
+    input.onAttempt?.(attemptRecord)
+    const sizeKb = input.sizeFor(input.partIndex, probe)
+    const attempt = artifact(input.partIndex + 1, sizeKb, probe, input.fps)
+    const accepted = sizeKb <= input.budgetKb
+    if (accepted && (!best || attempt.finalQuality > best.finalQuality)) {
+      best = attempt
+    }
+    last = attempt
+    state = recordQualityBinaryProbe(state, probe, accepted)
+    probe = nextQualityBinaryProbe(state)
+  }
+
+  if (!best && !last) {
+    throw new Error('No fake binary search probes were produced.')
+  }
+
+  return best ?? last!
 }
 
 describe('split batch quality recovery', () => {
@@ -41,19 +82,19 @@ describe('split batch quality recovery', () => {
         const sizeKb = base + (quality - 68) * sizeGrowthKbByQuality
         return artifact(partIndex + 1, sizeKb, quality, fps)
       },
-      runFixedSplitPartQualitySearch: async (partIndex, fps, qualities, budgetKb) => {
-        attempts.push(...qualities.map((quality) => ({ partIndex, fps, quality })))
-        const base = [4181.8, 2537.7, 3354.5, 2738.0, 4160.3][partIndex]
-        const sizeGrowthKbByQuality = [48, 36, 32, 40, 24][partIndex]
-        for (const quality of qualities) {
-          const sizeKb = base + (quality - 68) * sizeGrowthKbByQuality
-          if (sizeKb <= budgetKb) {
-            return artifact(partIndex + 1, sizeKb, quality, fps)
-          }
-        }
-        const fallbackQuality = qualities[qualities.length - 1]
-        return artifact(partIndex + 1, base + (fallbackQuality - 68) * sizeGrowthKbByQuality, fallbackQuality, fps)
-      },
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search, budgetKb) =>
+        fakeBinaryQualitySearch({
+          partIndex,
+          fps,
+          search,
+          budgetKb,
+          attempts,
+          sizeFor: (index, quality) => {
+            const base = [4181.8, 2537.7, 3354.5, 2738.0, 4160.3][index]
+            const sizeGrowthKbByQuality = [48, 36, 32, 40, 24][index]
+            return base + (quality - 68) * sizeGrowthKbByQuality
+          },
+        }),
     })
 
     expect(result[1].finalQuality).toBeGreaterThan(68)
@@ -64,7 +105,7 @@ describe('split batch quality recovery', () => {
   })
 
   it('keeps best accepted intermediate quality when the coarse ladder overshoots', async () => {
-    const attempts: number[][] = []
+    const attempts: number[] = []
     const result = await recoverSplitBatchQuality({
       items: [artifact(1, 3354.5, 68)],
       partOrder: [0],
@@ -79,24 +120,22 @@ describe('split batch quality recovery', () => {
         const sizeKb = quality === 76 ? 4700 : 3354.5 + (quality - 68) * 140
         return artifact(partIndex + 1, sizeKb, quality, fps)
       },
-      runFixedSplitPartQualitySearch: async (partIndex, fps, qualities, budgetKb) => {
-        attempts.push(qualities)
-        for (const quality of qualities) {
-          const sizeKb = quality === 76 ? 4700 : 3354.5 + (quality - 68) * 140
-          if (sizeKb <= budgetKb) {
-            return artifact(partIndex + 1, sizeKb, quality, fps)
-          }
-        }
-        const fallbackQuality = qualities[qualities.length - 1]
-        return artifact(partIndex + 1, 4700, fallbackQuality, fps)
-      },
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search, budgetKb) =>
+        fakeBinaryQualitySearch({
+          partIndex,
+          fps,
+          search,
+          budgetKb,
+          onAttempt: (attempt) => attempts.push(attempt.quality),
+          sizeFor: (_index, quality) => quality === 76 ? 4700 : 3354.5 + (quality - 68) * 140,
+        }),
     })
 
     expect(result[0].finalQuality).toBeGreaterThan(68)
     expect(result[0].finalQuality).toBeLessThan(76)
     expect(result[0].finalQuality).toBe(75)
     expect(result[0].sizeKb).toBeLessThanOrEqual(4500)
-    expect(attempts).toEqual([[76, 75, 74, 73, 72, 71, 70, 69]])
+    expect(attempts).toEqual([72, 74, 75, 76])
   })
 
   it('logs quality recovery details', async () => {
@@ -112,7 +151,7 @@ describe('split batch quality recovery', () => {
       retryAllowQualityDrop: true,
       emit: (_stage, message) => logs.push(message),
       runFixedSplitPart: async (partIndex, fps, quality) => artifact(partIndex + 1, 4200, quality, fps),
-      runFixedSplitPartQualitySearch: async (partIndex, fps, qualities) => artifact(partIndex + 1, 4200, qualities[0], fps),
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search) => artifact(partIndex + 1, 4200, search.highInclusive, fps),
     })
 
     expect(logs.some((message) => message.includes('quality='))).toBe(true)
@@ -133,7 +172,7 @@ describe('split batch quality recovery', () => {
         const sizeKb = partIndex === 0 ? 4400 : 4600
         return artifact(partIndex + 1, sizeKb, quality, fps)
       },
-      runFixedSplitPartQualitySearch: async (partIndex, fps, qualities) => artifact(partIndex + 1, 4300, qualities[0], fps),
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search) => artifact(partIndex + 1, 4300, search.highInclusive, fps),
     })
 
     expect(result.every((item) => item.finalFps === 10)).toBe(true)
@@ -155,7 +194,7 @@ describe('split batch quality recovery', () => {
         fpsAttempts.push(partIndex)
         return artifact(partIndex + 1, partIndex === 0 ? 4600 : 3200, quality, fps)
       },
-      runFixedSplitPartQualitySearch: async (partIndex, fps, qualities) => artifact(partIndex + 1, 3200, qualities[0], fps),
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search) => artifact(partIndex + 1, 3200, search.highInclusive, fps),
     })
 
     expect(result.every((item) => item.finalFps === 10)).toBe(true)
