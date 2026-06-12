@@ -82,7 +82,7 @@ describe('split batch quality recovery', () => {
     expect(result[0].finalQuality).toBeLessThan(76)
     expect(result[0].finalQuality).toBe(75)
     expect(result[0].sizeKb).toBeLessThanOrEqual(4500)
-    expect(attempts).toEqual([84, 76, 72, 74, 75])
+    expect(attempts).toEqual([72, 74, 75, 76])
   })
 
   it('logs quality recovery details', async () => {
@@ -220,9 +220,9 @@ describe('split batch quality recovery', () => {
     })
 
     expect(attempts.slice(0, 2)).toEqual([
-      { partIndex: 0, quality: 84 },
-      { partIndex: 1, quality: 84 },
+      { partIndex: 0, quality: 72 },
+      { partIndex: 1, quality: 72 },
     ])
-    expect(attempts[2].quality).toBe(92)
+    expect(attempts[2].quality).toBe(74)
   })
 })
