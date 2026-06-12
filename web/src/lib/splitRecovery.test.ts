@@ -200,4 +200,54 @@ describe('split batch quality recovery', () => {
     expect(result.every((item) => item.finalFps === 10)).toBe(true)
     expect(fpsAttempts).toEqual([0])
   })
+
+  it('uses the current largest fitted part as the shared fps limiter', async () => {
+    const fpsAttempts: number[] = []
+    const result = await recoverSplitBatchQuality({
+      items: [artifact(1, 4400, 100, 10), artifact(2, 3000, 100, 10), artifact(3, 3200, 100, 10)],
+      partOrder: [1, 2, 0],
+      label: 'Workshop',
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      originalFps: 11,
+      retryAllowFpsDrop: true,
+      retryAllowQualityDrop: false,
+      emit: () => undefined,
+      runFixedSplitPart: async (partIndex, fps, quality) => {
+        fpsAttempts.push(partIndex)
+        return artifact(partIndex + 1, partIndex === 0 ? 4600 : 3300, quality, fps)
+      },
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search) => artifact(partIndex + 1, 3200, search.highInclusive, fps),
+    })
+
+    expect(result.every((item) => item.finalFps === 10)).toBe(true)
+    expect(fpsAttempts).toEqual([0])
+  })
+
+  it('runs independent per-part quality recovery in parallel', async () => {
+    let activeSearches = 0
+    let maxActiveSearches = 0
+    const result = await recoverSplitBatchQuality({
+      items: [artifact(1, 3000, 68), artifact(2, 3200, 68), artifact(3, 3400, 68)],
+      partOrder: [0, 1, 2],
+      label: 'Workshop',
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      originalFps: 10,
+      retryAllowFpsDrop: true,
+      retryAllowQualityDrop: true,
+      emit: () => undefined,
+      runFixedSplitPart: async (partIndex, fps, quality) => artifact(partIndex + 1, 4300, quality, fps),
+      runFixedSplitPartQualitySearch: async (partIndex, fps, search) => {
+        activeSearches += 1
+        maxActiveSearches = Math.max(maxActiveSearches, activeSearches)
+        await new Promise((resolve) => setTimeout(resolve, 1))
+        activeSearches -= 1
+        return artifact(partIndex + 1, 4300, search.highInclusive, fps)
+      },
+    })
+
+    expect(result.every((item) => item.finalQuality > 68)).toBe(true)
+    expect(maxActiveSearches).toBeGreaterThan(1)
+  })
 })
