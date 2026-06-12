@@ -1,5 +1,6 @@
 import {
   allItemsFit,
+  buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
   selectBatchRecoveryBudget,
 } from './sizeStrategy'
@@ -38,6 +39,10 @@ interface QualityRecoveryState {
   search: QualityBinarySearchState
   accepted: WorkerArtifactData
   acceptedQuality: number
+  activeHigh: number
+  ladderHighs: number[]
+  ladderIndex: number
+  done: boolean
 }
 
 export function partIndexFromName(name: string): number {
@@ -58,18 +63,60 @@ function createQualityRecoveryState(
     return null
   }
 
+  const ladderHighs = buildQualityRecoveryCandidates({
+    fps: current.finalFps,
+    quality: acceptedQuality,
+    allowQualityDrop: options.retryAllowQualityDrop,
+  }).map((candidate) => candidate.quality)
+
+  if (ladderHighs.length === 0) {
+    return null
+  }
+
   options.emit(
     'quality-recovery',
-    `${options.label} quality recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
+    `${options.label} quality recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom; searching quality ${acceptedQuality}->${ladderHighs[0]}.`,
   )
 
   return {
     partIndex,
     current,
-    search: createQualityBinarySearch(acceptedQuality, 100),
+    search: createQualityBinarySearch(acceptedQuality, ladderHighs[0]),
     accepted: current,
     acceptedQuality,
+    activeHigh: ladderHighs[0],
+    ladderHighs,
+    ladderIndex: 0,
+    done: false,
   }
+}
+
+function advanceQualityRecoveryRange(state: QualityRecoveryState, options: SplitRecoveryOptions): void {
+  if (state.done || nextQualityBinaryProbe(state.search) !== null) {
+    return
+  }
+
+  if (state.acceptedQuality < state.activeHigh) {
+    state.done = true
+    return
+  }
+
+  const nextIndex = state.ladderHighs.findIndex((quality, index) =>
+    index > state.ladderIndex && quality > state.acceptedQuality,
+  )
+  if (nextIndex === -1) {
+    state.done = true
+    return
+  }
+
+  const nextHigh = state.ladderHighs[nextIndex]
+  options.emit(
+    'quality-recovery',
+    `${options.label} quality recovery expanding ${state.current.name}: searching quality ${state.acceptedQuality}->${nextHigh}.`,
+  )
+  state.ladderIndex = nextIndex
+  state.activeHigh = nextHigh
+  state.search = createQualityBinarySearch(state.acceptedQuality, nextHigh)
 }
 
 async function recoverPartQualityWave(
@@ -82,6 +129,7 @@ async function recoverPartQualityWave(
 
   while (true) {
     const probes = states
+      .filter((state) => !state.done)
       .map((state) => ({
         state,
         quality: nextQualityBinaryProbe(state.search),
@@ -125,6 +173,10 @@ async function recoverPartQualityWave(
         'quality-recovery',
         `${options.label} quality probe accepted for ${state.current.name}: quality=${candidateQuality}, ${attempt.sizeKb.toFixed(1)}KB.`,
       )
+    }
+
+    for (const state of states) {
+      advanceQualityRecoveryRange(state, options)
     }
 
     wave += 1
