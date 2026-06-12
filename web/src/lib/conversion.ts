@@ -173,8 +173,11 @@ export async function convertVideo(
     }
   }
 
-  const workerProgress = (workerIndex: number) => (message: string, stage: string): void => {
-    emit(`worker-${workerIndex + 1}:${stage}`, message)
+  const partCountLabel = String(presetPlan.jobCount).padStart(2, '0')
+  const splitPartContext = (partIndex: number): string =>
+    `part ${String(partIndex + 1).padStart(2, '0')}/${partCountLabel}`
+  const workerProgress = (target: string) => (message: string, stage: string, workerSlot: number): void => {
+    emit(`worker-${workerSlot + 1}:${stage}`, `${target}: ${message}`)
   }
 
   emit('convert', `Starting ${presetPlan.jobCount} conversion task(s).`)
@@ -269,7 +272,7 @@ export async function convertVideo(
             ...batchOverrides,
           }),
           {
-            onProgress: workerProgress(index),
+            onProgress: workerProgress(splitPartContext(index)),
             timeoutMs: 6 * 60_000,
           },
         ),
@@ -301,7 +304,7 @@ export async function convertVideo(
         fixedQuality: quality,
       }),
       {
-        onProgress: workerProgress(partIndex),
+        onProgress: workerProgress(splitPartContext(partIndex)),
         timeoutMs: 6 * 60_000,
       },
     )
@@ -337,7 +340,7 @@ export async function convertVideo(
         fixedQualityMaxKb: budgetKb,
       }),
       {
-        onProgress: workerProgress(partIndex),
+        onProgress: workerProgress(splitPartContext(partIndex)),
         timeoutMs: 6 * 60_000,
         affinityKey: `split-quality:${partIndex}:${fps}:${budgetKb}`,
       },
@@ -378,7 +381,7 @@ export async function convertVideo(
           featuredWidth: config.featuredWidth,
         },
         {
-          onProgress: workerProgress(0),
+          onProgress: workerProgress('featured output'),
           timeoutMs: 6 * 60_000,
         },
       ),
@@ -412,7 +415,7 @@ export async function convertVideo(
           guideSize: presetPlan.guideSize,
         },
         {
-          onProgress: workerProgress(0),
+          onProgress: workerProgress('guide output'),
           timeoutMs: 6 * 60_000,
         },
       ),
