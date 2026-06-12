@@ -6,8 +6,15 @@ class FakeWorker {
   onmessage: ((event: MessageEvent<WorkerResponseMessage>) => void) | null = null
   onerror: ((event: ErrorEvent) => void) | null = null
   terminated = false
+  handledCommands: string[] = []
+  private readonly delayMs: number
+
+  constructor(delayMs = 5) {
+    this.delayMs = delayMs
+  }
 
   postMessage(message: AnyWorkerRequest): void {
+    this.handledCommands.push(message.command)
     const reply = (payload: WorkerResponseMessage): void => {
       this.onmessage?.({ data: payload } as MessageEvent<WorkerResponseMessage>)
     }
@@ -84,7 +91,7 @@ class FakeWorker {
             },
           },
         })
-      }, 5)
+      }, this.delayMs)
       return
     }
 
@@ -107,11 +114,38 @@ class FakeWorker {
           },
         },
       })
-    }, 5)
+    }, this.delayMs)
   }
 
   terminate(): void {
     this.terminated = true
+  }
+}
+
+function convertPartPayload(partIndex: number) {
+  return {
+    fileName: 'a.mp4',
+    fileBytes: new Uint8Array([1]),
+    isStillImage: false,
+    srcWidth: 1280,
+    srcHeight: 720,
+    duration: 2,
+    gifFps: 15,
+    minGifFps: 10,
+    disableOptimizations: false,
+    maxGifKb: 5000,
+    targetGifKb: 4500,
+    optimizationMode: 'hybrid' as const,
+    enableQualityRecovery: true,
+    standardRetriesEnabled: true,
+    retryAllowFpsDrop: true,
+    retryAllowQualityDrop: true,
+    lossyOversize: true,
+    lossyLevel: 2,
+    lossyMaxAttempts: 24,
+    partIndex,
+    parts: 5,
+    partWidth: 150,
   }
 }
 
@@ -134,57 +168,13 @@ describe('worker pool', () => {
     const progressStages: string[] = []
     const outputs = await Promise.all([
       pool.runTask('convertPart', {
-        fileName: 'a.mp4',
-        fileBytes: new Uint8Array([1]),
-        isStillImage: false,
-        srcWidth: 1280,
-        srcHeight: 720,
-        duration: 2,
-        gifFps: 15,
-        minGifFps: 10,
-        disableOptimizations: false,
-        maxGifKb: 5000,
-        targetGifKb: 4500,
-        optimizationMode: 'hybrid',
-        enableQualityRecovery: true,
-        standardRetriesEnabled: true,
-        retryAllowFpsDrop: true,
-        retryAllowQualityDrop: true,
-        lossyOversize: true,
-        lossyLevel: 2,
-        lossyMaxAttempts: 24,
-        partIndex: 0,
-        parts: 5,
-        partWidth: 150,
+        ...convertPartPayload(0),
       }, {
         onProgress: (_, stage) => {
           progressStages.push(stage)
         },
       }),
-      pool.runTask('convertPart', {
-        fileName: 'a.mp4',
-        fileBytes: new Uint8Array([1]),
-        isStillImage: false,
-        srcWidth: 1280,
-        srcHeight: 720,
-        duration: 2,
-        gifFps: 15,
-        minGifFps: 10,
-        disableOptimizations: false,
-        maxGifKb: 5000,
-        targetGifKb: 4500,
-        optimizationMode: 'hybrid',
-        enableQualityRecovery: true,
-        standardRetriesEnabled: true,
-        retryAllowFpsDrop: true,
-        retryAllowQualityDrop: true,
-        lossyOversize: true,
-        lossyLevel: 2,
-        lossyMaxAttempts: 24,
-        partIndex: 1,
-        parts: 5,
-        partWidth: 150,
-      }),
+      pool.runTask('convertPart', convertPartPayload(1)),
     ])
 
     expect(outputs[0].name).toBe('a_part_01.gif')
@@ -201,34 +191,75 @@ describe('worker pool', () => {
       workerFactory: () => new FakeWorker() as unknown as Worker,
     })
 
-    const promise = pool.runTask('convertPart', {
-      fileName: 'a.mp4',
-      fileBytes: new Uint8Array([1]),
-      isStillImage: false,
-      srcWidth: 1280,
-      srcHeight: 720,
-      duration: 2,
-      gifFps: 15,
-      minGifFps: 10,
-      disableOptimizations: false,
-      maxGifKb: 5000,
-      targetGifKb: 4500,
-      optimizationMode: 'hybrid',
-      enableQualityRecovery: true,
-      standardRetriesEnabled: true,
-      retryAllowFpsDrop: true,
-      retryAllowQualityDrop: true,
-      lossyOversize: true,
-      lossyLevel: 2,
-      lossyMaxAttempts: 24,
-      partIndex: 0,
-      parts: 5,
-      partWidth: 150,
-    })
+    const promise = pool.runTask('convertPart', convertPartPayload(0))
 
     pool.cancelAll('stop')
 
     await expect(promise).rejects.toThrow('stop')
+    pool.dispose()
+  })
+
+  it('keeps tasks with the same affinity key on the same worker slot', async () => {
+    const workers: FakeWorker[] = []
+    const pool = new FFmpegWorkerPool({
+      workerCount: 2,
+      workerFactory: () => {
+        const worker = new FakeWorker()
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    await pool.runTask('convertPart', convertPartPayload(0), { affinityKey: 'part-1' })
+    await pool.runTask('convertPart', convertPartPayload(0), { affinityKey: 'part-1' })
+
+    expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'convertPart').length))
+      .toEqual([2, 0])
+    pool.dispose()
+  })
+
+  it('runs different affinity keys in parallel on separate idle workers', async () => {
+    const workers: FakeWorker[] = []
+    const pool = new FFmpegWorkerPool({
+      workerCount: 2,
+      workerFactory: () => {
+        const worker = new FakeWorker(20)
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    const first = pool.runTask('convertPart', convertPartPayload(0), { affinityKey: 'part-1' })
+    const second = pool.runTask('convertPart', convertPartPayload(1), { affinityKey: 'part-2' })
+
+    expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'convertPart').length))
+      .toEqual([1, 1])
+
+    await Promise.all([first, second])
+    pool.dispose()
+  })
+
+  it('does not let a blocked affinity task starve unrelated queued work', async () => {
+    const workers: FakeWorker[] = []
+    const pool = new FFmpegWorkerPool({
+      workerCount: 2,
+      workerFactory: () => {
+        const worker = new FakeWorker(20)
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    const first = pool.runTask('convertPart', convertPartPayload(0), { affinityKey: 'part-1' })
+    const sameAffinity = pool.runTask('convertPart', convertPartPayload(0), { affinityKey: 'part-1' })
+    const unrelated = pool.runTask('convertPart', convertPartPayload(1))
+
+    expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'convertPart').length))
+      .toEqual([1, 1])
+
+    await Promise.all([first, sameAffinity, unrelated])
+    expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'convertPart').length))
+      .toEqual([2, 1])
     pool.dispose()
   })
 })

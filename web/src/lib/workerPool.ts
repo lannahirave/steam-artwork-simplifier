@@ -20,6 +20,7 @@ interface TaskRecord {
   payload: WorkerRequestPayloadMap[WorkerCommand]
   transferables: Transferable[]
   onProgress?: ProgressCallback
+  affinityKey?: string
   timeoutMs: number
   resolve: (value: unknown) => void
   reject: (error: Error) => void
@@ -53,6 +54,7 @@ export class FFmpegWorkerPool {
   private slots: WorkerSlot[] = []
   private queue: TaskRecord[] = []
   private inFlight = new Map<string, InFlightTask>()
+  private affinitySlots = new Map<string, number>()
   private warmedUp = false
 
   constructor(options: WorkerPoolOptions) {
@@ -79,7 +81,7 @@ export class FFmpegWorkerPool {
   runTask<T extends WorkerCommand>(
     command: T,
     payload: WorkerRequestPayloadMap[T],
-    options?: { onProgress?: ProgressCallback; transferables?: Transferable[]; timeoutMs?: number },
+    options?: { onProgress?: ProgressCallback; transferables?: Transferable[]; timeoutMs?: number; affinityKey?: string },
   ): Promise<WorkerResultDataMap[T]> {
     const request = buildWorkerRequest(command, payload)
     return new Promise<WorkerResultDataMap[T]>((resolve, reject) => {
@@ -89,6 +91,7 @@ export class FFmpegWorkerPool {
         payload: payload as WorkerRequestPayloadMap[WorkerCommand],
         transferables: options?.transferables ?? [],
         onProgress: options?.onProgress,
+        affinityKey: options?.affinityKey,
         timeoutMs: options?.timeoutMs ?? 0,
         resolve: resolve as (value: unknown) => void,
         reject,
@@ -232,9 +235,9 @@ export class FFmpegWorkerPool {
         continue
       }
 
-      const task = this.queue.shift()
+      const task = this.takeNextTaskForWorker(i)
       if (!task) {
-        return
+        continue
       }
 
       slot.busy = true
@@ -280,5 +283,29 @@ export class FFmpegWorkerPool {
         task.reject(error instanceof Error ? error : new Error(String(error)))
       }
     }
+  }
+
+  private takeNextTaskForWorker(workerIndex: number): TaskRecord | undefined {
+    for (let queueIndex = 0; queueIndex < this.queue.length; queueIndex += 1) {
+      const task = this.queue[queueIndex]
+      if (!this.canRunTaskOnWorker(task, workerIndex)) {
+        continue
+      }
+
+      this.queue.splice(queueIndex, 1)
+      if (task.affinityKey && !this.affinitySlots.has(task.affinityKey)) {
+        this.affinitySlots.set(task.affinityKey, workerIndex)
+      }
+      return task
+    }
+    return undefined
+  }
+
+  private canRunTaskOnWorker(task: TaskRecord, workerIndex: number): boolean {
+    if (!task.affinityKey) {
+      return true
+    }
+    const assignedWorker = this.affinitySlots.get(task.affinityKey)
+    return assignedWorker === undefined || assignedWorker === workerIndex
   }
 }

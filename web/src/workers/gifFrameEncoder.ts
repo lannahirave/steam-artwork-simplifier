@@ -1,11 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import {
-  clampGifskiQuality,
-  createQualityBinarySearch,
-  nextQualityBinaryProbe,
-  recordQualityBinaryProbe,
-} from '../lib/gifskiQuality'
-import type { FixedQualitySearch } from '../lib/types'
+import { clampGifskiQuality } from '../lib/gifskiQuality'
 import {
   buildGifFrameCacheKey,
   type DecodedGifFrames,
@@ -249,53 +243,6 @@ export async function encodeGifCandidates(
     }
 
     return results
-  })
-}
-
-export async function encodeGifQualitySearch(
-  options: Omit<EncodeGifOptions, 'quality'>,
-  search: FixedQualitySearch,
-  budgetKb: number,
-): Promise<EncodeGifCandidateResult> {
-  return withDecodedGifFrames(options, async (frames) => {
-    let state = createQualityBinarySearch(search.lowExclusive, search.highInclusive)
-    let bestFit: EncodeGifCandidateResult | null = null
-    let lastResult: EncodeGifCandidateResult | null = null
-
-    if (state.high <= state.low) {
-      throw new Error(`Invalid quality search range: ${state.low}..${state.high}.`)
-    }
-
-    let quality = nextQualityBinaryProbe(state)
-    while (quality !== null) {
-      const result = await encodeFrameSet(options, frames, quality)
-      lastResult = result
-
-      const accepted = result.sizeKb <= budgetKb
-      state = recordQualityBinaryProbe(state, quality, accepted)
-      if (accepted) {
-        bestFit = !bestFit || result.quality > bestFit.quality ? result : bestFit
-        options.postProgress(
-          options.requestId,
-          'quality-recovery',
-          `Binary quality probe accepted: quality=${quality}, ${result.sizeKb.toFixed(1)}KB <= ${budgetKb}KB.`,
-        )
-      } else {
-        options.postProgress(
-          options.requestId,
-          'quality-recovery',
-          `Binary quality probe rejected: quality=${quality}, ${result.sizeKb.toFixed(1)}KB > ${budgetKb}KB.`,
-        )
-      }
-      quality = nextQualityBinaryProbe(state)
-    }
-
-    const selected = bestFit ?? lastResult
-    if (!selected) {
-      throw new Error('No GIF quality search probes were produced.')
-    }
-
-    return selected
   })
 }
 
