@@ -1,11 +1,16 @@
 import {
   allItemsFit,
-  buildQualityRecoveryCandidates,
   buildSharedFpsRecoveryCandidates,
   selectBatchRecoveryBudget,
 } from './sizeStrategy'
-import { clampGifskiQuality } from './gifskiQuality'
-import type { FixedQualitySearch, WorkerArtifactData } from './types'
+import {
+  clampGifskiQuality,
+  createQualityBinarySearch,
+  nextQualityBinaryProbe,
+  recordQualityBinaryProbe,
+  type QualityBinarySearchState,
+} from './gifskiQuality'
+import type { WorkerArtifactData } from './types'
 
 export interface SplitRecoveryOptions {
   items: WorkerArtifactData[]
@@ -17,14 +22,22 @@ export interface SplitRecoveryOptions {
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean
   runFixedSplitPart: (partIndex: number, fps: number, quality: number, label: string) => Promise<WorkerArtifactData>
-  runFixedSplitPartQualitySearch: (
+  runFixedSplitPartQualityProbe: (
     partIndex: number,
     fps: number,
-    search: FixedQualitySearch,
+    quality: number,
     budgetKb: number,
     label: string,
   ) => Promise<WorkerArtifactData>
   emit: (stage: string, message: string) => void
+}
+
+interface QualityRecoveryState {
+  partIndex: number
+  current: WorkerArtifactData
+  search: QualityBinarySearchState
+  accepted: WorkerArtifactData
+  acceptedQuality: number
 }
 
 export function partIndexFromName(name: string): number {
@@ -32,19 +45,17 @@ export function partIndexFromName(name: string): number {
   return match ? Number.parseInt(match[1], 10) - 1 : 0
 }
 
-async function recoverPartQuality(
+function createQualityRecoveryState(
   current: WorkerArtifactData,
   partIndex: number,
-  fps: number,
   budgetKb: number,
   options: SplitRecoveryOptions,
-): Promise<WorkerArtifactData> {
-  let accepted = current
-  let acceptedQuality = clampGifskiQuality(current.finalQuality)
+): QualityRecoveryState | null {
+  const acceptedQuality = clampGifskiQuality(current.finalQuality)
   const headroom = budgetKb - current.sizeKb
 
   if (acceptedQuality >= 100 || headroom <= 0) {
-    return accepted
+    return null
   }
 
   options.emit(
@@ -52,69 +63,79 @@ async function recoverPartQuality(
     `${options.label} quality recovery for ${current.name}: ${headroom.toFixed(1)}KB headroom.`,
   )
 
-  const acceptAttempt = (attempt: WorkerArtifactData, kind: string): boolean => {
-    const candidateQuality = clampGifskiQuality(attempt.finalQuality)
-    if (candidateQuality <= acceptedQuality) {
-      return false
-    }
-    if (attempt.sizeKb > budgetKb) {
-      options.emit(
-        'quality-recovery',
-        `${options.label} ${kind} quality recovery rejected for ${current.name}: quality=${candidateQuality} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
-      )
-      return false
-    }
-
-    accepted = {
-      ...attempt,
-      finalQuality: candidateQuality,
-    }
-    acceptedQuality = candidateQuality
-    options.emit(
-      'quality-recovery',
-      `${options.label} accepted ${current.name} at quality=${candidateQuality}: ${attempt.sizeKb.toFixed(1)}KB.`,
-    )
-    return true
+  return {
+    partIndex,
+    current,
+    search: createQualityBinarySearch(acceptedQuality, 100),
+    accepted: current,
+    acceptedQuality,
   }
+}
 
-  const searchQualityRange = async (acceptedLow: number, highInclusive: number): Promise<WorkerArtifactData | null> => {
-    const low = clampGifskiQuality(acceptedLow)
-    const high = clampGifskiQuality(highInclusive)
-    if (high <= low) {
-      return null
-    }
-    const attempt = await options.runFixedSplitPartQualitySearch(
-      partIndex,
-      fps,
-      {
-        lowExclusive: low,
-        highInclusive: high,
-      },
-      budgetKb,
-      `${options.label} quality recovery: binary searching ${current.name} quality ${low + 1}-${high}.`,
-    )
-    return acceptAttempt(attempt, 'range') ? attempt : null
-  }
+async function recoverPartQualityWave(
+  states: QualityRecoveryState[],
+  fps: number,
+  budgetKb: number,
+  options: SplitRecoveryOptions,
+): Promise<void> {
+  let wave = 1
 
-  const ladderCandidates = buildQualityRecoveryCandidates({
-    fps,
-    quality: acceptedQuality,
-    allowQualityDrop: true,
-  })
+  while (true) {
+    const probes = states
+      .map((state) => ({
+        state,
+        quality: nextQualityBinaryProbe(state.search),
+      }))
+      .filter((probe): probe is { state: QualityRecoveryState; quality: number } => probe.quality !== null)
 
-  for (const candidate of ladderCandidates) {
-    const previousAcceptedQuality = acceptedQuality
-    const fit = await searchQualityRange(previousAcceptedQuality, candidate.quality)
-    if (!fit || acceptedQuality < candidate.quality) {
+    if (probes.length === 0) {
       break
     }
+
+    options.emit('quality-recovery', `${options.label} quality recovery wave ${wave}: probing ${probes.length} part(s).`)
+    const attempts = await Promise.all(probes.map(({ state, quality }) =>
+      options.runFixedSplitPartQualityProbe(
+        state.partIndex,
+        fps,
+        quality,
+        budgetKb,
+        `${options.label} quality recovery wave ${wave}: probing ${state.current.name} at quality=${quality}.`,
+      ).then((attempt) => ({ state, quality, attempt })),
+    ))
+
+    for (const { state, quality, attempt } of attempts) {
+      const candidateQuality = clampGifskiQuality(attempt.finalQuality)
+      const accepted = candidateQuality > state.acceptedQuality && attempt.sizeKb <= budgetKb
+      state.search = recordQualityBinaryProbe(state.search, quality, accepted)
+
+      if (!accepted) {
+        options.emit(
+          'quality-recovery',
+          `${options.label} quality probe rejected for ${state.current.name}: quality=${candidateQuality} produced ${attempt.sizeKb.toFixed(1)}KB over ${budgetKb}KB.`,
+        )
+        continue
+      }
+
+      state.accepted = {
+        ...attempt,
+        finalQuality: candidateQuality,
+      }
+      state.acceptedQuality = candidateQuality
+      options.emit(
+        'quality-recovery',
+        `${options.label} quality probe accepted for ${state.current.name}: quality=${candidateQuality}, ${attempt.sizeKb.toFixed(1)}KB.`,
+      )
+    }
+
+    wave += 1
   }
 
-  options.emit(
-    'quality-recovery',
-    `${options.label} final quality recovery for ${current.name}: quality=${accepted.finalQuality}, ${accepted.sizeKb.toFixed(1)}KB.`,
-  )
-  return accepted
+  for (const state of states) {
+    options.emit(
+      'quality-recovery',
+      `${options.label} final quality recovery for ${state.current.name}: quality=${state.accepted.finalQuality}, ${state.accepted.sizeKb.toFixed(1)}KB.`,
+    )
+  }
 }
 
 export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): Promise<WorkerArtifactData[]> {
@@ -188,14 +209,22 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   }
 
   const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
-  await Promise.all(options.partOrder.map(async (partIndex) => {
+  const recoveryStates: QualityRecoveryState[] = []
+  for (const partIndex of options.partOrder) {
     const current = byIndex.get(partIndex)
     if (!current) {
-      return
+      continue
     }
-    const recovered = await recoverPartQuality(current, partIndex, currentFps, budgetKb, options)
-    byIndex.set(partIndex, recovered)
-  }))
+    const state = createQualityRecoveryState(current, partIndex, budgetKb, options)
+    if (state) {
+      recoveryStates.push(state)
+    }
+  }
+
+  await recoverPartQualityWave(recoveryStates, currentFps, budgetKb, options)
+  for (const state of recoveryStates) {
+    byIndex.set(state.partIndex, state.accepted)
+  }
 
   return Array.from(byIndex.entries())
     .sort(([left], [right]) => left - right)

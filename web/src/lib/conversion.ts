@@ -14,7 +14,6 @@ import type {
   ConversionConfig,
   ConversionInput,
   ConversionResult,
-  FixedQualitySearch,
   SourceProbe,
   WorkerArtifactData,
 } from './types'
@@ -192,7 +191,6 @@ export async function convertVideo(
         | 'enableQualityRecovery'
         | 'fixedQuality'
         | 'fixedQualityCandidates'
-        | 'fixedQualitySearch'
         | 'fixedQualityMaxKb'
       >
     > = {},
@@ -212,7 +210,6 @@ export async function convertVideo(
     enableQualityRecovery: overrides.enableQualityRecovery ?? true,
     fixedQuality: overrides.fixedQuality,
     fixedQualityCandidates: overrides.fixedQualityCandidates,
-    fixedQualitySearch: overrides.fixedQualitySearch,
     fixedQualityMaxKb: overrides.fixedQualityMaxKb,
     standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
     retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
@@ -245,7 +242,6 @@ export async function convertVideo(
         | 'enableQualityRecovery'
         | 'fixedQuality'
         | 'fixedQualityCandidates'
-        | 'fixedQualitySearch'
         | 'fixedQualityMaxKb'
       >
     > = {},
@@ -307,10 +303,10 @@ export async function convertVideo(
     }
   }
 
-  const runFixedSplitPartQualitySearch = async (
+  const runFixedSplitPartQualityProbe = async (
     partIndex: number,
     fps: number,
-    search: FixedQualitySearch,
+    quality: number,
     budgetKb: number,
     label: string,
   ): Promise<WorkerArtifactData> => {
@@ -329,12 +325,13 @@ export async function convertVideo(
         maxGifKb: Number.MAX_SAFE_INTEGER,
         targetGifKb: Number.MAX_SAFE_INTEGER,
         enableQualityRecovery: false,
-        fixedQualitySearch: search,
+        fixedQualityCandidates: [quality],
         fixedQualityMaxKb: budgetKb,
       }),
       {
         onProgress: workerProgress(partIndex),
         timeoutMs: 6 * 60_000,
+        affinityKey: `split-quality:${partIndex}:${fps}:${budgetKb}`,
       },
     )
     return {
@@ -525,7 +522,7 @@ export async function convertVideo(
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowQualityDrop: config.retryAllowQualityDrop,
           runFixedSplitPart,
-          runFixedSplitPartQualitySearch,
+          runFixedSplitPartQualityProbe,
           emit,
         })
       }

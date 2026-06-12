@@ -115,7 +115,6 @@ export interface ConvertPayloadBase {
   enableQualityRecovery: boolean
   fixedQuality?: number
   fixedQualityCandidates?: number[]
-  fixedQualitySearch?: FixedQualitySearch
   fixedQualityMaxKb?: number
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
@@ -124,11 +123,6 @@ export interface ConvertPayloadBase {
   lossyLevel: number
   lossyMaxAttempts: number
   startOffsetSec?: number
-}
-
-export interface FixedQualitySearch {
-  lowExclusive: number
-  highInclusive: number
 }
 
 export interface ConvertPartPayload extends ConvertPayloadBase {
