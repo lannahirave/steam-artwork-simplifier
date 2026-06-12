@@ -135,8 +135,11 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   if (options.retryAllowFpsDrop && currentFps < options.originalFps) {
     for (const fps of buildSharedFpsRecoveryCandidates(currentFps, options.originalFps)) {
       const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
-      const limiterPartIndex = options.partOrder[0]
-      const limiterCurrent = byIndex.get(limiterPartIndex)
+      const limiterEntry = Array.from(byIndex.entries()).reduce((largest, entry) =>
+        entry[1].sizeKb > largest[1].sizeKb ? entry : largest,
+      )
+      const limiterPartIndex = limiterEntry[0]
+      const limiterCurrent = limiterEntry[1]
       const limiterAttempt = await options.runFixedSplitPart(
         limiterPartIndex,
         fps,
@@ -185,14 +188,14 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   }
 
   const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
-  for (const partIndex of options.partOrder) {
+  await Promise.all(options.partOrder.map(async (partIndex) => {
     const current = byIndex.get(partIndex)
     if (!current) {
-      continue
+      return
     }
     const recovered = await recoverPartQuality(current, partIndex, currentFps, budgetKb, options)
     byIndex.set(partIndex, recovered)
-  }
+  }))
 
   return Array.from(byIndex.entries())
     .sort(([left], [right]) => left - right)
