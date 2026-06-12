@@ -24,6 +24,7 @@ interface BestEncodeResult {
 export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | 'ffmpegLogBuffer'> {
   postProgress: WorkerProgressSink
   inputName: string
+  sourceCacheKey?: string
   baseFilter: string
   isStillImage: boolean
   gifFps: number
@@ -44,6 +45,7 @@ export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | '
   lossyMaxAttempts: number
   startOffsetSec: number
   requestId: string
+  frameCache?: GifFrameCache
 }
 
 function encodeAttempt(
@@ -60,6 +62,7 @@ function encodeAttempt(
     postProgress: options.postProgress,
     requestId: options.requestId,
     inputName: options.inputName,
+    sourceCacheKey: options.sourceCacheKey,
     outputTag,
     vf,
     fps,
@@ -84,6 +87,7 @@ async function encodeFixedQualityCandidates(
       postProgress: options.postProgress,
       requestId: options.requestId,
       inputName: options.inputName,
+      sourceCacheKey: options.sourceCacheKey,
       outputTag: `fixed-quality-${options.requestId}`,
       vf,
       fps: options.gifFps,
@@ -115,7 +119,7 @@ async function encodeFixedQualityCandidates(
 }
 
 export async function searchBestEncode(options: SearchEncodeOptions): Promise<BestEncodeResult> {
-  const frameCache = createGifFrameCache()
+  const frameCache = options.frameCache ?? createGifFrameCache()
 
   if (options.isStillImage) {
     options.postProgress(options.requestId, 'convert', 'Static image source detected: resize-only encode.')

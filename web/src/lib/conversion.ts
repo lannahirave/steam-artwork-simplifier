@@ -121,6 +121,13 @@ export async function convertVideo(
 
   emit('input', `Loading file ${input.file.name}.`)
   const sourceBytes = new Uint8Array(await input.file.arrayBuffer())
+  const sourceCacheKey = [
+    input.file.name,
+    input.file.size,
+    input.file.lastModified,
+    Date.now(),
+    Math.random().toString(16).slice(2),
+  ].join(':')
   const imageLikeSource = isLikelyImageSource(input.file)
 
   emit('probe', 'Probing source dimensions and duration.')
@@ -197,6 +204,7 @@ export async function convertVideo(
   ): ConvertPartPayload => ({
     fileName: input.file.name,
     fileBytes: sourceBytes.slice(),
+    sourceCacheKey,
     isStillImage,
     srcWidth: probe.width,
     srcHeight: probe.height,
@@ -348,6 +356,7 @@ export async function convertVideo(
         {
           fileName: input.file.name,
           fileBytes: sourceBytes.slice(),
+          sourceCacheKey,
           isStillImage,
           srcWidth: probe.width,
           srcHeight: probe.height,
@@ -381,6 +390,7 @@ export async function convertVideo(
         {
           fileName: input.file.name,
           fileBytes: sourceBytes.slice(),
+          sourceCacheKey,
           isStillImage,
           srcWidth: probe.width,
           srcHeight: probe.height,

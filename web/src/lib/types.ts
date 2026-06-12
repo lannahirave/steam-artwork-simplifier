@@ -102,6 +102,7 @@ export interface ProbePayload {
 export interface ConvertPayloadBase {
   fileName: string
   fileBytes: Uint8Array
+  sourceCacheKey: string
   isStillImage: boolean
   srcWidth: number
   srcHeight: number

@@ -126,6 +126,7 @@ function convertPartPayload(partIndex: number) {
   return {
     fileName: 'a.mp4',
     fileBytes: new Uint8Array([1]),
+    sourceCacheKey: 'test-source',
     isStillImage: false,
     srcWidth: 1280,
     srcHeight: 720,

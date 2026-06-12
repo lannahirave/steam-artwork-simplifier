@@ -2,6 +2,7 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { clampGifskiQuality } from '../lib/gifskiQuality'
 import {
   buildGifFrameCacheKey,
+  rememberDecodedGifFrames,
   type DecodedGifFrames,
   type GifFrameCache,
 } from './gifFrameCache'
@@ -20,6 +21,7 @@ export interface EncodeGifOptions {
   postProgress: WorkerProgressSink
   requestId: string
   inputName: string
+  sourceCacheKey?: string
   outputTag: string
   vf: string
   fps: number
@@ -174,7 +176,7 @@ async function withDecodedGifFrames<T>(
       count: framePaths.length,
     }
     if (cacheKey) {
-      options.frameCache?.set(cacheKey, decodedFrames)
+      rememberDecodedGifFrames(options.frameCache!, cacheKey, decodedFrames, 12)
     }
 
     return await run(decodedFrames)

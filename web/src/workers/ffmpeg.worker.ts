@@ -19,11 +19,13 @@ import {
 } from './workerGeometry'
 import { postError, postProgress, postResult } from './workerMessaging'
 import { runProbe } from './mediaProbe'
+import { createGifFrameCache } from './gifFrameCache'
 
 declare const self: DedicatedWorkerGlobalScope
 
 const ffmpeg = new FFmpeg()
 const ffmpegLogBuffer: string[] = []
+const frameCache = createGifFrameCache()
 let loaded = false
 let currentRequestId = ''
 
@@ -65,6 +67,7 @@ function buildSearchOptions(
     ffmpegLogBuffer,
     postProgress,
     inputName,
+    sourceCacheKey: payload.sourceCacheKey,
     baseFilter,
     isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
@@ -85,6 +88,7 @@ function buildSearchOptions(
     lossyMaxAttempts: payload.lossyMaxAttempts,
     startOffsetSec: payload.startOffsetSec ?? 0,
     requestId,
+    frameCache,
   }
 }
 

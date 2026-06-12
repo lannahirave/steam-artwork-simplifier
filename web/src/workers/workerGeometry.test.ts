@@ -4,6 +4,7 @@ import { buildFeaturedGeometry, buildGuideGeometry, buildPartGeometry } from './
 const basePayload = {
   fileName: 'clip.mp4',
   fileBytes: new Uint8Array(),
+  sourceCacheKey: 'test-source',
   isStillImage: false,
   srcWidth: 1200,
   srcHeight: 600,
