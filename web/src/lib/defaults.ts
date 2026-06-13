@@ -5,6 +5,7 @@ export const DEFAULTS = {
   minGifFps: 10,
   workshop: {
     parts: 5,
+    rows: 3,
     partWidth: 150,
     maxGifKb: 5000,
     targetGifKb: 4500,
@@ -98,6 +99,7 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     gifFps: DEFAULTS.gifFps,
     minGifFps: DEFAULTS.minGifFps,
     parts: preset === 'showcase' ? DEFAULTS.showcase.splitWidths.length : DEFAULTS.workshop.parts,
+    workshopRows: DEFAULTS.workshop.rows,
     partWidth: preset === 'showcase' ? DEFAULTS.showcase.splitWidths[0] : DEFAULTS.workshop.partWidth,
     featuredWidth: DEFAULTS.featured.width,
     disableOptimizations: DEFAULTS.disableOptimizations,
@@ -160,6 +162,7 @@ export function applyPreset(config: ConversionConfig, preset: Preset): Conversio
     return {
       ...next,
       parts: DEFAULTS.showcase.splitWidths.length,
+      workshopRows: DEFAULTS.workshop.rows,
       partWidth: DEFAULTS.showcase.splitWidths[0],
       workerCount: getDefaultWorkerCount(DEFAULTS.showcase.splitWidths.length),
       maxGifKb: DEFAULTS.showcase.maxGifKb,
@@ -169,6 +172,7 @@ export function applyPreset(config: ConversionConfig, preset: Preset): Conversio
 
   return {
     ...next,
+    workshopRows: DEFAULTS.workshop.rows,
     workerCount: getDefaultWorkerCount(config.parts),
     maxGifKb: DEFAULTS.workshop.maxGifKb,
     targetGifKb: DEFAULTS.workshop.targetGifKb,

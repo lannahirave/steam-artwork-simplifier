@@ -40,6 +40,26 @@ describe('precheck math', () => {
     expect(result.shouldBlock).toBe(false)
   })
 
+  it('estimates multi-row cells with sample height while retaining full source target height', () => {
+    const result = runPrecheck({
+      srcWidth: 1920,
+      srcHeight: 1080,
+      duration: 10,
+      parts: 15,
+      partWidth: 150,
+      totalTargetWidth: 750,
+      sampleGifWidth: 150,
+      sampleGifHeight: 141,
+      minGifFps: 10,
+      maxGifKb: 5000,
+      precheckBppf: 0.1,
+      precheckMarginPct: 10,
+    })
+
+    expect(result.sourceTargetHeight).toBe(422)
+    expect(result.estimatedKb).toBeCloseTo(206.5, 1)
+  })
+
   it('estimates fps from size target and dimensions', () => {
     const fps = estimateFpsForTargetKb(150, 150, 10, 4500, 0.1)
     expect(fps).toBe(204)

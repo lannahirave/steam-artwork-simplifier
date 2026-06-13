@@ -108,8 +108,16 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
       buildSearchOptions(requestId, payload, inputName, geometry.baseFilter),
     )
 
+    const columns = Math.max(1, Math.floor(payload.splitColumns ?? payload.parts))
+    const rows = Math.max(1, Math.floor(payload.splitRows ?? 1))
+    const columnIndex = payload.partIndex % columns
+    const rowIndex = Math.floor(payload.partIndex / columns)
+    const outputName = rows > 1
+      ? `${sourceBaseName(payload.fileName)}_row_${String(rowIndex + 1).padStart(2, '0')}_part_${String(columnIndex + 1).padStart(2, '0')}.gif`
+      : `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
+
     return {
-      name: `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`,
+      name: outputName,
       fileBytes: best.bytes,
       sizeKb: best.sizeKb,
       width: geometry.outputWidth,

@@ -42,6 +42,25 @@ describe('worker geometry', () => {
     })
   })
 
+  it('builds workshop grid filters from columns and row heights', () => {
+    expect(
+      buildPartGeometry({
+        ...basePayload,
+        partIndex: 7,
+        parts: 15,
+        partWidth: 150,
+        splitWidths: [150, 150, 150, 150, 150],
+        splitColumns: 5,
+        splitRows: 3,
+        splitRowHeights: [140, 125, 110],
+      }),
+    ).toEqual({
+      baseFilter: 'scale=750:375:flags=bicubic,crop=150:125:300:140',
+      outputWidth: 150,
+      targetHeight: 125,
+    })
+  })
+
   it('builds single-output featured and guide filters', () => {
     expect(buildFeaturedGeometry({ ...basePayload, featuredWidth: 630 })).toEqual({
       baseFilter: 'scale=630:315:flags=bicubic',

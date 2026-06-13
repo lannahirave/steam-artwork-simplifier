@@ -22,6 +22,7 @@ export interface SplitRecoveryOptions {
   originalFps: number
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean
+  splitColumns?: number
   runFixedSplitPart: (partIndex: number, fps: number, quality: number, label: string) => Promise<WorkerArtifactData>
   runFixedSplitPartQualityProbe: (
     partIndex: number,
@@ -45,7 +46,13 @@ interface QualityRecoveryState {
   done: boolean
 }
 
-export function partIndexFromName(name: string): number {
+export function partIndexFromName(name: string, columns = 1): number {
+  const gridMatch = /_row_(\d+)_part_(\d+)\.gif$/i.exec(name)
+  if (gridMatch) {
+    const row = Number.parseInt(gridMatch[1], 10) - 1
+    const column = Number.parseInt(gridMatch[2], 10) - 1
+    return row * Math.max(1, columns) + column
+  }
   const match = /_part_(\d+)\.gif$/i.exec(name)
   return match ? Number.parseInt(match[1], 10) - 1 : 0
 }
@@ -207,7 +214,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
 
   if (options.retryAllowFpsDrop && currentFps < options.originalFps) {
     for (const fps of buildSharedFpsRecoveryCandidates(currentFps, options.originalFps)) {
-      const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
+      const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name, options.splitColumns), item]))
       const limiterEntry = Array.from(byIndex.entries()).reduce((largest, entry) =>
         entry[1].sizeKb > largest[1].sizeKb ? entry : largest,
       )
@@ -260,7 +267,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
     return currentItems
   }
 
-  const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name), item]))
+  const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name, options.splitColumns), item]))
   const recoveryStates: QualityRecoveryState[] = []
   for (const partIndex of options.partOrder) {
     const current = byIndex.get(partIndex)

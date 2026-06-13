@@ -19,6 +19,8 @@ export interface PresetPlan {
   jobCount: number
   partWidth: number
   splitWidths?: number[]
+  splitColumns: number
+  splitRows: number
   totalTargetWidth: number
   sampleGifWidth: number
   maxGifKb: number
@@ -42,7 +44,10 @@ export function getPresetSplitWidths(config: ConversionConfig): number[] {
 }
 
 export function getPresetJobCount(config: ConversionConfig): number {
-  return getPresetSplitWidths(config).length
+  const splitWidths = getPresetSplitWidths(config)
+  return config.preset === 'workshop'
+    ? splitWidths.length * config.workshopRows
+    : splitWidths.length
 }
 
 export function resolveEstimateBppf(config: ConversionConfig): number {
@@ -53,7 +58,9 @@ export function resolvePresetPlan(config: ConversionConfig): PresetPlan {
   const splitWidths = getPresetSplitWidths(config)
   const isSplit = config.preset === 'workshop' || config.preset === 'showcase'
   const isSingleOutput = !isSplit
-  const jobCount = splitWidths.length
+  const splitColumns = splitWidths.length
+  const splitRows = config.preset === 'workshop' ? config.workshopRows : 1
+  const jobCount = splitColumns * splitRows
   const partWidth = splitWidths[0] ?? 1
   const totalTargetWidth = splitWidths.reduce((sum, width) => sum + width, 0)
   const effectiveWorkerCount = isSplit
@@ -74,7 +81,9 @@ export function resolvePresetPlan(config: ConversionConfig): PresetPlan {
     isSingleOutput,
     jobCount,
     partWidth,
-    splitWidths: config.preset === 'showcase' ? splitWidths : undefined,
+    splitWidths: config.preset === 'showcase' || config.preset === 'workshop' ? splitWidths : undefined,
+    splitColumns,
+    splitRows,
     totalTargetWidth,
     sampleGifWidth: Math.max(...splitWidths),
     maxGifKb: config.maxGifKb,

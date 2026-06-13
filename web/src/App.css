@@ -1180,6 +1180,7 @@ button:disabled {
 }
 
 .results-grid.workshop-strip,
+.results-grid.workshop-grid,
 .results-grid.showcase-strip {
   display: flex;
   align-items: flex-start;
@@ -1188,18 +1189,28 @@ button:disabled {
   padding-bottom: 0.35rem;
 }
 
+.results-grid.workshop-grid {
+  display: grid;
+  grid-template-columns: repeat(var(--workshop-columns, 5), max-content);
+  align-items: start;
+  justify-content: start;
+}
+
 .results-grid.workshop-strip::-webkit-scrollbar,
+.results-grid.workshop-grid::-webkit-scrollbar,
 .results-grid.showcase-strip::-webkit-scrollbar {
   height: 8px;
 }
 
 .results-grid.workshop-strip::-webkit-scrollbar-thumb,
+.results-grid.workshop-grid::-webkit-scrollbar-thumb,
 .results-grid.showcase-strip::-webkit-scrollbar-thumb {
   background: rgba(29, 29, 31, 0.18);
   border-radius: var(--radius-pill);
 }
 
 .results-grid.workshop-strip .result-card,
+.results-grid.workshop-grid .result-card,
 .results-grid.showcase-strip .result-card {
   flex: 0 0 auto;
   min-width: 0;
@@ -1212,6 +1223,7 @@ button:disabled {
 }
 
 .results-grid.workshop-strip .result-card img,
+.results-grid.workshop-grid .result-card img,
 .results-grid.showcase-strip .result-card img {
   display: block;
   width: auto;

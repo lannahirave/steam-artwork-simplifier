@@ -1,5 +1,6 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
+import { computeTargetHeight } from './defaults'
 import {
   analyzeSplitPartWeights,
   estimateFpsForKbTarget,
@@ -8,6 +9,12 @@ import {
 import { recoverSplitBatchQuality } from './splitRecovery'
 import { FFmpegWorkerPool } from './workerPool'
 import { resolvePresetPlan } from './presetPlan'
+import {
+  WORKSHOP_ROW_BALANCE_PASSES,
+  aggregateWorkshopRowSizes,
+  balanceWorkshopRowHeights,
+  distributeEvenly,
+} from './workshopRows'
 import type {
   ConvertPartPayload,
   ConversionArtifact,
@@ -143,6 +150,14 @@ export async function convertVideo(
   const isStillImage = imageLikeSource && probe.duration <= 0.001
 
   const presetPlan = resolvePresetPlan(config)
+  const defaultSplitRowHeights =
+    presetPlan.splitRows > 1
+      ? distributeEvenly(
+          computeTargetHeight(probe.width, probe.height, presetPlan.totalTargetWidth),
+          presetPlan.splitRows,
+        )
+      : undefined
+  let activeSplitRowHeights = defaultSplitRowHeights
 
   if (config.disableOptimizations) {
     const message =
@@ -158,6 +173,9 @@ export async function convertVideo(
       partWidth: presetPlan.partWidth,
       totalTargetWidth: presetPlan.totalTargetWidth,
       sampleGifWidth: presetPlan.sampleGifWidth,
+      sampleGifHeight: defaultSplitRowHeights
+        ? Math.max(...defaultSplitRowHeights)
+        : undefined,
       minGifFps: config.minGifFps,
       maxGifKb: config.maxGifKb,
       precheckBppf: config.precheckBppf,
@@ -202,6 +220,7 @@ export async function convertVideo(
         | 'fixedQuality'
         | 'fixedQualityCandidates'
         | 'fixedQualityMaxKb'
+        | 'splitRowHeights'
       >
     > = {},
   ): ConvertPartPayload => ({
@@ -233,6 +252,9 @@ export async function convertVideo(
     parts: presetPlan.jobCount,
     partWidth: presetPlan.partWidth,
     splitWidths: presetPlan.splitWidths,
+    splitColumns: presetPlan.splitColumns,
+    splitRows: presetPlan.splitRows,
+    splitRowHeights: overrides.splitRowHeights ?? activeSplitRowHeights,
   })
 
   const runSplitBatch = async (
@@ -254,6 +276,7 @@ export async function convertVideo(
         | 'fixedQuality'
         | 'fixedQualityCandidates'
         | 'fixedQualityMaxKb'
+        | 'splitRowHeights'
       >
     > = {},
     partOrder?: number[],
@@ -441,7 +464,7 @@ export async function convertVideo(
       }
       resultData = firstPass
     } else {
-      const sizingPass = await runSplitBatch(
+      let sizingPass = await runSplitBatch(
         config.gifFps,
         false,
         `${splitPresetLabel} pass 1/2: sizing run at fps=${config.gifFps} (no retries).`,
@@ -456,6 +479,45 @@ export async function convertVideo(
           targetGifKb: Number.MAX_SAFE_INTEGER,
         },
       )
+      if (config.preset === 'workshop' && presetPlan.splitRows >= 2 && activeSplitRowHeights) {
+        for (let balancePass = 1; balancePass <= WORKSHOP_ROW_BALANCE_PASSES; balancePass += 1) {
+          const rowSizes = aggregateWorkshopRowSizes(
+            sizingPass,
+            presetPlan.splitColumns,
+            presetPlan.splitRows,
+          )
+          const balance = balanceWorkshopRowHeights(activeSplitRowHeights, rowSizes)
+          if (!balance.changed) {
+            emit(
+              'convert',
+              `${splitPresetLabel} row balance stopped after pass ${balancePass - 1}: row sizes are within threshold.`,
+            )
+            break
+          }
+
+          activeSplitRowHeights = balance.rowHeights
+          emit(
+            'convert',
+            `${splitPresetLabel} row balance pass ${balancePass}: row ${balance.largestRow + 1} is largest; light rows ${balance.lightRows.map((row) => row + 1).join(', ')} receive more height (${activeSplitRowHeights.join('/')}).`,
+          )
+          sizingPass = await runSplitBatch(
+            config.gifFps,
+            false,
+            `${splitPresetLabel} sizing rerun ${balancePass}/${WORKSHOP_ROW_BALANCE_PASSES}: applying balanced row heights.`,
+            {
+              disableOptimizations: true,
+              standardRetriesEnabled: false,
+              retryAllowQualityDrop: false,
+              lossyOversize: false,
+              lossyMaxAttempts: 1,
+              enableQualityRecovery: false,
+              maxGifKb: Number.MAX_SAFE_INTEGER,
+              targetGifKb: Number.MAX_SAFE_INTEGER,
+              splitRowHeights: activeSplitRowHeights,
+            },
+          )
+        }
+      }
       const splitWeights = analyzeSplitPartWeights(
         sizingPass.map((item, index) => ({
           index,
@@ -534,6 +596,7 @@ export async function convertVideo(
           originalFps: config.gifFps,
           retryAllowFpsDrop: config.retryAllowFpsDrop,
           retryAllowQualityDrop: config.retryAllowQualityDrop,
+          splitColumns: presetPlan.splitColumns,
           runFixedSplitPart,
           runFixedSplitPartQualityProbe,
           emit,

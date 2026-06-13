@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import type { ConversionConfig, OptimizationMode } from '../../lib/types'
 import { parseHexByte } from '../../lib/validation'
@@ -40,6 +40,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onDownloadZip,
     onResetConvertState,
     onUpdateWorkshopParts,
+    onUpdateWorkshopRows,
   } = actions
   const {
     convertDisabled,
@@ -57,6 +58,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
     presetPlan,
   } = meta
   const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
+  const resultsGridStyle = resultsGridClassName.includes('workshop-grid')
+    ? ({ '--workshop-columns': config.parts } as CSSProperties)
+    : undefined
 
   async function copyText(section: 'progress', text: string): Promise<void> {
     if (!text) {
@@ -137,6 +141,19 @@ export function ConvertPanel(props: ConvertPanelProps) {
                       setConfig((prev) => ({ ...prev, partWidth: Number.parseInt(event.target.value, 10) || 1 }))
                     }
                   />
+                </label>
+                <label title="Number of vertical rows for Workshop output.">
+                  {intl.formatMessage({ id: 'convert.workshopRows' })}
+                  <select
+                    value={config.workshopRows}
+                    onChange={(event) =>
+                      onUpdateWorkshopRows(Number.parseInt(event.target.value, 10) as ConversionConfig['workshopRows'])
+                    }
+                  >
+                    <option value={1}>{intl.formatMessage({ id: 'convert.option.rows1' })}</option>
+                    <option value={2}>{intl.formatMessage({ id: 'convert.option.rows2' })}</option>
+                    <option value={3}>{intl.formatMessage({ id: 'convert.option.rows3' })}</option>
+                  </select>
                 </label>
               </>
             )}
@@ -513,7 +530,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
               {intl.formatMessage({ id: 'convert.downloadZip' })}
             </button>
           </div>
-          <section className={resultsGridClassName}>
+          <section className={resultsGridClassName} style={resultsGridStyle}>
             {artifactViews.map((item) => (
               <article
                 className="result-card"
