@@ -17,13 +17,29 @@ describe('preset plan', () => {
       label: 'Workshop',
       isSplit: true,
       isSingleOutput: false,
-      jobCount: 5,
+      jobCount: 15,
       partWidth: 150,
+      splitColumns: 5,
+      splitRows: 3,
       totalTargetWidth: 750,
       sampleGifWidth: 150,
       effectiveWorkerCount: config.workerCount,
     })
     expect(getPresetSplitWidths(config)).toEqual([150, 150, 150, 150, 150])
+    expect(getPresetJobCount(config)).toBe(15)
+  })
+
+  it('preserves current workshop job count when configured for one row', () => {
+    const config = {
+      ...getDefaultConfig('workshop'),
+      workshopRows: 1 as const,
+    }
+
+    expect(resolvePresetPlan(config)).toMatchObject({
+      jobCount: 5,
+      splitColumns: 5,
+      splitRows: 1,
+    })
     expect(getPresetJobCount(config)).toBe(5)
   })
 
@@ -37,6 +53,8 @@ describe('preset plan', () => {
       jobCount: 2,
       partWidth: 506,
       splitWidths: [506, 100],
+      splitColumns: 2,
+      splitRows: 1,
       totalTargetWidth: 606,
       sampleGifWidth: 506,
     })

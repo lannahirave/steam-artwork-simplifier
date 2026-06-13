@@ -51,6 +51,20 @@ describe('conversion session helpers', () => {
     })
   })
 
+  it('recognizes multi-row workshop result grids', () => {
+    expect(
+      getArtifactLayoutClassName([
+        artifactView('demo_row_01_part_01.gif'),
+        artifactView('demo_row_01_part_02.gif'),
+        artifactView('demo_row_02_part_01.gif'),
+        artifactView('demo_row_02_part_02.gif'),
+      ]),
+    ).toEqual({
+      isCompactStrip: true,
+      resultsGridClassName: 'results-grid workshop-grid',
+    })
+  })
+
   it('falls back to the regular result grid for non-strip outputs', () => {
     expect(getArtifactLayoutClassName([artifactView('demo_featured.gif')])).toEqual({
       isCompactStrip: false,

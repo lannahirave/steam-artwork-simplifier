@@ -2,12 +2,14 @@ export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
 
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
 export type OptimizationMode = 'hybrid' | 'quality-first' | 'fast-fit'
+export type WorkshopRows = 1 | 2 | 3
 
 export interface ConversionConfig {
   preset: Preset
   gifFps: number
   minGifFps: number
   parts: number
+  workshopRows: WorkshopRows
   partWidth: number
   featuredWidth: number
   disableOptimizations: boolean
@@ -131,6 +133,9 @@ export interface ConvertPartPayload extends ConvertPayloadBase {
   parts: number
   partWidth: number
   splitWidths?: number[]
+  splitColumns?: number
+  splitRows?: number
+  splitRowHeights?: number[]
 }
 
 export interface ConvertFeaturedPayload extends ConvertPayloadBase {

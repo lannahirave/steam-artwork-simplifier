@@ -15,6 +15,7 @@ import { FFmpegWorkerPool } from '../lib/workerPool'
 import { isSupportedConversionSource } from '../lib/validation'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
+import { distributeEvenly } from '../lib/workshopRows'
 import {
   cleanupArtifactViews,
   downloadBlob,
@@ -54,6 +55,7 @@ export interface ConvertActions {
   onDownloadZip: () => void
   onResetConvertState: () => void
   onUpdateWorkshopParts: (parts: number) => void
+  onUpdateWorkshopRows: (rows: ConversionConfig['workshopRows']) => void
 }
 
 export interface ConvertMeta {
@@ -95,18 +97,24 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
   resultsGridClassName: string
 } {
   const isPartNamedOutput = (name: string): boolean => /_part_\d{2}\.gif$/i.test(name)
+  const isWorkshopGridOutput = (name: string): boolean => /_row_\d{2}_part_\d{2}\.gif$/i.test(name)
   const isWorkshopStrip =
     artifactViews.length === 5 &&
     artifactViews.every((item) => isPartNamedOutput(item.artifact.name))
+  const isWorkshopGrid =
+    artifactViews.length > 0 &&
+    artifactViews.every((item) => isWorkshopGridOutput(item.artifact.name))
   const isShowcaseStrip =
     artifactViews.length === 2 &&
     artifactViews.every((item) => isPartNamedOutput(item.artifact.name))
 
   return {
-    isCompactStrip: isWorkshopStrip || isShowcaseStrip,
+    isCompactStrip: isWorkshopStrip || isWorkshopGrid || isShowcaseStrip,
     resultsGridClassName: isWorkshopStrip
       ? 'results-grid workshop-strip'
-      : isShowcaseStrip
+      : isWorkshopGrid
+        ? 'results-grid workshop-grid'
+        : isShowcaseStrip
         ? 'results-grid showcase-strip'
         : 'results-grid',
   }
@@ -344,7 +352,15 @@ export function useConversionSession(): ConvertContextValue {
     setConfig((prev) => ({
       ...prev,
       parts,
-      workerCount: getDefaultWorkerCount(parts),
+      workerCount: getDefaultWorkerCount(parts * prev.workshopRows),
+    }))
+  }
+
+  function updateWorkshopRows(rows: ConversionConfig['workshopRows']): void {
+    setConfig((prev) => ({
+      ...prev,
+      workshopRows: rows,
+      workerCount: getDefaultWorkerCount(prev.parts * rows),
     }))
   }
 
@@ -389,7 +405,10 @@ export function useConversionSession(): ConvertContextValue {
       })
 
       const perGifWidth = plan.sampleGifWidth
-      const targetHeight = computePresetTargetHeight(config, probe.width, probe.height)
+      const totalTargetHeight = computePresetTargetHeight(config, probe.width, probe.height)
+      const targetHeight = plan.splitRows > 1
+        ? Math.max(...distributeEvenly(totalTargetHeight, plan.splitRows))
+        : totalTargetHeight
       const duration = Math.max(0.1, probe.duration)
       const estimateBppf = plan.estimateBppf
 
@@ -480,6 +499,7 @@ export function useConversionSession(): ConvertContextValue {
       onDownloadZip: () => void downloadZip(),
       onResetConvertState: resetConvertState,
       onUpdateWorkshopParts: updateWorkshopParts,
+      onUpdateWorkshopRows: updateWorkshopRows,
     },
     meta: {
       convertDisabled: busy || !sourceFile,
