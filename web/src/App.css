@@ -723,6 +723,7 @@ textarea {
 
 .form-grid > .lossy-group,
 .form-grid > .config-note,
+.form-grid > .advisory-memo,
 .patch-grid > .config-note {
   grid-column: 1 / -1;
 }
@@ -1008,6 +1009,7 @@ button:disabled {
 }
 
 .raw-mode-card,
+.advisory-memo,
 .warn-box,
 .log-box,
 .subpanel,
@@ -1017,6 +1019,31 @@ button:disabled {
 .lossy-group {
   border: 1px solid var(--line);
   background: var(--surface);
+}
+
+.advisory-memo {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0.85rem 1rem;
+  border-color: rgba(0, 113, 227, 0.2);
+  background: linear-gradient(180deg, rgba(0, 113, 227, 0.065), rgba(255, 255, 255, 0.88));
+}
+
+.advisory-memo.memory {
+  border-color: rgba(134, 134, 139, 0.25);
+  background: linear-gradient(180deg, rgba(29, 29, 31, 0.045), rgba(255, 255, 255, 0.9));
+}
+
+.advisory-memo strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.advisory-memo p {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+  line-height: 1.45;
 }
 
 .raw-mode-card {

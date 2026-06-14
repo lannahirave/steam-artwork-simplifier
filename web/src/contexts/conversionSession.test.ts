@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { getArtifactLayoutClassName, toArchiveBaseName } from './conversionSession'
 import type { ArtifactView } from '../agents/appAgents'
+import { getDefaultConfig } from '../lib/defaults'
+import { shouldShowWorkshopMemoryMemo } from '../lib/sourceAdvisories'
 
 function artifactView(name: string): ArtifactView {
   return {
@@ -70,5 +72,9 @@ describe('conversion session helpers', () => {
       isCompactStrip: false,
       resultsGridClassName: 'results-grid',
     })
+  })
+
+  it('shows memory guidance for default Workshop 3-row setup', () => {
+    expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(true)
   })
 })
