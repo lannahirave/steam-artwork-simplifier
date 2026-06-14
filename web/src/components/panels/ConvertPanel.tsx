@@ -56,6 +56,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
     getQualityReductionPercent,
     downloadBlob: onDownloadBlob,
     presetPlan,
+    showLongMp4Memo,
+    showWorkshopMemoryMemo,
   } = meta
   const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
   const resultsGridStyle = resultsGridClassName.includes('workshop-grid')
@@ -116,6 +118,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 onChange={onSourceFileChange}
               />
             </label>
+
+            {showLongMp4Memo && (
+              <div className="advisory-memo">
+                <strong>{intl.formatMessage({ id: 'convert.longMp4Memo.title' })}</strong>
+                <p>{intl.formatMessage({ id: 'convert.longMp4Memo.body' })}</p>
+              </div>
+            )}
 
             {presetPlan.preset === 'workshop' && (
               <>
@@ -280,6 +289,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 }
               />
             </label>
+
+            {showWorkshopMemoryMemo && (
+              <div className="advisory-memo memory">
+                <strong>{intl.formatMessage({ id: 'convert.memoryMemo.title' })}</strong>
+                <p>{intl.formatMessage({ id: 'convert.memoryMemo.body' })}</p>
+              </div>
+            )}
 
             <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
               <button

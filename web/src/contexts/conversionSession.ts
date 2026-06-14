@@ -17,6 +17,11 @@ import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
 import { distributeEvenly } from '../lib/workshopRows'
 import {
+  shouldShowLongMp4Memo,
+  shouldShowWorkshopMemoryMemo,
+  type SourceMediaMetadata,
+} from '../lib/sourceAdvisories'
+import {
   cleanupArtifactViews,
   downloadBlob,
   formatElapsed,
@@ -31,6 +36,7 @@ import {
 export interface ConvertState {
   config: ConversionConfig
   sourceFile: File | null
+  sourceMetadata: SourceMediaMetadata | null
   busy: boolean
   progress: ConversionProgress[]
   logs: string[]
@@ -72,6 +78,8 @@ export interface ConvertMeta {
   getQualityReductionPercent: (finalQuality: number) => number
   downloadBlob: (name: string, blob: Blob) => void
   presetPlan: PresetPlan
+  showLongMp4Memo: boolean
+  showWorkshopMemoryMemo: boolean
 }
 
 export interface ConvertContextValue {
@@ -123,6 +131,7 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
 export function useConversionSession(): ConvertContextValue {
   const [config, setConfig] = useState<ConversionConfig>(() => getDefaultConfig('workshop'))
   const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const [sourceMetadata, setSourceMetadata] = useState<SourceMediaMetadata | null>(null)
   const [busy, setBusy] = useState(false)
   const [progress, setProgress] = useState<ConversionProgress[]>([])
   const [logs, setLogs] = useState<string[]>([])
@@ -181,6 +190,35 @@ export function useConversionSession(): ConvertContextValue {
   const retryFpsEffective = standardRetriesEffective && config.retryAllowFpsDrop
   const retryQualityEffective = standardRetriesEffective && config.retryAllowQualityDrop
   const lossyEffective = !optimizationDisabled && config.lossyOversize
+  const showLongMp4Memo = shouldShowLongMp4Memo(sourceMetadata)
+  const showWorkshopMemoryMemo = shouldShowWorkshopMemoryMemo(config)
+
+  function readVideoDuration(file: File): Promise<number | null> {
+    if (!file.type.trim().toLowerCase().startsWith('video/') && !file.name.trim().toLowerCase().endsWith('.mp4')) {
+      return Promise.resolve(null)
+    }
+
+    return new Promise((resolve) => {
+      const video = document.createElement('video')
+      const url = URL.createObjectURL(file)
+      const cleanup = (): void => {
+        URL.revokeObjectURL(url)
+        video.removeAttribute('src')
+        video.load()
+      }
+      video.preload = 'metadata'
+      video.onloadedmetadata = () => {
+        const duration = Number.isFinite(video.duration) ? video.duration : null
+        cleanup()
+        resolve(duration)
+      }
+      video.onerror = () => {
+        cleanup()
+        resolve(null)
+      }
+      video.src = url
+    })
+  }
 
   function resetConvertState(): void {
     setProgress([])
@@ -368,12 +406,14 @@ export function useConversionSession(): ConvertContextValue {
     const file = event.target.files?.[0] ?? null
     if (!file) {
       setSourceFile(null)
+      setSourceMetadata(null)
       setFpsEstimateInfo('')
       return
     }
 
     if (!isSupportedConversionSource(file)) {
       setSourceFile(null)
+      setSourceMetadata(null)
       setFpsEstimateInfo('')
       setError('Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).')
       event.target.value = ''
@@ -381,8 +421,25 @@ export function useConversionSession(): ConvertContextValue {
     }
 
     setSourceFile(file)
+    setSourceMetadata({
+      durationSec: null,
+      sizeBytes: file.size,
+      mimeType: file.type,
+      name: file.name,
+    })
     setFpsEstimateInfo('')
     setError('')
+    void readVideoDuration(file).then((durationSec) => {
+      setSourceMetadata((current) => {
+        if (!current || current.name !== file.name || current.sizeBytes !== file.size) {
+          return current
+        }
+        return {
+          ...current,
+          durationSec,
+        }
+      })
+    })
   }
 
   async function estimateAndApplyFps(): Promise<void> {
@@ -476,6 +533,7 @@ export function useConversionSession(): ConvertContextValue {
     state: {
       config,
       sourceFile,
+      sourceMetadata,
       busy,
       progress,
       logs,
@@ -515,6 +573,8 @@ export function useConversionSession(): ConvertContextValue {
       getQualityReductionPercent,
       downloadBlob,
       presetPlan,
+      showLongMp4Memo,
+      showWorkshopMemoryMemo,
     },
   }
 }
