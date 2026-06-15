@@ -33,7 +33,8 @@ describe('source advisories', () => {
   })
 
   it('shows the RAM memo for Workshop with 3 rows', () => {
-    expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(true)
+    expect(shouldShowWorkshopMemoryMemo({ ...getDefaultConfig('workshop'), workshopRows: 3 })).toBe(true)
+    expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(false)
     expect(shouldShowWorkshopMemoryMemo({ ...getDefaultConfig('workshop'), workshopRows: 2 })).toBe(false)
     expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('featured'))).toBe(false)
   })

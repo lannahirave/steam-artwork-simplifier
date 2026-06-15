@@ -5,7 +5,7 @@ export const DEFAULTS = {
   minGifFps: 10,
   workshop: {
     parts: 5,
-    rows: 3,
+    rows: 1,
     partWidth: 150,
     maxGifKb: 5000,
     targetGifKb: 4500,
