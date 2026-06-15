@@ -99,8 +99,11 @@ export function ConvertPanel(props: ConvertPanelProps) {
       <div className="config-groups">
         <section className="config-group">
           <h3>{intl.formatMessage({ id: 'convert.sourceLayout' })}</h3>
-          <div className="form-grid">
-            <label title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF.">
+          <div className="form-grid form-grid-source">
+            <label
+              className="field-preset"
+              title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF."
+            >
               {intl.formatMessage({ id: 'convert.preset' })}
               <select value={config.preset} onChange={(event) => onUpdatePreset(event.target.value as ConversionConfig['preset'])}>
                 <option value="workshop">{intl.formatMessage({ id: 'convert.option.workshop' })}</option>
@@ -110,25 +113,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </select>
             </label>
 
-            <label title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
-              {intl.formatMessage({ id: 'convert.sourceFile' })}
-              <input
-                type="file"
-                accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
-                onChange={onSourceFileChange}
-              />
-            </label>
-
-            {showLongMp4Memo && (
-              <div className="advisory-memo">
-                <strong>{intl.formatMessage({ id: 'convert.longMp4Memo.title' })}</strong>
-                <p>{intl.formatMessage({ id: 'convert.longMp4Memo.body' })}</p>
-              </div>
-            )}
-
             {presetPlan.preset === 'workshop' && (
               <>
-                <label title="Number of output slices for workshop preset.">
+                <label className="field-layout" title="Number of output slices for workshop preset.">
                   {intl.formatMessage({ id: 'convert.parts' })}
                   <input
                     type="number"
@@ -140,7 +127,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     }
                   />
                 </label>
-                <label title="Width in pixels of each workshop slice.">
+                <label className="field-layout" title="Width in pixels of each workshop slice.">
                   {intl.formatMessage({ id: 'convert.partWidth' })}
                   <input
                     type="number"
@@ -151,7 +138,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     }
                   />
                 </label>
-                <label title="Number of vertical rows for Workshop output.">
+                <label className="field-layout" title="Number of vertical rows for Workshop output.">
                   {intl.formatMessage({ id: 'convert.workshopRows' })}
                   <select
                     value={config.workshopRows}
@@ -168,7 +155,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
             )}
 
             {presetPlan.preset === 'featured' && (
-              <label title="Width in pixels of the featured output GIF.">
+              <label className="field-layout" title="Width in pixels of the featured output GIF.">
                 {intl.formatMessage({ id: 'convert.featuredWidth' })}
                 <input
                   type="number"
@@ -182,7 +169,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
             )}
 
             {presetPlan.preset === 'guide' && (
-              <label title="Guide preset outputs a centered square GIF at 195x195.">
+              <label className="field-layout" title="Guide preset outputs a centered square GIF at 195x195.">
                 {intl.formatMessage({ id: 'convert.guideSize' })}
                 <input value={intl.formatMessage({ id: 'convert.fixed.guideSize' })} disabled />
               </label>
@@ -190,23 +177,63 @@ export function ConvertPanel(props: ConvertPanelProps) {
 
             {presetPlan.preset === 'showcase' && (
               <>
-                <label title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
+                <label className="field-layout-wide" title="Artwork showcase preset uses a fixed two-part split from a total width of 606 pixels.">
                   {intl.formatMessage({ id: 'convert.showcaseSplit' })}
                   <input value={intl.formatMessage({ id: 'convert.fixed.showcaseSplit' })} disabled />
                 </label>
-                <label title="Total target width used before splitting the showcase output.">
+                <label className="field-layout-wide" title="Total target width used before splitting the showcase output.">
                   {intl.formatMessage({ id: 'convert.showcaseTotalWidth' })}
                   <input value={intl.formatMessage({ id: 'convert.fixed.showcaseWidth' })} disabled />
                 </label>
               </>
+            )}
+
+            <label className="field-source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
+              {intl.formatMessage({ id: 'convert.sourceFile' })}
+              <input
+                type="file"
+                accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
+                onChange={onSourceFileChange}
+              />
+            </label>
+
+            {showLongMp4Memo && (
+              <div className="advisory-memo source-advisory">
+                <strong>{intl.formatMessage({ id: 'convert.longMp4Memo.title' })}</strong>
+                <p>{intl.formatMessage({ id: 'convert.longMp4Memo.body' })}</p>
+              </div>
             )}
           </div>
         </section>
 
         <section className="config-group">
           <h3>{intl.formatMessage({ id: 'convert.frameSize' })}</h3>
-          <div className="form-grid">
-            <label title="Starting frame rate for the first encode pass.">
+          <div className="form-grid form-grid-budget">
+            <label title="Hard output size limit per GIF in kilobytes. Ignored when Disable Optimizations is enabled.">
+              {intl.formatMessage({ id: 'convert.maxGifKb' })}
+              <input
+                type="number"
+                min={1}
+                disabled={optimizationDisabled}
+                value={config.maxGifKb}
+                onChange={(event) => setConfig((prev) => ({ ...prev, maxGifKb: Number.parseInt(event.target.value, 10) || 1 }))}
+              />
+            </label>
+
+            <label title="Preferred output size target used by recompression attempts. Ignored when Disable Optimizations is enabled.">
+              {intl.formatMessage({ id: 'convert.targetGifKb' })}
+              <input
+                type="number"
+                min={1}
+                disabled={optimizationDisabled}
+                value={config.targetGifKb}
+                onChange={(event) =>
+                  setConfig((prev) => ({ ...prev, targetGifKb: Number.parseInt(event.target.value, 10) || 1 }))
+                }
+              />
+            </label>
+
+            <label className="field-fps" title="Starting frame rate for the first encode pass.">
               {intl.formatMessage({ id: 'convert.gifFps' })}
               <div className="field-input-row">
                 <input
@@ -240,30 +267,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
               />
             </label>
 
-            <label title="Hard output size limit per GIF in kilobytes. Ignored when Disable Optimizations is enabled.">
-              {intl.formatMessage({ id: 'convert.maxGifKb' })}
-              <input
-                type="number"
-                min={1}
-                disabled={optimizationDisabled}
-                value={config.maxGifKb}
-                onChange={(event) => setConfig((prev) => ({ ...prev, maxGifKb: Number.parseInt(event.target.value, 10) || 1 }))}
-              />
-            </label>
-
-            <label title="Preferred output size target used by recompression attempts. Ignored when Disable Optimizations is enabled.">
-              {intl.formatMessage({ id: 'convert.targetGifKb' })}
-              <input
-                type="number"
-                min={1}
-                disabled={optimizationDisabled}
-                value={config.targetGifKb}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, targetGifKb: Number.parseInt(event.target.value, 10) || 1 }))
-                }
-              />
-            </label>
-
             <SwitchCard
               checked={precheckEffective}
               disabled={optimizationDisabled}
@@ -276,7 +279,25 @@ export function ConvertPanel(props: ConvertPanelProps) {
 
         <section className="config-group">
           <h3>{intl.formatMessage({ id: 'convert.performance' })}</h3>
-          <div className="form-grid">
+          <div className="form-grid form-grid-performance">
+            <label title="Choose how the optimizer balances speed, size, and quality.">
+              {intl.formatMessage({ id: 'convert.optimizationMode' })}
+              <select
+                disabled={optimizationDisabled}
+                value={config.optimizationMode}
+                onChange={(event) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    optimizationMode: event.target.value as OptimizationMode,
+                  }))
+                }
+              >
+                <option value="hybrid">{intl.formatMessage({ id: 'convert.optimizationMode.hybrid' })}</option>
+                <option value="quality-first">{intl.formatMessage({ id: 'convert.optimizationMode.qualityFirst' })}</option>
+                <option value="fast-fit">{intl.formatMessage({ id: 'convert.optimizationMode.fastFit' })}</option>
+              </select>
+            </label>
+
             <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
               {intl.formatMessage({ id: 'convert.workerCount' })}
               <input
@@ -291,11 +312,48 @@ export function ConvertPanel(props: ConvertPanelProps) {
             </label>
 
             {showWorkshopMemoryMemo && (
-              <div className="advisory-memo memory">
+              <div className="advisory-memo memory worker-advisory">
                 <strong>{intl.formatMessage({ id: 'convert.memoryMemo.title' })}</strong>
                 <p>{intl.formatMessage({ id: 'convert.memoryMemo.body' })}</p>
               </div>
             )}
+
+            <div className="form-cluster retry-controls">
+              <SwitchCard
+                checked={standardRetriesEffective}
+                disabled={optimizationDisabled}
+                label={intl.formatMessage({ id: 'convert.standardRetries' })}
+                title="Enable standard recompression retries after initial encode."
+                onChange={(checked) => setConfig((prev) => ({ ...prev, standardRetriesEnabled: checked }))}
+              />
+
+              <SwitchCard
+                checked={retryFpsEffective}
+                disabled={retryControlsDisabled}
+                label={intl.formatMessage({ id: 'convert.fpsReduction' })}
+                title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
+                onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowFpsDrop: checked }))}
+              />
+
+              <SwitchCard
+                checked={retryQualityEffective}
+                disabled={retryControlsDisabled}
+                label={intl.formatMessage({ id: 'convert.qualityReduction' })}
+                title="Allow standard retries to reduce gifski quality for smaller output."
+                onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowQualityDrop: checked }))}
+              />
+
+              {optimizationDisabled && (
+                <p className="config-note">
+                  {intl.formatMessage({ id: 'convert.optimizationInactive' })}
+                </p>
+              )}
+              {!optimizationDisabled && !config.standardRetriesEnabled && (
+                <p className="config-note">
+                  {intl.formatMessage({ id: 'convert.retriesNeedStandard' })}
+                </p>
+              )}
+            </div>
 
             <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
               <button
@@ -318,59 +376,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 })}
               </small>
             </div>
-
-            <label title="Choose how the optimizer balances speed, size, and quality.">
-              {intl.formatMessage({ id: 'convert.optimizationMode' })}
-              <select
-                disabled={optimizationDisabled}
-                value={config.optimizationMode}
-                onChange={(event) =>
-                  setConfig((prev) => ({
-                    ...prev,
-                    optimizationMode: event.target.value as OptimizationMode,
-                  }))
-                }
-              >
-                <option value="hybrid">{intl.formatMessage({ id: 'convert.optimizationMode.hybrid' })}</option>
-                <option value="quality-first">{intl.formatMessage({ id: 'convert.optimizationMode.qualityFirst' })}</option>
-                <option value="fast-fit">{intl.formatMessage({ id: 'convert.optimizationMode.fastFit' })}</option>
-              </select>
-            </label>
-
-            <SwitchCard
-              checked={standardRetriesEffective}
-              disabled={optimizationDisabled}
-              label={intl.formatMessage({ id: 'convert.standardRetries' })}
-              title="Enable standard recompression retries after initial encode."
-              onChange={(checked) => setConfig((prev) => ({ ...prev, standardRetriesEnabled: checked }))}
-            />
-
-            <SwitchCard
-              checked={retryFpsEffective}
-              disabled={retryControlsDisabled}
-              label={intl.formatMessage({ id: 'convert.fpsReduction' })}
-              title="Allow standard retries to reduce FPS from GIF FPS down to Min GIF FPS."
-              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowFpsDrop: checked }))}
-            />
-
-            <SwitchCard
-              checked={retryQualityEffective}
-              disabled={retryControlsDisabled}
-              label={intl.formatMessage({ id: 'convert.qualityReduction' })}
-              title="Allow standard retries to reduce gifski quality for smaller output."
-              onChange={(checked) => setConfig((prev) => ({ ...prev, retryAllowQualityDrop: checked }))}
-            />
-
-            {optimizationDisabled && (
-              <p className="config-note">
-                {intl.formatMessage({ id: 'convert.optimizationInactive' })}
-              </p>
-            )}
-            {!optimizationDisabled && !config.standardRetriesEnabled && (
-              <p className="config-note">
-                {intl.formatMessage({ id: 'convert.retriesNeedStandard' })}
-              </p>
-            )}
 
             <div
               className="lossy-group"

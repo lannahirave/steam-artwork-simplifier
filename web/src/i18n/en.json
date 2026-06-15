@@ -61,7 +61,7 @@
   "convert.title": "Media to GIF",
   "convert.intro": "Encode source media into Steam-specific layouts with control over frame rate, size ceilings, retries, and post-processing patches.",
   "convert.sourceLayout": "Source and Layout",
-  "convert.frameSize": "Frame Rate and Size",
+  "convert.frameSize": "Size Budget and Frame Rate",
   "convert.performance": "Performance and Optimization",
   "convert.outputPatching": "Output Patching",
   "convert.preset": "Preset",
