@@ -700,6 +700,38 @@ textarea {
   gap: 0.85rem;
 }
 
+.form-grid-source {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+}
+
+.form-grid-source > .field-layout-wide {
+  grid-column: span 2;
+}
+
+.form-grid-source > .field-source,
+.form-grid-source > .source-advisory {
+  grid-column: 1 / -1;
+}
+
+.form-grid-budget {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
+}
+
+.form-grid-budget > .field-fps {
+  grid-column: span 2;
+}
+
+.form-grid-performance {
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr));
+}
+
+.form-cluster {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr));
+  gap: 0.75rem;
+}
+
 .patch-grid,
 .guides-grid {
   display: grid;
@@ -725,7 +757,9 @@ textarea {
 
 .form-grid > .lossy-group,
 .form-grid > .config-note,
+.form-grid > .raw-mode-card,
 .form-grid > .advisory-memo,
+.form-cluster > .config-note,
 .patch-grid > .config-note {
   grid-column: 1 / -1;
 }
@@ -746,6 +780,7 @@ label {
 
 .form-grid > label:has(input:disabled),
 .form-grid > .switch-card:has(input:disabled),
+.form-cluster > .switch-card:has(input:disabled),
 .form-grid > label:has(select:disabled),
 .form-grid > label:has(textarea:disabled),
 .patch-grid > label:has(input:disabled),
@@ -1441,6 +1476,11 @@ button:disabled {
   }
 
   .form-grid > label,
+  .form-grid-source > .field-preset,
+  .form-grid-source > .field-layout,
+  .form-grid-source > .field-layout-wide,
+  .form-grid-source > .field-source,
+  .form-grid-budget > .field-fps,
   .form-grid > .raw-mode-card,
   .patch-grid > .subpanel,
   .guides-grid > .guide-card {
