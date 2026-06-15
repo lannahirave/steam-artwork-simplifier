@@ -17,30 +17,30 @@ describe('preset plan', () => {
       label: 'Workshop',
       isSplit: true,
       isSingleOutput: false,
-      jobCount: 15,
+      jobCount: 5,
       partWidth: 150,
       splitColumns: 5,
-      splitRows: 3,
+      splitRows: 1,
       totalTargetWidth: 750,
       sampleGifWidth: 150,
       effectiveWorkerCount: config.workerCount,
     })
     expect(getPresetSplitWidths(config)).toEqual([150, 150, 150, 150, 150])
-    expect(getPresetJobCount(config)).toBe(15)
+    expect(getPresetJobCount(config)).toBe(5)
   })
 
-  it('preserves current workshop job count when configured for one row', () => {
+  it('expands workshop job count when configured for three rows', () => {
     const config = {
       ...getDefaultConfig('workshop'),
-      workshopRows: 1 as const,
+      workshopRows: 3 as const,
     }
 
     expect(resolvePresetPlan(config)).toMatchObject({
-      jobCount: 5,
+      jobCount: 15,
       splitColumns: 5,
-      splitRows: 1,
+      splitRows: 3,
     })
-    expect(getPresetJobCount(config)).toBe(5)
+    expect(getPresetJobCount(config)).toBe(15)
   })
 
   it('resolves fixed showcase split widths', () => {

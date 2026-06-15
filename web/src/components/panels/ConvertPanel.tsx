@@ -138,7 +138,10 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     }
                   />
                 </label>
-                <label className="field-layout" title="Number of vertical rows for Workshop output.">
+                <label
+                  className="field-layout"
+                  title="Split the Workshop layout vertically. 1 row is the fastest, lowest-RAM default; 2-3 rows create a taller showcase grid, but multiply GIF count, conversion time, and memory use."
+                >
                   {intl.formatMessage({ id: 'convert.workshopRows' })}
                   <select
                     value={config.workshopRows}

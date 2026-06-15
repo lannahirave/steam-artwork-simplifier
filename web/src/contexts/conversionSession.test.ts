@@ -74,7 +74,8 @@ describe('conversion session helpers', () => {
     })
   })
 
-  it('shows memory guidance for default Workshop 3-row setup', () => {
-    expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(true)
+  it('shows memory guidance only after Workshop is set to 3 rows', () => {
+    expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(false)
+    expect(shouldShowWorkshopMemoryMemo({ ...getDefaultConfig('workshop'), workshopRows: 3 })).toBe(true)
   })
 })

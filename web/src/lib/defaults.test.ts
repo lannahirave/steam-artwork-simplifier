@@ -6,7 +6,7 @@ describe('preset defaults', () => {
     const config = getDefaultConfig('workshop')
     expect(config.preset).toBe('workshop')
     expect(config.parts).toBe(5)
-    expect(config.workshopRows).toBe(3)
+    expect(config.workshopRows).toBe(1)
     expect(config.partWidth).toBe(150)
     expect(config.optimizationMode).toBe('hybrid')
   })
