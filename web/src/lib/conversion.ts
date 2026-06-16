@@ -40,6 +40,16 @@ export interface ConversionOptions {
   onProgress?: (progress: ConversionProgress) => void
 }
 
+interface BrowserHeapMemory {
+  usedJSHeapSize?: number
+  totalJSHeapSize?: number
+  jsHeapSizeLimit?: number
+}
+
+interface BrowserPerformanceWithMemory extends Performance {
+  memory?: BrowserHeapMemory
+}
+
 function toBytes(blob: Blob): Promise<Uint8Array> {
   return blob.arrayBuffer().then((buffer) => new Uint8Array(buffer))
 }
@@ -57,6 +67,30 @@ function formatLogTime(date = new Date()): string {
   const seconds = String(date.getSeconds()).padStart(2, '0')
   const millis = String(date.getMilliseconds()).padStart(3, '0')
   return `${hours}:${minutes}:${seconds}.${millis}`
+}
+
+function formatHeapMb(bytes: number): string {
+  return `${(bytes / 1024 / 1024).toFixed(1)}MB`
+}
+
+function formatHeapSnapshot(): string {
+  if (typeof performance === 'undefined') {
+    return 'heap unavailable'
+  }
+
+  const memory = (performance as BrowserPerformanceWithMemory).memory
+  if (!memory || typeof memory.usedJSHeapSize !== 'number') {
+    return 'heap unavailable'
+  }
+
+  const used = formatHeapMb(memory.usedJSHeapSize)
+  if (typeof memory.jsHeapSizeLimit === 'number' && memory.jsHeapSizeLimit > 0) {
+    return `heap ${used}/${formatHeapMb(memory.jsHeapSizeLimit)}`
+  }
+  if (typeof memory.totalJSHeapSize === 'number' && memory.totalJSHeapSize > 0) {
+    return `heap ${used}/${formatHeapMb(memory.totalJSHeapSize)}`
+  }
+  return `heap ${used}`
 }
 
 function toArtifact(data: WorkerArtifactData): ConversionArtifact {
@@ -118,9 +152,10 @@ export async function convertVideo(
 
   const emit = (stage: string, message: string): void => {
     const time = formatLogTime()
-    const line = `[${time}] [${stage}] ${message}`
+    const messageWithHeap = `${message} [${formatHeapSnapshot()}]`
+    const line = `[${time}] [${stage}] ${messageWithHeap}`
     logs.push(line)
-    options.onProgress?.({ stage, message, time })
+    options.onProgress?.({ stage, message: messageWithHeap, time })
   }
 
   emit('init', `Preparing ${config.workerCount} ffmpeg worker(s).`)
