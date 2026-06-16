@@ -79,6 +79,8 @@ describe('conversion orchestration', () => {
     const result = await convertVideo({ file }, config, pool as never)
 
     expect(result.artifacts).toHaveLength(6)
+    expect(result.logs.length).toBeGreaterThan(0)
+    expect(result.logs.every((line) => line.includes('[heap '))).toBe(true)
     expect(pool.partPayloads.some((payload) => payload.splitRowHeights?.join('/') === '60/30/60')).toBe(true)
     expect(
       pool.partPayloads
