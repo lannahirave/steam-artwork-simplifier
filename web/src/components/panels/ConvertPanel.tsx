@@ -157,6 +157,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </>
             )}
 
+            {showWorkshopMemoryMemo && (
+              <div className="advisory-memo memory high-memory-advisory">
+                <strong>{intl.formatMessage({ id: 'convert.memoryMemo.title' })}</strong>
+                <p>{intl.formatMessage({ id: 'convert.memoryMemo.body' })}</p>
+              </div>
+            )}
+
             {presetPlan.preset === 'featured' && (
               <label className="field-layout" title="Width in pixels of the featured output GIF.">
                 {intl.formatMessage({ id: 'convert.featuredWidth' })}
@@ -283,6 +290,28 @@ export function ConvertPanel(props: ConvertPanelProps) {
         <section className="config-group">
           <h3>{intl.formatMessage({ id: 'convert.performance' })}</h3>
           <div className="form-grid form-grid-performance">
+            <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
+              <button
+                type="button"
+                className={optimizationDisabled ? 'raw-mode-btn active' : 'raw-mode-btn'}
+                onClick={() =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    disableOptimizations: !prev.disableOptimizations,
+                  }))
+                }
+              >
+                {intl.formatMessage({
+                  id: optimizationDisabled ? 'convert.enableOptimizations' : 'convert.disableOptimizations',
+                })}
+              </button>
+              <small className="field-note">
+                {intl.formatMessage({
+                  id: optimizationDisabled ? 'convert.rawModeActive' : 'convert.rawModeInactive',
+                })}
+              </small>
+            </div>
+
             <label title="Choose how the optimizer balances speed, size, and quality.">
               {intl.formatMessage({ id: 'convert.optimizationMode' })}
               <select
@@ -313,13 +342,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 }
               />
             </label>
-
-            {showWorkshopMemoryMemo && (
-              <div className="advisory-memo memory worker-advisory">
-                <strong>{intl.formatMessage({ id: 'convert.memoryMemo.title' })}</strong>
-                <p>{intl.formatMessage({ id: 'convert.memoryMemo.body' })}</p>
-              </div>
-            )}
 
             <div className="form-cluster retry-controls">
               <SwitchCard
@@ -356,28 +378,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   {intl.formatMessage({ id: 'convert.retriesNeedStandard' })}
                 </p>
               )}
-            </div>
-
-            <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
-              <button
-                type="button"
-                className={optimizationDisabled ? 'raw-mode-btn active' : 'raw-mode-btn'}
-                onClick={() =>
-                  setConfig((prev) => ({
-                    ...prev,
-                    disableOptimizations: !prev.disableOptimizations,
-                  }))
-                }
-              >
-                {intl.formatMessage({
-                  id: optimizationDisabled ? 'convert.enableOptimizations' : 'convert.disableOptimizations',
-                })}
-              </button>
-              <small className="field-note">
-                {intl.formatMessage({
-                  id: optimizationDisabled ? 'convert.rawModeActive' : 'convert.rawModeInactive',
-                })}
-              </small>
             </div>
 
             <div
