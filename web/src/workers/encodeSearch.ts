@@ -11,7 +11,7 @@ import {
   encodeGifCandidates,
   type EncodeGifOptions,
 } from './gifFrameEncoder'
-import type { WorkerProgressSink } from './workerMessaging'
+import type { WorkerMemoryDebugSink, WorkerProgressSink } from './workerMessaging'
 
 interface BestEncodeResult {
   bytes: Uint8Array
@@ -23,6 +23,7 @@ interface BestEncodeResult {
 
 export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | 'ffmpegLogBuffer'> {
   postProgress: WorkerProgressSink
+  postMemoryDebug?: WorkerMemoryDebugSink
   inputName: string
   sourceCacheKey?: string
   baseFilter: string
@@ -60,6 +61,7 @@ function encodeAttempt(
     ffmpeg: options.ffmpeg,
     ffmpegLogBuffer: options.ffmpegLogBuffer,
     postProgress: options.postProgress,
+    postMemoryDebug: options.postMemoryDebug,
     requestId: options.requestId,
     inputName: options.inputName,
     sourceCacheKey: options.sourceCacheKey,
@@ -85,6 +87,7 @@ async function encodeFixedQualityCandidates(
       ffmpeg: options.ffmpeg,
       ffmpegLogBuffer: options.ffmpegLogBuffer,
       postProgress: options.postProgress,
+      postMemoryDebug: options.postMemoryDebug,
       requestId: options.requestId,
       inputName: options.inputName,
       sourceCacheKey: options.sourceCacheKey,

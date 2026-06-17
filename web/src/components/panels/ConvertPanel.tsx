@@ -5,6 +5,7 @@ import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
 import { SwitchCard } from '../SwitchCard'
+import { MemoryDebugPanel } from './MemoryDebugPanel'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
@@ -29,6 +30,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     progress,
     error,
     artifactViews,
+    memoryDebug,
   } = state
   const {
     setConfig,
@@ -60,6 +62,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     showWorkshopMemoryMemo,
   } = meta
   const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
+  const showMemoryDebug = import.meta.env.DEV
   const resultsGridStyle = resultsGridClassName.includes('workshop-grid')
     ? ({ '--workshop-columns': config.parts } as CSSProperties)
     : undefined
@@ -516,6 +519,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
           )}
         </div>
       )}
+
+      {showMemoryDebug && <MemoryDebugPanel memoryDebug={memoryDebug} busy={busy} />}
 
       {error && <p className="error">{error}</p>}
 

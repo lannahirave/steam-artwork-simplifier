@@ -3,6 +3,12 @@ import { getArtifactLayoutClassName, toArchiveBaseName } from './conversionSessi
 import type { ArtifactView } from '../agents/appAgents'
 import { getDefaultConfig } from '../lib/defaults'
 import { shouldShowWorkshopMemoryMemo } from '../lib/sourceAdvisories'
+import {
+  appendMemoryDebugEvent,
+  createEmptyMemoryDebugSession,
+  createMemoryDebugEvent,
+  MEMORY_DEBUG_HISTORY_LIMIT,
+} from '../lib/memoryDebug'
 
 function artifactView(name: string): ArtifactView {
   return {
@@ -77,5 +83,21 @@ describe('conversion session helpers', () => {
   it('shows memory guidance only after Workshop is set to 3 rows', () => {
     expect(shouldShowWorkshopMemoryMemo(getDefaultConfig('workshop'))).toBe(false)
     expect(shouldShowWorkshopMemoryMemo({ ...getDefaultConfig('workshop'), workshopRows: 3 })).toBe(true)
+  })
+
+  it('keeps memory debug event history bounded for session state', () => {
+    let session = createEmptyMemoryDebugSession()
+    for (let index = 0; index < MEMORY_DEBUG_HISTORY_LIMIT + 2; index += 1) {
+      session = appendMemoryDebugEvent(session, createMemoryDebugEvent({
+        bucket: 'worker-payload-copy',
+        label: `payload ${index}`,
+        bytes: index,
+        kind: 'estimate',
+        stage: 'convert',
+      }, 'main'))
+    }
+
+    expect(session.events).toHaveLength(MEMORY_DEBUG_HISTORY_LIMIT)
+    expect(session.events[0].bytes).toBe(2)
   })
 })

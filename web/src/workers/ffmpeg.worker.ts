@@ -17,7 +17,7 @@ import {
   buildGuideGeometry,
   buildPartGeometry,
 } from './workerGeometry'
-import { postError, postProgress, postResult } from './workerMessaging'
+import { postError, postMemoryDebug, postProgress, postResult } from './workerMessaging'
 import { runProbe } from './mediaProbe'
 import { createGifFrameCache } from './gifFrameCache'
 
@@ -66,6 +66,7 @@ function buildSearchOptions(
     ffmpeg,
     ffmpegLogBuffer,
     postProgress,
+    postMemoryDebug: payload.memoryDebugEnabled ? postMemoryDebug : undefined,
     inputName,
     sourceCacheKey: payload.sourceCacheKey,
     baseFilter,
@@ -92,6 +93,19 @@ function buildSearchOptions(
   }
 }
 
+function postMemfsInputDebug(requestId: string, inputName: string, bytes: number): void {
+  postMemoryDebug(requestId, {
+    bucket: 'worker-memfs-input',
+    label: 'Source bytes written into worker MEMFS',
+    bytes,
+    kind: 'retained',
+    stage: 'convert',
+    requestId,
+    retainedKey: `memfs-input:${requestId}`,
+    detail: inputName,
+  })
+}
+
 async function runConvertPart(requestId: string, payload: ConvertPartPayload): Promise<WorkerArtifactData> {
   const inputName = `${requestId}.${extensionOf(payload.fileName)}`
   ffmpegLogBuffer.length = 0
@@ -100,7 +114,11 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
     'convert',
     `Part ${payload.partIndex + 1}/${payload.parts}: preparing input...`,
   )
+  const inputBytes = payload.fileBytes.byteLength
   await ffmpeg.writeFile(inputName, payload.fileBytes)
+  if (payload.memoryDebugEnabled) {
+    postMemfsInputDebug(requestId, inputName, inputBytes)
+  }
 
   try {
     const geometry = buildPartGeometry(payload)
@@ -128,6 +146,9 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
     }
   } finally {
     await safeDelete(ffmpeg, inputName)
+    if (payload.memoryDebugEnabled) {
+      postMemfsInputDebug(requestId, inputName, 0)
+    }
   }
 }
 
@@ -138,7 +159,11 @@ async function runConvertFeatured(
   const inputName = `${requestId}.${extensionOf(payload.fileName)}`
   ffmpegLogBuffer.length = 0
   postProgress(requestId, 'convert', 'Featured: preparing input...')
+  const inputBytes = payload.fileBytes.byteLength
   await ffmpeg.writeFile(inputName, payload.fileBytes)
+  if (payload.memoryDebugEnabled) {
+    postMemfsInputDebug(requestId, inputName, inputBytes)
+  }
 
   try {
     const geometry = buildFeaturedGeometry(payload)
@@ -158,6 +183,9 @@ async function runConvertFeatured(
     }
   } finally {
     await safeDelete(ffmpeg, inputName)
+    if (payload.memoryDebugEnabled) {
+      postMemfsInputDebug(requestId, inputName, 0)
+    }
   }
 }
 
@@ -168,7 +196,11 @@ async function runConvertGuide(
   const inputName = `${requestId}.${extensionOf(payload.fileName)}`
   ffmpegLogBuffer.length = 0
   postProgress(requestId, 'convert', 'Guide: preparing input...')
+  const inputBytes = payload.fileBytes.byteLength
   await ffmpeg.writeFile(inputName, payload.fileBytes)
+  if (payload.memoryDebugEnabled) {
+    postMemfsInputDebug(requestId, inputName, inputBytes)
+  }
 
   try {
     const geometry = buildGuideGeometry(payload)
@@ -188,6 +220,9 @@ async function runConvertGuide(
     }
   } finally {
     await safeDelete(ffmpeg, inputName)
+    if (payload.memoryDebugEnabled) {
+      postMemfsInputDebug(requestId, inputName, 0)
+    }
   }
 }
 

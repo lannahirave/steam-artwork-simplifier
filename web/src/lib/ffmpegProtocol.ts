@@ -1,6 +1,7 @@
 import type {
   WorkerCommand,
   WorkerErrorMessage,
+  WorkerMemoryDebugMessage,
   WorkerProgressMessage,
   WorkerReadyMessage,
   WorkerRequest,
@@ -41,6 +42,10 @@ export function isReadyMessage(value: WorkerResponseMessage): value is WorkerRea
 
 export function isProgressMessage(value: WorkerResponseMessage): value is WorkerProgressMessage {
   return value.event === 'progress'
+}
+
+export function isMemoryDebugMessage(value: WorkerResponseMessage): value is WorkerMemoryDebugMessage {
+  return value.event === 'memory'
 }
 
 export function isResultMessage(value: WorkerResponseMessage): value is WorkerResultMessage {

@@ -9,13 +9,20 @@ import {
 import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from '../lib/defaults'
 import { convertVideo, type ConversionProgress } from '../lib/conversion'
 import { estimateFpsForTargetKb, estimateGifKb } from '../lib/precheck'
-import type { ConversionConfig } from '../lib/types'
+import type { ConversionConfig, MemoryDebugSession } from '../lib/types'
 import { createZip } from '../lib/zip'
 import { FFmpegWorkerPool } from '../lib/workerPool'
 import { isSupportedConversionSource } from '../lib/validation'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
 import { distributeEvenly } from '../lib/workshopRows'
+import {
+  appendBrowserMemorySample,
+  appendMemoryDebugEvent,
+  createEmptyMemoryDebugSession,
+  createMemoryDebugEvent,
+  sampleBrowserMemory,
+} from '../lib/memoryDebug'
 import {
   shouldShowLongMp4Memo,
   shouldShowWorkshopMemoryMemo,
@@ -49,6 +56,7 @@ export interface ConvertState {
   lastElapsedMs: number | null
   estimatingFps: boolean
   fpsEstimateInfo: string
+  memoryDebug: MemoryDebugSession
 }
 
 export interface ConvertActions {
@@ -145,6 +153,7 @@ export function useConversionSession(): ConvertContextValue {
   const [lastConversionSourceName, setLastConversionSourceName] = useState('')
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
+  const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
 
   const poolRef = useRef<FFmpegWorkerPool | null>(null)
   const totalJobsRef = useRef(1)
@@ -234,6 +243,15 @@ export function useConversionSession(): ConvertContextValue {
     conversionStartMsRef.current = null
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
+    setMemoryDebug(createEmptyMemoryDebugSession())
+  }
+
+  async function recordBrowserMemorySample(label: string): Promise<void> {
+    if (!import.meta.env.DEV) {
+      return
+    }
+    const sample = await sampleBrowserMemory(label)
+    setMemoryDebug((prev) => appendBrowserMemorySample(prev, sample))
   }
 
   function updateProgressView(entry: ConversionProgress): void {
@@ -300,6 +318,12 @@ export function useConversionSession(): ConvertContextValue {
     setProgressLabel('Starting conversion...')
     setElapsedMs(0)
     setLastElapsedMs(null)
+    void recordBrowserMemorySample('conversion-start')
+    const memorySampleTimer = import.meta.env.DEV
+      ? window.setInterval(() => {
+          void recordBrowserMemorySample('conversion-interval')
+        }, 2000)
+      : undefined
 
     try {
       const pool = ensurePool(runtimeConfig.workerCount)
@@ -320,12 +344,30 @@ export function useConversionSession(): ConvertContextValue {
             setProgress((prev) => [...prev.slice(-199), entry])
             updateProgressView(entry)
           },
+          onMemoryDebug: (entry) => {
+            setMemoryDebug((prev) => appendMemoryDebugEvent(prev, entry))
+          },
+          memoryDebugEnabled: import.meta.env.DEV,
         },
       )
 
       setLogs(result.logs)
       setWarnings([...extraWarnings, ...result.warnings])
-      setArtifactViews(toArtifactViews(result.artifacts))
+      const nextArtifactViews = toArtifactViews(result.artifacts)
+      if (import.meta.env.DEV) {
+        for (const item of nextArtifactViews) {
+          setMemoryDebug((prev) => appendMemoryDebugEvent(prev, createMemoryDebugEvent({
+            bucket: 'preview-object-url',
+            label: 'Preview object URL retaining output Blob',
+            bytes: item.artifact.blob.size,
+            kind: 'retained',
+            stage: 'preview',
+            retainedKey: `preview:${item.artifact.name}`,
+            detail: item.artifact.name,
+          }, 'main')))
+        }
+      }
+      setArtifactViews(nextArtifactViews)
       setProgressPercent(100)
       const totalMs = Date.now() - startedAt
       setElapsedMs(totalMs)
@@ -339,6 +381,10 @@ export function useConversionSession(): ConvertContextValue {
       setError(message)
       setProgressLabel(`Failed: ${message}`)
     } finally {
+      if (memorySampleTimer !== undefined) {
+        window.clearInterval(memorySampleTimer)
+      }
+      void recordBrowserMemorySample('conversion-finished')
       setBusy(false)
       conversionStartMsRef.current = null
     }
@@ -546,6 +592,7 @@ export function useConversionSession(): ConvertContextValue {
       lastElapsedMs,
       estimatingFps,
       fpsEstimateInfo,
+      memoryDebug,
     },
     actions: {
       setConfig,

@@ -68,6 +68,18 @@ class FakeWorker {
         })
         reply({
           id: message.id,
+          event: 'memory',
+          payload: {
+            bucket: 'decoded-rgba',
+            label: 'Decoded RGBA frame sequence',
+            bytes: 4096,
+            kind: 'estimate',
+            stage: 'frames',
+            requestId: message.id,
+          },
+        })
+        reply({
+          id: message.id,
           event: 'progress',
           payload: {
             stage: 'gifski',
@@ -167,12 +179,16 @@ describe('worker pool', () => {
     expect(probe.width).toBe(1280)
 
     const progressStages: string[] = []
+    const memoryEvents: Array<{ bytes: number; workerIndex: number }> = []
     const outputs = await Promise.all([
       pool.runTask('convertPart', {
         ...convertPartPayload(0),
       }, {
         onProgress: (_, stage) => {
           progressStages.push(stage)
+        },
+        onMemoryDebug: (event, workerIndex) => {
+          memoryEvents.push({ bytes: event.bytes, workerIndex })
         },
       }),
       pool.runTask('convertPart', convertPartPayload(1)),
@@ -182,6 +198,7 @@ describe('worker pool', () => {
     expect(outputs[1].name).toBe('a_part_02.gif')
     expect(progressStages).toContain('frames')
     expect(progressStages).toContain('gifski')
+    expect(memoryEvents).toContainEqual({ bytes: 4096, workerIndex: 0 })
 
     pool.dispose()
   })

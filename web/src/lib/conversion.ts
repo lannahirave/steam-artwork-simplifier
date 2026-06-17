@@ -9,6 +9,7 @@ import {
 import { recoverSplitBatchQuality } from './splitRecovery'
 import { FFmpegWorkerPool } from './workerPool'
 import { resolvePresetPlan } from './presetPlan'
+import { createMemoryDebugEvent } from './memoryDebug'
 import {
   WORKSHOP_ROW_BALANCE_PASSES,
   aggregateWorkshopRowSizes,
@@ -21,6 +22,8 @@ import type {
   ConversionConfig,
   ConversionInput,
   ConversionResult,
+  MemoryDebugEvent,
+  MemoryDebugEventData,
   SourceProbe,
   WorkerArtifactData,
 } from './types'
@@ -38,6 +41,8 @@ export interface ConversionExecutionResult extends ConversionResult {
 
 export interface ConversionOptions {
   onProgress?: (progress: ConversionProgress) => void
+  onMemoryDebug?: (event: MemoryDebugEvent) => void
+  memoryDebugEnabled?: boolean
 }
 
 interface BrowserHeapMemory {
@@ -93,10 +98,24 @@ function formatHeapSnapshot(): string {
   return `heap ${used}`
 }
 
-function toArtifact(data: WorkerArtifactData): ConversionArtifact {
+function toArtifact(
+  data: WorkerArtifactData,
+  emitMemory?: (event: MemoryDebugEventData) => void,
+): ConversionArtifact {
+  const blob = bytesToBlob(data.fileBytes, 'image/gif')
+  emitMemory?.({
+    bucket: 'output-blob',
+    label: 'Output GIF bytes copied into Blob',
+    bytes: data.fileBytes.byteLength,
+    kind: 'retained',
+    stage: 'output',
+    retainedKey: `output-blob:${data.name}`,
+    detail: data.name,
+  })
+
   return {
     name: data.name,
-    blob: bytesToBlob(data.fileBytes, 'image/gif'),
+    blob,
     sizeKb: data.sizeKb,
     width: data.width,
     height: data.height,
@@ -109,11 +128,22 @@ function toArtifact(data: WorkerArtifactData): ConversionArtifact {
 async function applyPostPatches(
   artifacts: ConversionArtifact[],
   config: ConversionConfig,
+  emitMemory?: (event: MemoryDebugEventData) => void,
 ): Promise<ConversionArtifact[]> {
   const out: ConversionArtifact[] = []
 
   for (const artifact of artifacts) {
     let bytes = await toBytes(artifact.blob)
+    if (config.headerPatchEnabled || config.eofPatchEnabled) {
+      emitMemory?.({
+        bucket: 'patch-copy',
+        label: 'Output GIF bytes copied for post-patching',
+        bytes: bytes.byteLength,
+        kind: 'estimate',
+        stage: 'patch',
+        detail: artifact.name,
+      })
+    }
 
     if (config.headerPatchEnabled) {
       const headerPatched = patchGifHeaderBytes(
@@ -149,6 +179,21 @@ export async function convertVideo(
 ): Promise<ConversionExecutionResult> {
   const logs: string[] = []
   const warnings: string[] = []
+  const memoryDebugEnabled = options.memoryDebugEnabled === true
+
+  const emitMemory = (event: MemoryDebugEventData): void => {
+    if (!memoryDebugEnabled) {
+      return
+    }
+    options.onMemoryDebug?.(createMemoryDebugEvent(event, 'main'))
+  }
+
+  const workerMemory = (event: MemoryDebugEventData, workerSlot: number): void => {
+    if (!memoryDebugEnabled) {
+      return
+    }
+    options.onMemoryDebug?.(createMemoryDebugEvent(event, 'worker', workerSlot + 1))
+  }
 
   const emit = (stage: string, message: string): void => {
     const time = formatLogTime()
@@ -163,6 +208,14 @@ export async function convertVideo(
 
   emit('input', `Loading file ${input.file.name}.`)
   const sourceBytes = new Uint8Array(await input.file.arrayBuffer())
+  emitMemory({
+    bucket: 'source-bytes',
+    label: 'Source file bytes loaded on main thread',
+    bytes: sourceBytes.byteLength,
+    kind: 'estimate',
+    stage: 'input',
+    detail: input.file.name,
+  })
   const sourceCacheKey = [
     input.file.name,
     input.file.size,
@@ -173,9 +226,18 @@ export async function convertVideo(
   const imageLikeSource = isLikelyImageSource(input.file)
 
   emit('probe', 'Probing source dimensions and duration.')
+  const probeFileBytes = sourceBytes.slice()
+  emitMemory({
+    bucket: 'worker-payload-copy',
+    label: 'Source bytes copied into probe worker payload',
+    bytes: probeFileBytes.byteLength,
+    kind: 'estimate',
+    stage: 'probe',
+    detail: input.file.name,
+  })
   const probe = await pool.runTask('probe', {
     fileName: input.file.name,
-    fileBytes: sourceBytes.slice(),
+    fileBytes: probeFileBytes,
   }, {
     timeoutMs: 45_000,
   })
@@ -258,39 +320,52 @@ export async function convertVideo(
         | 'splitRowHeights'
       >
     > = {},
-  ): ConvertPartPayload => ({
-    fileName: input.file.name,
-    fileBytes: sourceBytes.slice(),
-    sourceCacheKey,
-    isStillImage,
-    srcWidth: probe.width,
-    srcHeight: probe.height,
-    duration: probe.duration,
-    gifFps: overrides.gifFps ?? config.gifFps,
-    minGifFps: overrides.minGifFps ?? config.minGifFps,
-    disableOptimizations: overrides.disableOptimizations ?? config.disableOptimizations,
-    maxGifKb: overrides.maxGifKb ?? config.maxGifKb,
-    targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
-    optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
-    enableQualityRecovery: overrides.enableQualityRecovery ?? true,
-    fixedQuality: overrides.fixedQuality,
-    fixedQualityCandidates: overrides.fixedQualityCandidates,
-    fixedQualityMaxKb: overrides.fixedQualityMaxKb,
-    standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
-    retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
-    retryAllowQualityDrop: overrides.retryAllowQualityDrop ?? config.retryAllowQualityDrop,
-    lossyOversize: overrides.lossyOversize ?? config.lossyOversize,
-    lossyLevel: config.lossyLevel,
-    lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
-    startOffsetSec: probe.startOffsetSec,
-    partIndex,
-    parts: presetPlan.jobCount,
-    partWidth: presetPlan.partWidth,
-    splitWidths: presetPlan.splitWidths,
-    splitColumns: presetPlan.splitColumns,
-    splitRows: presetPlan.splitRows,
-    splitRowHeights: overrides.splitRowHeights ?? activeSplitRowHeights,
-  })
+  ): ConvertPartPayload => {
+    const fileBytes = sourceBytes.slice()
+    emitMemory({
+      bucket: 'worker-payload-copy',
+      label: 'Source bytes copied into convert worker payload',
+      bytes: fileBytes.byteLength,
+      kind: 'estimate',
+      stage: 'convert',
+      detail: splitPartContext(partIndex),
+    })
+
+    return {
+      fileName: input.file.name,
+      fileBytes,
+      sourceCacheKey,
+      isStillImage,
+      srcWidth: probe.width,
+      srcHeight: probe.height,
+      duration: probe.duration,
+      gifFps: overrides.gifFps ?? config.gifFps,
+      minGifFps: overrides.minGifFps ?? config.minGifFps,
+      disableOptimizations: overrides.disableOptimizations ?? config.disableOptimizations,
+      maxGifKb: overrides.maxGifKb ?? config.maxGifKb,
+      targetGifKb: overrides.targetGifKb ?? config.targetGifKb,
+      optimizationMode: overrides.optimizationMode ?? config.optimizationMode,
+      enableQualityRecovery: overrides.enableQualityRecovery ?? true,
+      fixedQuality: overrides.fixedQuality,
+      fixedQualityCandidates: overrides.fixedQualityCandidates,
+      fixedQualityMaxKb: overrides.fixedQualityMaxKb,
+      standardRetriesEnabled: overrides.standardRetriesEnabled ?? config.standardRetriesEnabled,
+      retryAllowFpsDrop: overrides.retryAllowFpsDrop ?? config.retryAllowFpsDrop,
+      retryAllowQualityDrop: overrides.retryAllowQualityDrop ?? config.retryAllowQualityDrop,
+      lossyOversize: overrides.lossyOversize ?? config.lossyOversize,
+      lossyLevel: config.lossyLevel,
+      lossyMaxAttempts: overrides.lossyMaxAttempts ?? config.lossyMaxAttempts,
+      startOffsetSec: probe.startOffsetSec,
+      memoryDebugEnabled,
+      partIndex,
+      parts: presetPlan.jobCount,
+      partWidth: presetPlan.partWidth,
+      splitWidths: presetPlan.splitWidths,
+      splitColumns: presetPlan.splitColumns,
+      splitRows: presetPlan.splitRows,
+      splitRowHeights: overrides.splitRowHeights ?? activeSplitRowHeights,
+    }
+  }
 
   const runSplitBatch = async (
     batchGifFps: number,
@@ -331,6 +406,7 @@ export async function convertVideo(
           }),
           {
             onProgress: workerProgress(splitPartContext(index)),
+            onMemoryDebug: workerMemory,
             timeoutMs: 6 * 60_000,
           },
         ),
@@ -363,6 +439,7 @@ export async function convertVideo(
       }),
       {
         onProgress: workerProgress(splitPartContext(partIndex)),
+        onMemoryDebug: workerMemory,
         timeoutMs: 6 * 60_000,
       },
     )
@@ -399,6 +476,7 @@ export async function convertVideo(
       }),
       {
         onProgress: workerProgress(splitPartContext(partIndex)),
+        onMemoryDebug: workerMemory,
         timeoutMs: 6 * 60_000,
         affinityKey: `split-quality:${partIndex}:${fps}:${budgetKb}`,
       },
@@ -411,12 +489,21 @@ export async function convertVideo(
 
   let resultData: WorkerArtifactData[]
   if (config.preset === 'featured') {
+    const fileBytes = sourceBytes.slice()
+    emitMemory({
+      bucket: 'worker-payload-copy',
+      label: 'Source bytes copied into featured worker payload',
+      bytes: fileBytes.byteLength,
+      kind: 'estimate',
+      stage: 'convert',
+      detail: 'featured output',
+    })
     resultData = [
       await pool.runTask(
         'convertFeatured',
         {
           fileName: input.file.name,
-          fileBytes: sourceBytes.slice(),
+          fileBytes,
           sourceCacheKey,
           isStillImage,
           srcWidth: probe.width,
@@ -436,21 +523,32 @@ export async function convertVideo(
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
           startOffsetSec: probe.startOffsetSec,
+          memoryDebugEnabled,
           featuredWidth: config.featuredWidth,
         },
         {
           onProgress: workerProgress('featured output'),
+          onMemoryDebug: workerMemory,
           timeoutMs: 6 * 60_000,
         },
       ),
     ]
   } else if (config.preset === 'guide') {
+    const fileBytes = sourceBytes.slice()
+    emitMemory({
+      bucket: 'worker-payload-copy',
+      label: 'Source bytes copied into guide worker payload',
+      bytes: fileBytes.byteLength,
+      kind: 'estimate',
+      stage: 'convert',
+      detail: 'guide output',
+    })
     resultData = [
       await pool.runTask(
         'convertGuide',
         {
           fileName: input.file.name,
-          fileBytes: sourceBytes.slice(),
+          fileBytes,
           sourceCacheKey,
           isStillImage,
           srcWidth: probe.width,
@@ -470,10 +568,12 @@ export async function convertVideo(
           lossyLevel: config.lossyLevel,
           lossyMaxAttempts: config.lossyMaxAttempts,
           startOffsetSec: probe.startOffsetSec,
+          memoryDebugEnabled,
           guideSize: presetPlan.guideSize,
         },
         {
           onProgress: workerProgress('guide output'),
+          onMemoryDebug: workerMemory,
           timeoutMs: 6 * 60_000,
         },
       ),
@@ -641,10 +741,10 @@ export async function convertVideo(
   }
 
   const sorted = resultData
-    .map(toArtifact)
+    .map((data) => toArtifact(data, emitMemory))
     .sort((a, b) => a.name.localeCompare(b.name))
 
-  const patched = await applyPostPatches(sorted, config)
+  const patched = await applyPostPatches(sorted, config, emitMemory)
 
   if (!config.disableOptimizations) {
     const oversize = patched.filter((artifact) => artifact.sizeKb > config.maxGifKb)

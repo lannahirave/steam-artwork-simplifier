@@ -7,6 +7,12 @@ export interface DecodedGifFrames {
 
 export type GifFrameCache = Map<string, DecodedGifFrames>
 
+export interface GifFrameCacheStats {
+  entries: number
+  frames: number
+  bytes: number
+}
+
 export interface GifFrameCacheKeyInput {
   inputName: string
   sourceCacheKey?: string
@@ -17,6 +23,24 @@ export interface GifFrameCacheKeyInput {
 
 export function createGifFrameCache(): GifFrameCache {
   return new Map()
+}
+
+export function getDecodedGifFramesByteLength(frames: DecodedGifFrames): number {
+  return frames.frames.reduce((sum, frame) => sum + frame.byteLength, 0)
+}
+
+export function getGifFrameCacheStats(cache: GifFrameCache): GifFrameCacheStats {
+  let frames = 0
+  let bytes = 0
+  for (const item of cache.values()) {
+    frames += item.count
+    bytes += getDecodedGifFramesByteLength(item)
+  }
+  return {
+    entries: cache.size,
+    frames,
+    bytes,
+  }
 }
 
 export function buildGifFrameCacheKey(input: GifFrameCacheKeyInput): string {
