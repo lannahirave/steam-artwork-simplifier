@@ -4,6 +4,7 @@ import {
   buildGifFrameCacheKey,
   getDecodedGifFramesByteLength,
   getGifFrameCacheStats,
+  LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT,
   rememberDecodedGifFrames,
   type DecodedGifFrames,
   type GifFrameCache,
@@ -204,7 +205,12 @@ async function withDecodedGifFrames<T>(
       count: framePaths.length,
     }
     if (cacheKey) {
-      rememberDecodedGifFrames(options.frameCache!, cacheKey, decodedFrames, 12)
+      rememberDecodedGifFrames(
+        options.frameCache!,
+        cacheKey,
+        decodedFrames,
+        LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT,
+      )
       const stats = getGifFrameCacheStats(options.frameCache!)
       options.postMemoryDebug?.(options.requestId, {
         bucket: 'frame-cache-retained',
