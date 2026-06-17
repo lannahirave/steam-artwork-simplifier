@@ -3,6 +3,7 @@ import {
   buildGifFrameCacheKey,
   createGifFrameCache,
   getGifFrameCacheStats,
+  LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT,
   rememberDecodedGifFrames,
 } from './gifFrameCache'
 
@@ -76,6 +77,32 @@ describe('GIF frame cache', () => {
     expect(cache.has('first')).toBe(false)
     expect(cache.has('second')).toBe(true)
     expect(cache.has('third')).toBe(true)
+  })
+
+  it('retains only the newest decoded frame sequence under the conversion cache policy', () => {
+    const cache = createGifFrameCache()
+    const firstFrames = { frames: [new Uint8Array([1])], width: 1, height: 1, count: 1 }
+    const retryFrames = { frames: [new Uint8Array([2])], width: 1, height: 1, count: 1 }
+    const secondFrames = { frames: [new Uint8Array([3])], width: 1, height: 1, count: 1 }
+
+    rememberDecodedGifFrames(cache, 'fps-10-part-1', firstFrames, LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT)
+
+    expect(cache.get('fps-10-part-1')).toBe(firstFrames)
+
+    rememberDecodedGifFrames(cache, 'fps-10-part-1', retryFrames, LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT)
+
+    expect(cache.size).toBe(1)
+    expect(cache.get('fps-10-part-1')).toBe(retryFrames)
+
+    rememberDecodedGifFrames(cache, 'fps-11-part-1', secondFrames, LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT)
+
+    expect(cache.has('fps-10-part-1')).toBe(false)
+    expect(cache.get('fps-11-part-1')).toBe(secondFrames)
+    expect(getGifFrameCacheStats(cache)).toEqual({
+      entries: 1,
+      frames: 1,
+      bytes: 1,
+    })
   })
 
   it('reports retained decoded frame cache size', () => {

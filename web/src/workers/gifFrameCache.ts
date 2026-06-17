@@ -7,6 +7,8 @@ export interface DecodedGifFrames {
 
 export type GifFrameCache = Map<string, DecodedGifFrames>
 
+export const LATEST_DECODED_FRAME_SEQUENCE_CACHE_LIMIT = 1
+
 export interface GifFrameCacheStats {
   entries: number
   frames: number
