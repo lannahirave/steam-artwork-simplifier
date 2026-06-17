@@ -1,11 +1,13 @@
 import {
   buildWorkerRequest,
   isErrorMessage,
+  isMemoryDebugMessage,
   isProgressMessage,
   isResultMessage,
   isWorkerResponseMessage,
 } from './ffmpegProtocol'
 import type {
+  MemoryDebugEventData,
   WorkerCommand,
   WorkerRequestPayloadMap,
   WorkerResultDataMap,
@@ -13,6 +15,7 @@ import type {
 } from './types'
 
 type ProgressCallback = (message: string, stage: string, workerIndex: number) => void
+type MemoryDebugCallback = (event: MemoryDebugEventData, workerIndex: number) => void
 
 interface TaskRecord {
   requestId: string
@@ -20,6 +23,7 @@ interface TaskRecord {
   payload: WorkerRequestPayloadMap[WorkerCommand]
   transferables: Transferable[]
   onProgress?: ProgressCallback
+  onMemoryDebug?: MemoryDebugCallback
   affinityKey?: string
   timeoutMs: number
   resolve: (value: unknown) => void
@@ -32,6 +36,7 @@ interface InFlightTask {
   resolve: (value: unknown) => void
   reject: (error: Error) => void
   onProgress?: ProgressCallback
+  onMemoryDebug?: MemoryDebugCallback
   timeoutId?: ReturnType<typeof setTimeout>
 }
 
@@ -81,7 +86,13 @@ export class FFmpegWorkerPool {
   runTask<T extends WorkerCommand>(
     command: T,
     payload: WorkerRequestPayloadMap[T],
-    options?: { onProgress?: ProgressCallback; transferables?: Transferable[]; timeoutMs?: number; affinityKey?: string },
+    options?: {
+      onProgress?: ProgressCallback
+      onMemoryDebug?: MemoryDebugCallback
+      transferables?: Transferable[]
+      timeoutMs?: number
+      affinityKey?: string
+    },
   ): Promise<WorkerResultDataMap[T]> {
     const request = buildWorkerRequest(command, payload)
     return new Promise<WorkerResultDataMap[T]>((resolve, reject) => {
@@ -91,6 +102,7 @@ export class FFmpegWorkerPool {
         payload: payload as WorkerRequestPayloadMap[WorkerCommand],
         transferables: options?.transferables ?? [],
         onProgress: options?.onProgress,
+        onMemoryDebug: options?.onMemoryDebug,
         affinityKey: options?.affinityKey,
         timeoutMs: options?.timeoutMs ?? 0,
         resolve: resolve as (value: unknown) => void,
@@ -201,6 +213,11 @@ export class FFmpegWorkerPool {
       return
     }
 
+    if (isMemoryDebugMessage(data)) {
+      task.onMemoryDebug?.(data.payload, workerIndex)
+      return
+    }
+
     if (isErrorMessage(data)) {
       if (task.timeoutId) {
         clearTimeout(task.timeoutId)
@@ -247,6 +264,7 @@ export class FFmpegWorkerPool {
         resolve: task.resolve as (value: unknown) => void,
         reject: task.reject,
         onProgress: task.onProgress,
+        onMemoryDebug: task.onMemoryDebug,
       })
 
       try {

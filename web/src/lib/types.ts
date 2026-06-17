@@ -62,6 +62,72 @@ export interface ConversionResult {
   warnings: string[]
 }
 
+export type MemoryDebugBucket =
+  | 'source-bytes'
+  | 'worker-payload-copy'
+  | 'worker-memfs-input'
+  | 'worker-memfs-png'
+  | 'decoded-rgba'
+  | 'frame-cache-retained'
+  | 'gifski-frame-input'
+  | 'gifski-output'
+  | 'output-blob'
+  | 'patch-copy'
+  | 'preview-object-url'
+
+export type MemoryDebugEventKind = 'estimate' | 'retained'
+
+export interface MemoryDebugEventData {
+  bucket: MemoryDebugBucket
+  label: string
+  bytes: number
+  kind: MemoryDebugEventKind
+  stage: string
+  requestId?: string
+  retainedKey?: string
+  itemCount?: number
+  detail?: string
+}
+
+export interface MemoryDebugEvent extends MemoryDebugEventData {
+  id: string
+  time: string
+  timeMs: number
+  source: 'main' | 'worker'
+  workerIndex?: number
+}
+
+export type BrowserMemorySampleSource =
+  | 'measureUserAgentSpecificMemory'
+  | 'performance.memory'
+  | 'unavailable'
+
+export interface BrowserMemoryBreakdownItem {
+  bytes: number
+  scope: string
+  url: string
+  types: string[]
+}
+
+export interface BrowserMemorySample {
+  id: string
+  time: string
+  timeMs: number
+  label: string
+  source: BrowserMemorySampleSource
+  bytes: number | null
+  usedJSHeapSize?: number
+  totalJSHeapSize?: number
+  jsHeapSizeLimit?: number
+  breakdown: BrowserMemoryBreakdownItem[]
+  note?: string
+}
+
+export interface MemoryDebugSession {
+  events: MemoryDebugEvent[]
+  samples: BrowserMemorySample[]
+}
+
 export interface EofPatchRequest {
   files: File[]
   byte: number
@@ -90,7 +156,7 @@ export interface ResolvedPresetSettings {
 }
 
 export type WorkerCommand = 'init' | 'probe' | 'convertPart' | 'convertFeatured' | 'convertGuide'
-export type WorkerEvent = 'ready' | 'progress' | 'result' | 'error'
+export type WorkerEvent = 'ready' | 'progress' | 'memory' | 'result' | 'error'
 
 export interface InitPayload {
   forceReload?: boolean
@@ -126,6 +192,7 @@ export interface ConvertPayloadBase {
   lossyLevel: number
   lossyMaxAttempts: number
   startOffsetSec?: number
+  memoryDebugEnabled?: boolean
 }
 
 export interface ConvertPartPayload extends ConvertPayloadBase {
@@ -170,6 +237,8 @@ export interface WorkerProgressData {
   stage: string
 }
 
+export type WorkerMemoryDebugData = MemoryDebugEventData
+
 export interface WorkerErrorData {
   message: string
   command: WorkerCommand
@@ -213,6 +282,12 @@ export interface WorkerProgressMessage {
   payload: WorkerProgressData
 }
 
+export interface WorkerMemoryDebugMessage {
+  id: string
+  event: 'memory'
+  payload: WorkerMemoryDebugData
+}
+
 export interface WorkerResultMessage<T extends WorkerCommand = WorkerCommand> {
   id: string
   event: 'result'
@@ -231,5 +306,6 @@ export interface WorkerErrorMessage {
 export type WorkerResponseMessage =
   | WorkerReadyMessage
   | WorkerProgressMessage
+  | WorkerMemoryDebugMessage
   | WorkerResultMessage
   | WorkerErrorMessage

@@ -2,13 +2,15 @@ import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { clampGifskiQuality } from '../lib/gifskiQuality'
 import {
   buildGifFrameCacheKey,
+  getDecodedGifFramesByteLength,
+  getGifFrameCacheStats,
   rememberDecodedGifFrames,
   type DecodedGifFrames,
   type GifFrameCache,
 } from './gifFrameCache'
 import { encodeWithGifski } from './gifskiRuntime'
 import { parsePngDimensions, safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
-import type { WorkerProgressSink } from './workerMessaging'
+import type { WorkerMemoryDebugSink, WorkerProgressSink } from './workerMessaging'
 
 interface ExecContext {
   ret: number
@@ -19,6 +21,7 @@ export interface EncodeGifOptions {
   ffmpeg: FFmpeg
   ffmpegLogBuffer: string[]
   postProgress: WorkerProgressSink
+  postMemoryDebug?: WorkerMemoryDebugSink
   requestId: string
   inputName: string
   sourceCacheKey?: string
@@ -152,6 +155,7 @@ async function withDecodedGifFrames<T>(
     }
 
     const firstFrame = (await options.ffmpeg.readFile(framePaths[0])) as Uint8Array
+    let pngBytes = firstFrame.byteLength
     const dims = parsePngDimensions(firstFrame)
     if (!dims) {
       throw new Error(`Failed to parse PNG dimensions from ${framePaths[0]}.`)
@@ -159,15 +163,39 @@ async function withDecodedGifFrames<T>(
 
     const rgbaFrames: Uint8Array[] = []
     rgbaFrames.push(await decodePngToRgba(firstFrame, dims.width, dims.height))
+    let decodedRgbaBytes = rgbaFrames[0].byteLength
 
     for (let index = 1; index < framePaths.length; index += 1) {
       const frameBytes = (await options.ffmpeg.readFile(framePaths[index])) as Uint8Array
+      pngBytes += frameBytes.byteLength
       const frameDims = parsePngDimensions(frameBytes)
       if (!frameDims || frameDims.width !== dims.width || frameDims.height !== dims.height) {
         throw new Error(`Frame geometry mismatch in ${framePaths[index]}.`)
       }
-      rgbaFrames.push(await decodePngToRgba(frameBytes, dims.width, dims.height))
+      const rgbaFrame = await decodePngToRgba(frameBytes, dims.width, dims.height)
+      decodedRgbaBytes += rgbaFrame.byteLength
+      rgbaFrames.push(rgbaFrame)
     }
+    options.postMemoryDebug?.(options.requestId, {
+      bucket: 'worker-memfs-png',
+      label: 'Extracted PNG frames in worker MEMFS',
+      bytes: pngBytes,
+      kind: 'estimate',
+      stage: 'frames',
+      requestId: options.requestId,
+      itemCount: framePaths.length,
+      detail: `${dims.width}x${dims.height}`,
+    })
+    options.postMemoryDebug?.(options.requestId, {
+      bucket: 'decoded-rgba',
+      label: 'Decoded RGBA frame sequence',
+      bytes: decodedRgbaBytes,
+      kind: 'estimate',
+      stage: 'frames',
+      requestId: options.requestId,
+      itemCount: framePaths.length,
+      detail: `${dims.width}x${dims.height}`,
+    })
 
     const decodedFrames = {
       frames: rgbaFrames,
@@ -177,6 +205,18 @@ async function withDecodedGifFrames<T>(
     }
     if (cacheKey) {
       rememberDecodedGifFrames(options.frameCache!, cacheKey, decodedFrames, 12)
+      const stats = getGifFrameCacheStats(options.frameCache!)
+      options.postMemoryDebug?.(options.requestId, {
+        bucket: 'frame-cache-retained',
+        label: 'Decoded frame cache retained in worker',
+        bytes: stats.bytes,
+        kind: 'retained',
+        stage: 'frames',
+        requestId: options.requestId,
+        retainedKey: 'frame-cache',
+        itemCount: stats.entries,
+        detail: `${stats.frames} frame(s) retained`,
+      })
     }
 
     return await run(decodedFrames)
@@ -194,11 +234,22 @@ async function encodeFrameSet(
   requestedQuality: number,
 ): Promise<EncodeGifCandidateResult> {
   const quality = clampGifskiQuality(requestedQuality)
+  const frameInputBytes = getDecodedGifFramesByteLength(frames)
   options.postProgress(
     options.requestId,
     'gifski',
     `Encoding ${frames.count} frame(s) with quality ${quality}.`,
   )
+  options.postMemoryDebug?.(options.requestId, {
+    bucket: 'gifski-frame-input',
+    label: 'gifski RGBA input frame set',
+    bytes: frameInputBytes,
+    kind: 'estimate',
+    stage: 'gifski',
+    requestId: options.requestId,
+    itemCount: frames.count,
+    detail: `${frames.width}x${frames.height}, quality ${quality}`,
+  })
 
   const gifBytes = await encodeWithGifski({
     frames: frames.frames,
@@ -211,6 +262,15 @@ async function encodeFrameSet(
   if (!hasGifSignature(gifBytes)) {
     throw new Error('gifski produced output without a valid GIF signature.')
   }
+  options.postMemoryDebug?.(options.requestId, {
+    bucket: 'gifski-output',
+    label: 'gifski encoded output bytes',
+    bytes: gifBytes.byteLength,
+    kind: 'estimate',
+    stage: 'gifski',
+    requestId: options.requestId,
+    detail: `quality ${quality}`,
+  })
 
   return {
     quality,

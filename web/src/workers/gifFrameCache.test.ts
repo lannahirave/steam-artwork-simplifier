@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { buildGifFrameCacheKey, createGifFrameCache, rememberDecodedGifFrames } from './gifFrameCache'
+import {
+  buildGifFrameCacheKey,
+  createGifFrameCache,
+  getGifFrameCacheStats,
+  rememberDecodedGifFrames,
+} from './gifFrameCache'
 
 describe('GIF frame cache', () => {
   it('uses the frame-producing inputs as the cache key', () => {
@@ -71,5 +76,27 @@ describe('GIF frame cache', () => {
     expect(cache.has('first')).toBe(false)
     expect(cache.has('second')).toBe(true)
     expect(cache.has('third')).toBe(true)
+  })
+
+  it('reports retained decoded frame cache size', () => {
+    const cache = createGifFrameCache()
+    rememberDecodedGifFrames(cache, 'first', {
+      frames: [new Uint8Array(4), new Uint8Array(8)],
+      width: 1,
+      height: 3,
+      count: 2,
+    }, 4)
+    rememberDecodedGifFrames(cache, 'second', {
+      frames: [new Uint8Array(16)],
+      width: 2,
+      height: 2,
+      count: 1,
+    }, 4)
+
+    expect(getGifFrameCacheStats(cache)).toEqual({
+      entries: 2,
+      frames: 3,
+      bytes: 28,
+    })
   })
 })

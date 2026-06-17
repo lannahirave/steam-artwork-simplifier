@@ -1,7 +1,9 @@
 import type {
+  MemoryDebugEventData,
   WorkerArtifactData,
   WorkerCommand,
   WorkerErrorMessage,
+  WorkerMemoryDebugMessage,
   WorkerProgressMessage,
   WorkerResultMessage,
 } from '../lib/types'
@@ -9,6 +11,7 @@ import type {
 declare const self: DedicatedWorkerGlobalScope
 
 export type WorkerProgressSink = (id: string, stage: string, message: string) => void
+export type WorkerMemoryDebugSink = (id: string, data: MemoryDebugEventData) => void
 
 export function postProgress(id: string, stage: string, message: string): void {
   const payload: WorkerProgressMessage = {
@@ -18,6 +21,15 @@ export function postProgress(id: string, stage: string, message: string): void {
       stage,
       message,
     },
+  }
+  self.postMessage(payload)
+}
+
+export function postMemoryDebug(id: string, data: MemoryDebugEventData): void {
+  const payload: WorkerMemoryDebugMessage = {
+    id,
+    event: 'memory',
+    payload: data,
   }
   self.postMessage(payload)
 }
