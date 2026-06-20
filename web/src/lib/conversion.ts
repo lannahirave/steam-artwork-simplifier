@@ -7,7 +7,7 @@ import {
   orderSplitPartIndicesByWeight,
 } from './sizeStrategy'
 import { recoverSplitBatchQuality } from './splitRecovery'
-import { FFmpegWorkerPool } from './workerPool'
+import { ConversionWorkerPool } from './conversionWorkerPool'
 import { resolvePresetPlan } from './presetPlan'
 import { createMemoryDebugEvent } from './memoryDebug'
 import {
@@ -174,7 +174,7 @@ async function applyPostPatches(
 export async function convertVideo(
   input: ConversionInput,
   config: ConversionConfig,
-  pool: FFmpegWorkerPool,
+  pool: ConversionWorkerPool,
   options: ConversionOptions = {},
 ): Promise<ConversionExecutionResult> {
   const logs: string[] = []
