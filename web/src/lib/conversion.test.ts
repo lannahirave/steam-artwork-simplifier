@@ -16,6 +16,10 @@ class FakeConversionPool {
     return undefined
   }
 
+  async clearFrameCaches(): Promise<void> {
+    return undefined
+  }
+
   async runTask<T extends WorkerCommand>(
     command: T,
     payload: WorkerRequestPayloadMap[T],

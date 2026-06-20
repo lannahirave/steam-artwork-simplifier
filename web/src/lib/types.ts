@@ -155,11 +155,21 @@ export interface ResolvedPresetSettings {
   targetGifKb: number
 }
 
-export type WorkerCommand = 'init' | 'probe' | 'convertPart' | 'convertFeatured' | 'convertGuide'
+export type WorkerCommand =
+  | 'init'
+  | 'probe'
+  | 'convertPart'
+  | 'convertFeatured'
+  | 'convertGuide'
+  | 'clearFrameCache'
 export type WorkerEvent = 'ready' | 'progress' | 'memory' | 'result' | 'error'
 
 export interface InitPayload {
   forceReload?: boolean
+}
+
+export interface ClearFrameCachePayload {
+  memoryDebugEnabled?: boolean
 }
 
 export interface ProbePayload {
@@ -246,6 +256,7 @@ export interface WorkerErrorData {
 
 export type WorkerRequestPayloadMap = {
   init: InitPayload
+  clearFrameCache: ClearFrameCachePayload
   probe: ProbePayload
   convertPart: ConvertPartPayload
   convertFeatured: ConvertFeaturedPayload
@@ -254,6 +265,7 @@ export type WorkerRequestPayloadMap = {
 
 export type WorkerResultDataMap = {
   init: { initialized: boolean }
+  clearFrameCache: { cleared: boolean }
   probe: ProbeResultData
   convertPart: WorkerArtifactData
   convertFeatured: WorkerArtifactData

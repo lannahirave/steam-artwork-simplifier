@@ -740,6 +740,11 @@ export async function convertVideo(
     }
   }
 
+  await pool.clearFrameCaches({
+    memoryDebugEnabled,
+    onMemoryDebug: workerMemory,
+  })
+
   const sorted = resultData
     .map((data) => toArtifact(data, emitMemory))
     .sort((a, b) => a.name.localeCompare(b.name))
