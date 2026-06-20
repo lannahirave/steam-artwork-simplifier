@@ -106,6 +106,23 @@ function postMemfsInputDebug(requestId: string, inputName: string, bytes: number
   })
 }
 
+function clearFrameCache(requestId: string, memoryDebugEnabled?: boolean): void {
+  frameCache.clear()
+  if (memoryDebugEnabled) {
+    postMemoryDebug(requestId, {
+      bucket: 'frame-cache-retained',
+      label: 'Decoded frame cache cleared in worker',
+      bytes: 0,
+      kind: 'retained',
+      stage: 'cleanup',
+      requestId,
+      retainedKey: 'frame-cache',
+      itemCount: 0,
+      detail: '0 frame(s) retained',
+    })
+  }
+}
+
 async function runConvertPart(requestId: string, payload: ConvertPartPayload): Promise<WorkerArtifactData> {
   const inputName = `${requestId}.${extensionOf(payload.fileName)}`
   ffmpegLogBuffer.length = 0
@@ -235,6 +252,12 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
 
     if (request.command === 'init') {
       postResult(request.id, request.command, { initialized: true })
+      return
+    }
+
+    if (request.command === 'clearFrameCache') {
+      clearFrameCache(request.id, request.payload.memoryDebugEnabled)
+      postResult(request.id, request.command, { cleared: true })
       return
     }
 

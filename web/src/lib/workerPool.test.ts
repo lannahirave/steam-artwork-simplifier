@@ -55,6 +55,20 @@ class FakeWorker {
       return
     }
 
+    if (message.command === 'clearFrameCache') {
+      setTimeout(() => {
+        reply({
+          id: message.id,
+          event: 'result',
+          payload: {
+            command: 'clearFrameCache',
+            data: { cleared: true },
+          },
+        })
+      }, 0)
+      return
+    }
+
     if (message.command === 'convertPart') {
       setTimeout(() => {
         const sourceBaseName = message.payload.fileName.replace(/\.[^.]+$/, '')
@@ -200,6 +214,24 @@ describe('worker pool', () => {
     expect(progressStages).toContain('gifski')
     expect(memoryEvents).toContainEqual({ bytes: 4096, workerIndex: 0 })
 
+    pool.dispose()
+  })
+
+  it('clears frame caches across worker slots', async () => {
+    const workers: FakeWorker[] = []
+    const pool = new FFmpegWorkerPool({
+      workerCount: 2,
+      workerFactory: () => {
+        const worker = new FakeWorker()
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    await pool.clearFrameCaches()
+
+    expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'clearFrameCache').length))
+      .toEqual([1, 1])
     pool.dispose()
   })
 

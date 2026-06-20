@@ -83,6 +83,22 @@ export class FFmpegWorkerPool {
     this.warmedUp = true
   }
 
+  async clearFrameCaches(options?: {
+    memoryDebugEnabled?: boolean
+    onMemoryDebug?: MemoryDebugCallback
+  }): Promise<void> {
+    const clearCalls = Array.from({ length: this.workerCount }, (_, workerIndex) =>
+      this.runTask('clearFrameCache', {
+        memoryDebugEnabled: options?.memoryDebugEnabled,
+      }, {
+        affinityKey: `clear-frame-cache:${workerIndex}`,
+        onMemoryDebug: options?.onMemoryDebug,
+        timeoutMs: 30_000,
+      }),
+    )
+    await Promise.all(clearCalls)
+  }
+
   runTask<T extends WorkerCommand>(
     command: T,
     payload: WorkerRequestPayloadMap[T],
