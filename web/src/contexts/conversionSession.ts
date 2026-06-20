@@ -11,7 +11,7 @@ import { convertVideo, type ConversionProgress } from '../lib/conversion'
 import { estimateFpsForTargetKb, estimateGifKb } from '../lib/precheck'
 import type { ConversionConfig, MemoryDebugSession } from '../lib/types'
 import { createZip } from '../lib/zip'
-import { FFmpegWorkerPool } from '../lib/workerPool'
+import { ConversionWorkerPool } from '../lib/conversionWorkerPool'
 import { isSupportedConversionSource } from '../lib/validation'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
@@ -155,7 +155,7 @@ export function useConversionSession(): ConvertContextValue {
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
 
-  const poolRef = useRef<FFmpegWorkerPool | null>(null)
+  const poolRef = useRef<ConversionWorkerPool | null>(null)
   const totalJobsRef = useRef(1)
   const workerWeightsRef = useRef<Record<number, number>>({})
   const conversionStartMsRef = useRef<number | null>(null)
@@ -279,9 +279,9 @@ export function useConversionSession(): ConvertContextValue {
     }
   }
 
-  function ensurePool(workerCount: number): FFmpegWorkerPool {
+  function ensurePool(workerCount: number): ConversionWorkerPool {
     if (!poolRef.current) {
-      poolRef.current = new FFmpegWorkerPool({ workerCount })
+      poolRef.current = new ConversionWorkerPool({ workerCount })
       return poolRef.current
     }
 
@@ -291,7 +291,7 @@ export function useConversionSession(): ConvertContextValue {
     }
 
     existing.dispose()
-    poolRef.current = new FFmpegWorkerPool({ workerCount })
+    poolRef.current = new ConversionWorkerPool({ workerCount })
     return poolRef.current
   }
 

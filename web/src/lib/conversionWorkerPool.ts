@@ -53,7 +53,7 @@ export interface WorkerPoolOptions {
 const DEFAULT_WORKER_FACTORY = () =>
   new Worker(new URL('../workers/ffmpeg.worker.ts', import.meta.url), { type: 'module' })
 
-export class FFmpegWorkerPool {
+export class ConversionWorkerPool {
   private readonly workerFactory: () => Worker
   private readonly workerCount: number
   private slots: WorkerSlot[] = []

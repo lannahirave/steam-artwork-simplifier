@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FFmpegWorkerPool } from './workerPool'
+import { ConversionWorkerPool } from './conversionWorkerPool'
 import type { AnyWorkerRequest, WorkerResponseMessage } from './types'
 
 class FakeWorker {
@@ -176,9 +176,9 @@ function convertPartPayload(partIndex: number) {
   }
 }
 
-describe('worker pool', () => {
+describe('conversion worker pool', () => {
   it('warms up and handles probe/conversion tasks', async () => {
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 2,
       workerFactory: () => new FakeWorker() as unknown as Worker,
     })
@@ -219,7 +219,7 @@ describe('worker pool', () => {
 
   it('clears frame caches across worker slots', async () => {
     const workers: FakeWorker[] = []
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 2,
       workerFactory: () => {
         const worker = new FakeWorker()
@@ -236,7 +236,7 @@ describe('worker pool', () => {
   })
 
   it('cancels pending tasks', async () => {
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 1,
       workerFactory: () => new FakeWorker() as unknown as Worker,
     })
@@ -251,7 +251,7 @@ describe('worker pool', () => {
 
   it('keeps tasks with the same affinity key on the same worker slot', async () => {
     const workers: FakeWorker[] = []
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 2,
       workerFactory: () => {
         const worker = new FakeWorker()
@@ -270,7 +270,7 @@ describe('worker pool', () => {
 
   it('runs different affinity keys in parallel on separate idle workers', async () => {
     const workers: FakeWorker[] = []
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 2,
       workerFactory: () => {
         const worker = new FakeWorker(20)
@@ -291,7 +291,7 @@ describe('worker pool', () => {
 
   it('does not let a blocked affinity task starve unrelated queued work', async () => {
     const workers: FakeWorker[] = []
-    const pool = new FFmpegWorkerPool({
+    const pool = new ConversionWorkerPool({
       workerCount: 2,
       workerFactory: () => {
         const worker = new FakeWorker(20)

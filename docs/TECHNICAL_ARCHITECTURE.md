@@ -28,7 +28,7 @@
    - `web/src/agents/appAgents.ts`
 5. Conversion orchestration: `web/src/lib/conversion.ts`
 6. Worker pool + protocol:
-   - `web/src/lib/workerPool.ts`
+   - `web/src/lib/conversionWorkerPool.ts`
    - `web/src/lib/ffmpegProtocol.ts`
 7. Worker runtime: `web/src/workers/ffmpeg.worker.ts`
 8. Helpers:
@@ -72,7 +72,7 @@ This prevents drift between main thread and worker message payloads.
 
 ## Worker System
 
-### Pool (`FFmpegWorkerPool`)
+### Pool (`ConversionWorkerPool`)
 
 Responsibilities:
 
