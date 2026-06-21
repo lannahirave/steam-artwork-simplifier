@@ -249,6 +249,32 @@ describe('conversion worker pool', () => {
     pool.dispose()
   })
 
+  it('finishes active tasks while rejecting queued tasks without terminating workers', async () => {
+    const workers: FakeWorker[] = []
+    const pool = new ConversionWorkerPool({
+      workerCount: 1,
+      workerFactory: () => {
+        const worker = new FakeWorker(20)
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    const active = pool.runTask('convertPart', convertPartPayload(0))
+    const queued = pool.runTask('convertPart', convertPartPayload(1))
+    const queuedRejection = queued.catch((error: unknown) => error)
+
+    const finish = pool.finishCurrent('finish now')
+
+    await expect(active).resolves.toMatchObject({ name: 'a_part_01.gif' })
+    await expect(queuedRejection).resolves.toMatchObject({ message: 'finish now' })
+    await expect(finish).resolves.toBeUndefined()
+    expect(workers[0].terminated).toBe(false)
+    expect(workers[0].handledCommands.filter((command) => command === 'convertPart')).toHaveLength(1)
+
+    pool.dispose()
+  })
+
   it('keeps tasks with the same affinity key on the same worker slot', async () => {
     const workers: FakeWorker[] = []
     const pool = new ConversionWorkerPool({

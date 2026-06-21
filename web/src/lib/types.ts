@@ -56,10 +56,15 @@ export interface ConversionArtifact {
   finalQuality: number
 }
 
+export type ConversionCompletionStatus = 'complete' | 'finished-incomplete'
+
 export interface ConversionResult {
   artifacts: ConversionArtifact[]
   logs: string[]
   warnings: string[]
+  completionStatus: ConversionCompletionStatus
+  completedOutputs: number
+  expectedOutputs: number
 }
 
 export type MemoryDebugBucket =

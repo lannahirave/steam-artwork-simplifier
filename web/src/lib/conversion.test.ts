@@ -11,12 +11,14 @@ import type {
 
 class FakeConversionPool {
   readonly partPayloads: ConvertPartPayload[] = []
+  clearFrameCacheCalls = 0
 
   async warmup(): Promise<void> {
     return undefined
   }
 
   async clearFrameCaches(): Promise<void> {
+    this.clearFrameCacheCalls += 1
     return undefined
   }
 
@@ -61,7 +63,7 @@ class FakeConversionPool {
       height: partPayload.splitRowHeights?.[rowIndex] ?? 50,
       status: 'recompressed',
       finalFps: partPayload.gifFps,
-      finalQuality: 100,
+      finalQuality: partPayload.disableOptimizations ? 100 : 80,
     } as WorkerResultDataMap[T]
   }
 }
@@ -91,5 +93,57 @@ describe('conversion orchestration', () => {
         .filter((payload) => !payload.disableOptimizations)
         .every((payload) => payload.splitRowHeights?.join('/') === '60/30/60'),
     ).toBe(true)
+    expect(result.completionStatus).toBe('complete')
+    expect(result.completedOutputs).toBe(6)
+    expect(result.expectedOutputs).toBe(6)
+    expect(pool.clearFrameCacheCalls).toBe(1)
+  })
+
+  it('finishes incomplete when requested before a full output set exists', async () => {
+    const pool = new FakeConversionPool()
+    const config = {
+      ...getDefaultConfig('workshop'),
+      parts: 2,
+      workshopRows: 1 as const,
+      workerCount: 2,
+    }
+    const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
+
+    const result = await convertVideo({ file }, config, pool as never, {
+      shouldFinishCurrent: () => true,
+    })
+
+    expect(result.completionStatus).toBe('finished-incomplete')
+    expect(result.artifacts).toHaveLength(0)
+    expect(result.completedOutputs).toBe(0)
+    expect(result.expectedOutputs).toBe(2)
+    expect(result.warnings).toContain('Finished early before a complete output set was produced (0/2 output(s) available).')
+    expect(pool.clearFrameCacheCalls).toBe(1)
+  })
+
+  it('keeps the last complete output set when finishing before quality recovery', async () => {
+    const pool = new FakeConversionPool()
+    const config = {
+      ...getDefaultConfig('workshop'),
+      parts: 2,
+      workshopRows: 1 as const,
+      partWidth: 150,
+      gifFps: 10,
+      minGifFps: 10,
+      workerCount: 2,
+    }
+    const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
+
+    const result = await convertVideo({ file }, config, pool as never, {
+      shouldFinishCurrent: () =>
+        pool.partPayloads.filter((payload) => !payload.disableOptimizations).length >= 2,
+    })
+
+    expect(result.completionStatus).toBe('finished-incomplete')
+    expect(result.artifacts).toHaveLength(2)
+    expect(result.completedOutputs).toBe(2)
+    expect(result.expectedOutputs).toBe(2)
+    expect(result.warnings.some((warning) => warning.includes('skipped remaining optimization work'))).toBe(true)
+    expect(pool.clearFrameCacheCalls).toBe(1)
   })
 })

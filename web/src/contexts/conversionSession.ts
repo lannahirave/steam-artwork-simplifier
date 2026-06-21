@@ -45,6 +45,7 @@ export interface ConvertState {
   sourceFile: File | null
   sourceMetadata: SourceMediaMetadata | null
   busy: boolean
+  finishingCurrent: boolean
   progress: ConversionProgress[]
   logs: string[]
   warnings: string[]
@@ -66,6 +67,7 @@ export interface ConvertActions {
   onEstimateAndApplyFps: () => void
   onRunConversion: () => void
   onCancelConversion: () => void
+  onFinishCurrentConversion: () => void
   onDownloadZip: () => void
   onResetConvertState: () => void
   onUpdateWorkshopParts: (parts: number) => void
@@ -141,6 +143,7 @@ export function useConversionSession(): ConvertContextValue {
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const [sourceMetadata, setSourceMetadata] = useState<SourceMediaMetadata | null>(null)
   const [busy, setBusy] = useState(false)
+  const [finishingCurrent, setFinishingCurrent] = useState(false)
   const [progress, setProgress] = useState<ConversionProgress[]>([])
   const [logs, setLogs] = useState<string[]>([])
   const [warnings, setWarnings] = useState<string[]>([])
@@ -159,6 +162,7 @@ export function useConversionSession(): ConvertContextValue {
   const totalJobsRef = useRef(1)
   const workerWeightsRef = useRef<Record<number, number>>({})
   const conversionStartMsRef = useRef<number | null>(null)
+  const finishCurrentRequestedRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -241,6 +245,8 @@ export function useConversionSession(): ConvertContextValue {
     setLastElapsedMs(null)
     workerWeightsRef.current = {}
     conversionStartMsRef.current = null
+    finishCurrentRequestedRef.current = false
+    setFinishingCurrent(false)
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
     setMemoryDebug(createEmptyMemoryDebugSession())
@@ -310,6 +316,8 @@ export function useConversionSession(): ConvertContextValue {
 
     totalJobsRef.current = plan.jobCount
     workerWeightsRef.current = {}
+    finishCurrentRequestedRef.current = false
+    setFinishingCurrent(false)
     resetConvertState()
     const startedAt = Date.now()
     conversionStartMsRef.current = startedAt
@@ -348,6 +356,7 @@ export function useConversionSession(): ConvertContextValue {
             setMemoryDebug((prev) => appendMemoryDebugEvent(prev, entry))
           },
           memoryDebugEnabled: import.meta.env.DEV,
+          shouldFinishCurrent: () => finishCurrentRequestedRef.current,
         },
       )
 
@@ -372,7 +381,11 @@ export function useConversionSession(): ConvertContextValue {
       const totalMs = Date.now() - startedAt
       setElapsedMs(totalMs)
       setLastElapsedMs(totalMs)
-      setProgressLabel(`Conversion complete in ${formatElapsed(totalMs)}.`)
+      setProgressLabel(
+        result.completionStatus === 'complete'
+          ? `Conversion complete in ${formatElapsed(totalMs)}.`
+          : `Finished current work in ${formatElapsed(totalMs)}.`,
+      )
     } catch (conversionError) {
       const message = conversionError instanceof Error ? conversionError.message : String(conversionError)
       const totalMs = Date.now() - startedAt
@@ -386,8 +399,20 @@ export function useConversionSession(): ConvertContextValue {
       }
       void recordBrowserMemorySample('conversion-finished')
       setBusy(false)
+      setFinishingCurrent(false)
+      finishCurrentRequestedRef.current = false
       conversionStartMsRef.current = null
     }
+  }
+
+  function finishCurrentConversion(): void {
+    if (!busy || finishingCurrent) {
+      return
+    }
+    finishCurrentRequestedRef.current = true
+    setFinishingCurrent(true)
+    setProgressLabel('Finishing active worker tasks...')
+    void poolRef.current?.finishCurrent()
   }
 
   function cancelConversion(): void {
@@ -397,8 +422,10 @@ export function useConversionSession(): ConvertContextValue {
       setElapsedMs(totalMs)
       setLastElapsedMs(totalMs)
     }
+    finishCurrentRequestedRef.current = false
     poolRef.current?.cancelAll()
     setBusy(false)
+    setFinishingCurrent(false)
     setError('Conversion cancelled.')
     setProgressLabel('Conversion cancelled.')
     conversionStartMsRef.current = null
@@ -581,6 +608,7 @@ export function useConversionSession(): ConvertContextValue {
       sourceFile,
       sourceMetadata,
       busy,
+      finishingCurrent,
       progress,
       logs,
       warnings,
@@ -601,6 +629,7 @@ export function useConversionSession(): ConvertContextValue {
       onEstimateAndApplyFps: () => void estimateAndApplyFps(),
       onRunConversion: () => void runConversion(),
       onCancelConversion: cancelConversion,
+      onFinishCurrentConversion: finishCurrentConversion,
       onDownloadZip: () => void downloadZip(),
       onResetConvertState: resetConvertState,
       onUpdateWorkshopParts: updateWorkshopParts,

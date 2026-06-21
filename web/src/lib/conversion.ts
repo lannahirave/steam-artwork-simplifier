@@ -7,7 +7,11 @@ import {
   orderSplitPartIndicesByWeight,
 } from './sizeStrategy'
 import { recoverSplitBatchQuality } from './splitRecovery'
-import { ConversionWorkerPool } from './conversionWorkerPool'
+import {
+  ConversionWorkerPool,
+  FinishCurrentConversionError,
+  isFinishCurrentConversionError,
+} from './conversionWorkerPool'
 import { resolvePresetPlan } from './presetPlan'
 import { createMemoryDebugEvent } from './memoryDebug'
 import {
@@ -43,6 +47,7 @@ export interface ConversionOptions {
   onProgress?: (progress: ConversionProgress) => void
   onMemoryDebug?: (event: MemoryDebugEvent) => void
   memoryDebugEnabled?: boolean
+  shouldFinishCurrent?: () => boolean
 }
 
 interface BrowserHeapMemory {
@@ -201,6 +206,13 @@ export async function convertVideo(
     const line = `[${time}] [${stage}] ${messageWithHeap}`
     logs.push(line)
     options.onProgress?.({ stage, message: messageWithHeap, time })
+  }
+
+  const finishRequested = (): boolean => options.shouldFinishCurrent?.() === true
+  const ensureNotFinishing = (): void => {
+    if (finishRequested()) {
+      throw new FinishCurrentConversionError()
+    }
   }
 
   emit('init', `Preparing ${config.workerCount} ffmpeg worker(s).`)
@@ -391,10 +403,11 @@ export async function convertVideo(
     > = {},
     partOrder?: number[],
   ): Promise<WorkerArtifactData[]> => {
+    ensureNotFinishing()
     emit('convert', label)
     const batchMinFps = Math.min(config.minGifFps, Math.max(1, Math.floor(batchGifFps)))
     const order = partOrder ?? Array.from({ length: presetPlan.jobCount }, (_, index) => index)
-    return Promise.all(
+    const settled = await Promise.allSettled(
       order.map((index) =>
         pool.runTask(
           'convertPart',
@@ -412,6 +425,14 @@ export async function convertVideo(
         ),
       ),
     )
+    const rejected = settled.find((item): item is PromiseRejectedResult => item.status === 'rejected')
+    if (rejected) {
+      if (finishRequested() || isFinishCurrentConversionError(rejected.reason)) {
+        throw new FinishCurrentConversionError()
+      }
+      throw rejected.reason instanceof Error ? rejected.reason : new Error(String(rejected.reason))
+    }
+    return settled.map((item) => (item as PromiseFulfilledResult<WorkerArtifactData>).value)
   }
 
   const runFixedSplitPart = async (
@@ -487,7 +508,18 @@ export async function convertVideo(
     }
   }
 
-  let resultData: WorkerArtifactData[]
+  let resultData: WorkerArtifactData[] = []
+  let lastCompleteSet: WorkerArtifactData[] | null = null
+  let completionStatus: ConversionResult['completionStatus'] = 'complete'
+  const expectedOutputs = presetPlan.jobCount
+  const rememberCompleteSet = (items: WorkerArtifactData[]): WorkerArtifactData[] => {
+    if (items.length === expectedOutputs) {
+      lastCompleteSet = items
+    }
+    return items
+  }
+
+  try {
   if (config.preset === 'featured') {
     const fileBytes = sourceBytes.slice()
     emitMemory({
@@ -498,7 +530,7 @@ export async function convertVideo(
       stage: 'convert',
       detail: 'featured output',
     })
-    resultData = [
+    resultData = rememberCompleteSet([
       await pool.runTask(
         'convertFeatured',
         {
@@ -532,7 +564,7 @@ export async function convertVideo(
           timeoutMs: 6 * 60_000,
         },
       ),
-    ]
+    ])
   } else if (config.preset === 'guide') {
     const fileBytes = sourceBytes.slice()
     emitMemory({
@@ -543,7 +575,7 @@ export async function convertVideo(
       stage: 'convert',
       detail: 'guide output',
     })
-    resultData = [
+    resultData = rememberCompleteSet([
       await pool.runTask(
         'convertGuide',
         {
@@ -577,7 +609,7 @@ export async function convertVideo(
           timeoutMs: 6 * 60_000,
         },
       ),
-    ]
+    ])
   } else {
     if (!presetPlan.isSplit) {
       throw new Error(`Unsupported split preset: ${config.preset}`)
@@ -597,7 +629,7 @@ export async function convertVideo(
       if (!config.retryAllowFpsDrop) {
         emit('convert', `${splitPresetLabel} shared-FPS adjustment skipped: FPS reduction is disabled.`)
       }
-      resultData = firstPass
+      resultData = rememberCompleteSet(firstPass)
     } else {
       let sizingPass = await runSplitBatch(
         config.gifFps,
@@ -690,7 +722,7 @@ export async function convertVideo(
           'convert',
           `${splitPresetLabel} pass 1 satisfied max-size limits without FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
         )
-        resultData = sizingPass
+        resultData = rememberCompleteSet(sizingPass)
       } else {
         const finalFps =
           sharedFps < config.gifFps && largest.sizeKb > fpsTargetKb
@@ -711,7 +743,7 @@ export async function convertVideo(
           'convert',
           `${splitPresetLabel} pass 2/2: enforcing shared fps=${finalFps} for all ${presetPlan.jobCount} parts.`,
         )
-        resultData = await runSplitBatch(
+        resultData = rememberCompleteSet(await runSplitBatch(
           finalFps,
           false,
           `${splitPresetLabel} pass 2/2: final conversion at shared fps=${finalFps}.`,
@@ -719,10 +751,11 @@ export async function convertVideo(
             enableQualityRecovery: false,
           },
           prioritizedPartOrder,
-        )
+        ))
       }
       if (config.optimizationMode === 'hybrid' && !config.disableOptimizations && !isStillImage) {
-        resultData = await recoverSplitBatchQuality({
+        ensureNotFinishing()
+        resultData = rememberCompleteSet(await recoverSplitBatchQuality({
           items: resultData,
           partOrder: prioritizedPartOrder,
           label: splitPresetLabel,
@@ -734,9 +767,32 @@ export async function convertVideo(
           splitColumns: presetPlan.splitColumns,
           runFixedSplitPart,
           runFixedSplitPartQualityProbe,
+          shouldFinishCurrent: finishRequested,
           emit,
-        })
+        }))
       }
+    }
+  }
+  } catch (error) {
+    if (!isFinishCurrentConversionError(error)) {
+      throw error
+    }
+    completionStatus = 'finished-incomplete'
+    const completedSet = lastCompleteSet as WorkerArtifactData[] | null
+    if (completedSet) {
+      resultData = completedSet
+      const message =
+        `Finished early after completing ${completedSet.length}/${expectedOutputs} output(s); ` +
+        'skipped remaining optimization work.'
+      warnings.push(message)
+      emit('warn', message)
+    } else {
+      resultData = []
+      const message =
+        `Finished early before a complete output set was produced ` +
+        `(0/${expectedOutputs} output(s) available).`
+      warnings.push(message)
+      emit('warn', message)
     }
   }
 
@@ -765,12 +821,19 @@ export async function convertVideo(
     }
   }
 
-  emit('done', 'Conversion completed successfully.')
+  if (completionStatus === 'complete') {
+    emit('done', 'Conversion completed successfully.')
+  } else {
+    emit('done', 'Conversion finished early.')
+  }
 
   return {
     probe,
     artifacts: patched,
     logs,
     warnings,
+    completionStatus,
+    completedOutputs: patched.length,
+    expectedOutputs,
   }
 }

@@ -11,6 +11,7 @@ import {
   recordQualityBinaryProbe,
   type QualityBinarySearchState,
 } from './gifskiQuality'
+import { FinishCurrentConversionError } from './conversionWorkerPool'
 import type { WorkerArtifactData } from './types'
 
 export interface SplitRecoveryOptions {
@@ -31,7 +32,14 @@ export interface SplitRecoveryOptions {
     budgetKb: number,
     label: string,
   ) => Promise<WorkerArtifactData>
+  shouldFinishCurrent?: () => boolean
   emit: (stage: string, message: string) => void
+}
+
+function ensureNotFinishing(options: SplitRecoveryOptions): void {
+  if (options.shouldFinishCurrent?.() === true) {
+    throw new FinishCurrentConversionError()
+  }
 }
 
 interface QualityRecoveryState {
@@ -135,6 +143,7 @@ async function recoverPartQualityWave(
   let wave = 1
 
   while (true) {
+    ensureNotFinishing(options)
     const probes = states
       .filter((state) => !state.done)
       .map((state) => ({
@@ -213,7 +222,8 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   )
 
   if (options.retryAllowFpsDrop && currentFps < options.originalFps) {
-    for (const fps of buildSharedFpsRecoveryCandidates(currentFps, options.originalFps)) {
+  for (const fps of buildSharedFpsRecoveryCandidates(currentFps, options.originalFps)) {
+      ensureNotFinishing(options)
       const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name, options.splitColumns), item]))
       const limiterEntry = Array.from(byIndex.entries()).reduce((largest, entry) =>
         entry[1].sizeKb > largest[1].sizeKb ? entry : largest,
@@ -270,6 +280,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   const byIndex = new Map(currentItems.map((item) => [partIndexFromName(item.name, options.splitColumns), item]))
   const recoveryStates: QualityRecoveryState[] = []
   for (const partIndex of options.partOrder) {
+    ensureNotFinishing(options)
     const current = byIndex.get(partIndex)
     if (!current) {
       continue
@@ -280,6 +291,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
     }
   }
 
+  ensureNotFinishing(options)
   await recoverPartQualityWave(recoveryStates, currentFps, budgetKb, options)
   for (const state of recoveryStates) {
     byIndex.set(state.partIndex, state.accepted)

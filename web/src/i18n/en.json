@@ -110,6 +110,8 @@
   "convert.estimating": "Estimating...",
   "convert.run": "Run Conversion",
   "convert.cancel": "Cancel",
+  "convert.finishCurrent": "Finish Current",
+  "convert.finishingCurrent": "Finishing...",
   "convert.reset": "Reset Results",
   "convert.converting": "Converting GIFs...",
   "convert.lastConversion": "Last conversion",
