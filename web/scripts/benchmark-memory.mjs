@@ -72,6 +72,7 @@ Options:
   --summary-only                Omit raw Memory Debug JSON from stdout report
   --out PATH                    Also write the machine-readable report to PATH
   --peak-threshold-mb N         Exit non-zero if any run exceeds this browser peak
+  --assert-frame-cache-cleared  Exit non-zero unless frame cache retained bytes drop to 0
   --rows N                      Override Workshop row count
   --workers N                   Override worker count
   --parts N                     Override Workshop parts
@@ -135,6 +136,10 @@ function parseArgs(argv) {
     }
     if (rawName === 'summary-only') {
       out.summaryOnly = true
+      continue
+    }
+    if (rawName === 'assert-frame-cache-cleared') {
+      out.assertFrameCacheCleared = true
       continue
     }
     if (rawName === 'disable-optimizations') {
@@ -469,6 +474,12 @@ function summarizeMemoryDebug(memoryDebug, progressText) {
   const cacheReuseProgressLines = progressLines.filter((line) =>
     line.includes('Reusing decoded frame sequence'),
   )
+  const frameCacheCleanupEvents = events.filter((event) =>
+    event.bucket === 'frame-cache-retained' &&
+    event.stage === 'cleanup' &&
+    event.kind === 'retained' &&
+    event.bytes === 0
+  )
 
   return {
     browserMemory: {
@@ -485,6 +496,7 @@ function summarizeMemoryDebug(memoryDebug, progressText) {
       decodedRgbaEvents: events.filter((event) => event.bucket === 'decoded-rgba').length,
       gifskiFrameInputEvents: events.filter((event) => event.bucket === 'gifski-frame-input').length,
       frameCacheRetainedEvents: events.filter((event) => event.bucket === 'frame-cache-retained').length,
+      frameCacheCleanupEvents: frameCacheCleanupEvents.length,
       cacheReuseProgressLines: cacheReuseProgressLines.length,
     },
     history: {
@@ -667,6 +679,9 @@ async function main() {
           peakBrowserMb: options.peakThresholdMb,
         }
       : null,
+    assertions: {
+      frameCacheCleared: options.assertFrameCacheCleared === true,
+    },
     runs: [],
   }
 
@@ -697,6 +712,7 @@ async function main() {
           `elapsed=${run.elapsedSeconds ?? run.wallClockSeconds}s`,
           `peak=${peakMb}MB via ${run.metrics.browserMemory.peakSource}`,
           `frame-cache-retained=${bytesToMb(retainedFrameCache)}MB`,
+          `frame-cache-cleanups=${run.metrics.recoveryCost.frameCacheCleanupEvents}`,
           `decoded-rgba-events=${run.metrics.recoveryCost.decodedRgbaEvents}`,
           `gifski-input-events=${run.metrics.recoveryCost.gifskiFrameInputEvents}`,
           `cache-reuse-lines=${run.metrics.recoveryCost.cacheReuseProgressLines}`,
@@ -734,6 +750,23 @@ async function main() {
     peakBrowserMb: bytesToMb(run.metrics.browserMemory.peakBytes),
   }))
 
+  const frameCacheCleanupFailures = options.assertFrameCacheCleared
+    ? report.runs
+      .filter((run) => {
+        const retainedBytes = run.metrics.buckets['frame-cache-retained']?.retainedBytes ?? 0
+        const cleanupEvents = run.metrics.recoveryCost.frameCacheCleanupEvents
+        return run.status !== 'completed' || retainedBytes !== 0 || cleanupEvents === 0
+      })
+      .map((run) => ({
+        run: run.run,
+        status: run.status,
+        retainedFrameCacheBytes: run.metrics.buckets['frame-cache-retained']?.retainedBytes ?? 0,
+        retainedFrameCacheMb: bytesToMb(run.metrics.buckets['frame-cache-retained']?.retainedBytes ?? 0),
+        frameCacheCleanupEvents: run.metrics.recoveryCost.frameCacheCleanupEvents,
+      }))
+    : []
+  report.frameCacheCleanupFailures = frameCacheCleanupFailures
+
   const json = `${JSON.stringify(report, null, 2)}\n`
   if (options.out) {
     const outputPath = path.isAbsolute(options.out) ? options.out : path.resolve(webRoot, options.out)
@@ -743,7 +776,7 @@ async function main() {
   }
   process.stdout.write(json)
 
-  if (thresholdFailures.length > 0) {
+  if (thresholdFailures.length > 0 || frameCacheCleanupFailures.length > 0) {
     process.exitCode = 1
   }
 }
