@@ -17,6 +17,18 @@ import type {
 type ProgressCallback = (message: string, stage: string, workerIndex: number) => void
 type MemoryDebugCallback = (event: MemoryDebugEventData, workerIndex: number) => void
 
+export class FinishCurrentConversionError extends Error {
+  constructor(message = 'Finishing current conversion') {
+    super(message)
+    this.name = 'FinishCurrentConversionError'
+  }
+}
+
+export function isFinishCurrentConversionError(error: unknown): error is FinishCurrentConversionError {
+  return error instanceof FinishCurrentConversionError ||
+    (error instanceof Error && error.name === 'FinishCurrentConversionError')
+}
+
 interface TaskRecord {
   requestId: string
   command: WorkerCommand
@@ -61,6 +73,8 @@ export class ConversionWorkerPool {
   private inFlight = new Map<string, InFlightTask>()
   private affinitySlots = new Map<string, number>()
   private warmedUp = false
+  private finishingCurrent = false
+  private finishWaiters: Array<() => void> = []
 
   constructor(options: WorkerPoolOptions) {
     this.workerCount = Math.max(1, options.workerCount)
@@ -112,6 +126,11 @@ export class ConversionWorkerPool {
   ): Promise<WorkerResultDataMap[T]> {
     const request = buildWorkerRequest(command, payload)
     return new Promise<WorkerResultDataMap[T]>((resolve, reject) => {
+      if (this.finishingCurrent) {
+        reject(new FinishCurrentConversionError())
+        return
+      }
+
       const task: TaskRecord = {
         requestId: request.id,
         command,
@@ -131,6 +150,9 @@ export class ConversionWorkerPool {
   }
 
   cancelAll(reason = 'Cancelled by user'): void {
+    this.finishingCurrent = false
+    this.finishWaiters.splice(0).forEach((resolve) => resolve())
+
     for (const task of this.queue) {
       task.reject(new Error(reason))
     }
@@ -146,6 +168,31 @@ export class ConversionWorkerPool {
 
     this.resetWorkers()
     this.warmedUp = false
+  }
+
+  finishCurrent(reason = 'Finishing current conversion'): Promise<void> {
+    if (this.queue.length === 0 && this.inFlight.size === 0) {
+      this.finishingCurrent = false
+      return Promise.resolve()
+    }
+
+    this.finishingCurrent = true
+    for (const task of this.queue) {
+      task.reject(new FinishCurrentConversionError(reason))
+    }
+    this.queue = []
+
+    if (this.inFlight.size === 0) {
+      this.finishingCurrent = false
+      return Promise.resolve()
+    }
+
+    return new Promise((resolve) => {
+      this.finishWaiters.push(() => {
+        this.finishingCurrent = false
+        resolve()
+      })
+    })
   }
 
   dispose(): void {
@@ -189,6 +236,7 @@ export class ConversionWorkerPool {
     if (slot) {
       slot.busy = false
     }
+    this.resolveFinishWaitersIfIdle()
     this.dispatch()
   }
 
@@ -241,6 +289,7 @@ export class ConversionWorkerPool {
       task.reject(new Error(data.payload.message))
       this.inFlight.delete(data.id)
       this.slots[workerIndex].busy = false
+      this.resolveFinishWaitersIfIdle()
       this.dispatch()
       return
     }
@@ -252,12 +301,17 @@ export class ConversionWorkerPool {
       task.resolve(data.payload.data)
       this.inFlight.delete(data.id)
       this.slots[workerIndex].busy = false
+      this.resolveFinishWaitersIfIdle()
       this.dispatch()
       return
     }
   }
 
   private dispatch(): void {
+    if (this.finishingCurrent) {
+      return
+    }
+
     for (let i = 0; i < this.slots.length; i += 1) {
       if (this.queue.length === 0) {
         return
@@ -306,6 +360,7 @@ export class ConversionWorkerPool {
                 new Error(`Worker task timed out after ${task.timeoutMs}ms (${task.command}).`),
               )
               this.slots[i].busy = false
+              this.resolveFinishWaitersIfIdle()
               this.replaceWorker(i)
               this.dispatch()
             }, task.timeoutMs)
@@ -315,6 +370,7 @@ export class ConversionWorkerPool {
         this.inFlight.delete(task.requestId)
         slot.busy = false
         task.reject(error instanceof Error ? error : new Error(String(error)))
+        this.resolveFinishWaitersIfIdle()
       }
     }
   }
@@ -341,5 +397,15 @@ export class ConversionWorkerPool {
     }
     const assignedWorker = this.affinitySlots.get(task.affinityKey)
     return assignedWorker === undefined || assignedWorker === workerIndex
+  }
+
+  private resolveFinishWaitersIfIdle(): void {
+    if (!this.finishingCurrent || this.inFlight.size > 0) {
+      return
+    }
+    const waiters = this.finishWaiters.splice(0)
+    for (const resolve of waiters) {
+      resolve()
+    }
   }
 }

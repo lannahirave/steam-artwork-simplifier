@@ -20,6 +20,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     config,
     sourceFile,
     busy,
+    finishingCurrent,
     estimatingFps,
     fpsEstimateInfo,
     progressPercent,
@@ -39,6 +40,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onEstimateAndApplyFps,
     onRunConversion,
     onCancelConversion,
+    onFinishCurrentConversion,
     onDownloadZip,
     onResetConvertState,
     onUpdateWorkshopParts,
@@ -498,6 +500,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
         </button>
         <button disabled={!busy} onClick={onCancelConversion}>
           {intl.formatMessage({ id: 'convert.cancel' })}
+        </button>
+        <button disabled={!busy || finishingCurrent} onClick={onFinishCurrentConversion}>
+          {intl.formatMessage({ id: finishingCurrent ? 'convert.finishingCurrent' : 'convert.finishCurrent' })}
         </button>
         <button onClick={onResetConvertState}>{intl.formatMessage({ id: 'convert.reset' })}</button>
       </div>
