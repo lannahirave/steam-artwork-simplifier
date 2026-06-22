@@ -1136,6 +1136,91 @@ button:disabled {
   padding: 1rem;
 }
 
+.browser-support-warning {
+  margin: 1rem 0 1.2rem;
+  padding: 1rem;
+  border: 1px solid rgba(138, 90, 9, 0.34);
+  border-radius: var(--radius-card);
+  background:
+    linear-gradient(180deg, rgba(255, 190, 92, 0.16), rgba(255, 255, 255, 0.86));
+  color: var(--ink);
+}
+
+.browser-support-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.browser-support-kicker,
+.browser-support-warning h3,
+.browser-support-warning p {
+  margin: 0;
+}
+
+.browser-support-kicker {
+  color: var(--warning);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.browser-support-warning h3 {
+  margin-top: 0.15rem;
+  font-size: 1.1rem;
+}
+
+.browser-support-warning > p {
+  margin-top: 0.8rem;
+  color: var(--muted);
+}
+
+.browser-support-warning ul {
+  display: grid;
+  gap: 0.55rem;
+  margin: 0.85rem 0 0;
+  padding: 0;
+  list-style: none;
+}
+
+.browser-support-warning li {
+  display: grid;
+  gap: 0.12rem;
+  padding-left: 0.85rem;
+  border-left: 3px solid rgba(138, 90, 9, 0.38);
+}
+
+.browser-support-warning li strong {
+  color: var(--ink);
+}
+
+.browser-support-warning li span {
+  color: var(--muted);
+  font-size: 0.9rem;
+}
+
+.browser-support-details {
+  margin-top: 0.9rem;
+}
+
+.browser-support-details summary {
+  cursor: pointer;
+  color: var(--warning);
+  font-weight: 700;
+}
+
+.browser-support-details pre {
+  margin: 0.7rem 0 0;
+  max-height: 220px;
+  overflow: auto;
+  white-space: pre-wrap;
+  padding: 0.85rem;
+  border-radius: var(--radius-card);
+  background: rgba(29, 29, 31, 0.06);
+}
+
 .progress-head {
   display: flex;
   justify-content: space-between;

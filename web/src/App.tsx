@@ -1,9 +1,8 @@
-import { useMemo, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useIntl } from 'react-intl'
 import './App.css'
 import {
   GUIDE_SECTIONS,
-  getIsolationState,
   type TabKey,
 } from './agents/appAgents'
 import { TAB_DETAILS } from './appShellCatalog'
@@ -21,10 +20,9 @@ const APP_VERSION = __APP_VERSION__
 
 function App() {
   const intl = useIntl()
-  const isolationState = useMemo(() => getIsolationState(), [])
   const [tab, setTab] = useState<TabKey>('convert')
   const [showOnboarding, setShowOnboarding] = useState(
-    () => isolationState.ok && !getStoredOnboardingComplete(),
+    () => !getStoredOnboardingComplete(),
   )
   const [onboardingRun, setOnboardingRun] = useState(0)
   const activeTab = TAB_DETAILS[tab]
@@ -57,27 +55,6 @@ function App() {
       </p>
     </footer>
   )
-
-  if (!isolationState.ok) {
-    return (
-      <div className="apple-app">
-        <main className="shell shell-blocking">
-          <section className="panel panel-blocking">
-            <p className="hero-eyebrow">{intl.formatMessage({ id: 'app.blocking.eyebrow' })}</p>
-            <h1>{intl.formatMessage({ id: 'app.blocking.title' })}</h1>
-            <p>{isolationState.reason}</p>
-            <p>
-              {intl.formatMessage({ id: 'app.blocking.headers' })}
-              <code>Cross-Origin-Opener-Policy: same-origin</code>
-              <code>Cross-Origin-Embedder-Policy: require-corp</code>
-            </p>
-            <p>{intl.formatMessage({ id: 'app.blocking.note' })}</p>
-          </section>
-          {trademarkDisclaimer}
-        </main>
-      </div>
-    )
-  }
 
   const tabPanels: Record<TabKey, ReactNode> = {
     convert: <ConvertPanel onboardingTarget="convert" />,
