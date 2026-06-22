@@ -123,14 +123,14 @@ Local Vite dev and preview servers already set these headers in
 The browser app is the main workflow. Legacy local scripts are retained for
 compatibility with older ffmpeg-based workflows:
 
-- `video_parts_pipeline.py`: local video-to-GIF pipeline.
-- `steam_hex_patch.py`: EOF byte patch utility.
-- `steam_hex_edit_header.py`: GIF header width/height editor.
+- `legacy/video_parts_pipeline.py`: local video-to-GIF pipeline.
+- `legacy/steam_hex_patch.py`: EOF byte patch utility.
+- `legacy/steam_hex_edit_header.py`: GIF header width/height editor.
 
 Example:
 
 ```bash
-python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
+python .\legacy\video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
 ```
 
 ## Documentation

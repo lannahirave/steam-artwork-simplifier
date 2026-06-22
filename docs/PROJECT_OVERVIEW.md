@@ -13,9 +13,9 @@ Provide one toolkit for Steam artwork preparation with two execution paths:
 - `web/src/lib/*`: conversion defaults, orchestration, worker pool, sizing, patch, validation.
 - `web/src/workers/ffmpeg.worker.ts`: ffmpeg worker runtime.
 - `web/src/components/panels/*`: tab panels (Convert, Patch Tools, Steam Helpers, Guides).
-- `video_parts_pipeline.py`: legacy video->GIF pipeline.
-- `steam_hex_patch.py`: legacy EOF patch utility.
-- `steam_hex_edit_header.py`: legacy GIF header editor.
+- `legacy/video_parts_pipeline.py`: legacy video->GIF pipeline.
+- `legacy/steam_hex_patch.py`: legacy EOF patch utility.
+- `legacy/steam_hex_edit_header.py`: legacy GIF header editor.
 - `autofill/*.js`: legacy Steam autofill snippets.
 - `docs/`: technical + operational docs.
 
