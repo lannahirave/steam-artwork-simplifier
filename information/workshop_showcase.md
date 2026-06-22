@@ -20,7 +20,7 @@ Upload GIF assets to Steam Workshop and place them in Workshop Showcase sections
 ## Legacy conversion command
 
 ```bash
-python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
+python .\legacy\video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
 ```
 
 Default legacy workshop behavior:

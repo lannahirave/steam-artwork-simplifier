@@ -16,7 +16,7 @@ Create one wide GIF and upload as Artwork/Featured Artwork.
 ## Legacy conversion command
 
 ```bash
-python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured
+python .\legacy\video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured
 ```
 
 ## Legacy autofill

@@ -11,9 +11,9 @@ For the current browser app, use:
 
 ## Legacy scripts
 
-- `video_parts_pipeline.py`
-- `steam_hex_patch.py`
-- `steam_hex_edit_header.py`
+- `legacy/video_parts_pipeline.py`
+- `legacy/steam_hex_patch.py`
+- `legacy/steam_hex_edit_header.py`
 - `autofill/steam_upload_autofill_workshop.js`
 - `autofill/steam_upload_autofill_featured.js`
 
@@ -33,8 +33,8 @@ Required headers for conversion runtime:
 ## Legacy CLI quick start
 
 ```bash
-python video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
-python video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured
+python .\legacy\video_parts_pipeline.py --input .\media\my_video.mp4 --preset workshop
+python .\legacy\video_parts_pipeline.py --input .\media\my_video.mp4 --preset featured
 ```
 
 ## Legacy env notes

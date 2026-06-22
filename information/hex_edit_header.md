@@ -4,7 +4,7 @@ Checked on March 4, 2026.
 
 Tool:
 
-- Script: `steam_hex_edit_header.py`
+- Script: `legacy/steam_hex_edit_header.py`
 - Purpose: patch GIF logical width/height header bytes, optional EOF patch.
 
 ## What it edits
@@ -16,7 +16,7 @@ Tool:
 ## Example
 
 ```bash
-python steam_hex_edit_header.py .\media\my_folder --recursive
+python .\legacy\steam_hex_edit_header.py .\media\my_folder --recursive
 ```
 
 ## Notes
