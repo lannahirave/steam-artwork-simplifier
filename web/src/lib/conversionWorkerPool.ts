@@ -18,9 +18,12 @@ type ProgressCallback = (message: string, stage: string, workerIndex: number) =>
 type MemoryDebugCallback = (event: MemoryDebugEventData, workerIndex: number) => void
 
 export class FinishCurrentConversionError extends Error {
-  constructor(message = 'Finishing current conversion') {
+  readonly completedItems: unknown[]
+
+  constructor(message = 'Finishing current conversion', completedItems: unknown[] = []) {
     super(message)
     this.name = 'FinishCurrentConversionError'
+    this.completedItems = completedItems
   }
 }
 

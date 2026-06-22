@@ -428,7 +428,10 @@ export async function convertVideo(
     const rejected = settled.find((item): item is PromiseRejectedResult => item.status === 'rejected')
     if (rejected) {
       if (finishRequested() || isFinishCurrentConversionError(rejected.reason)) {
-        throw new FinishCurrentConversionError()
+        const completed = settled
+          .filter((item): item is PromiseFulfilledResult<WorkerArtifactData> => item.status === 'fulfilled')
+          .map((item) => item.value)
+        throw new FinishCurrentConversionError(undefined, completed)
       }
       throw rejected.reason instanceof Error ? rejected.reason : new Error(String(rejected.reason))
     }
@@ -509,15 +512,9 @@ export async function convertVideo(
   }
 
   let resultData: WorkerArtifactData[] = []
-  let lastCompleteSet: WorkerArtifactData[] | null = null
   let completionStatus: ConversionResult['completionStatus'] = 'complete'
   const expectedOutputs = presetPlan.jobCount
-  const rememberCompleteSet = (items: WorkerArtifactData[]): WorkerArtifactData[] => {
-    if (items.length === expectedOutputs) {
-      lastCompleteSet = items
-    }
-    return items
-  }
+  const rememberOutputSet = (items: WorkerArtifactData[]): WorkerArtifactData[] => items
 
   try {
   if (config.preset === 'featured') {
@@ -530,7 +527,7 @@ export async function convertVideo(
       stage: 'convert',
       detail: 'featured output',
     })
-    resultData = rememberCompleteSet([
+    resultData = rememberOutputSet([
       await pool.runTask(
         'convertFeatured',
         {
@@ -575,7 +572,7 @@ export async function convertVideo(
       stage: 'convert',
       detail: 'guide output',
     })
-    resultData = rememberCompleteSet([
+    resultData = rememberOutputSet([
       await pool.runTask(
         'convertGuide',
         {
@@ -629,7 +626,7 @@ export async function convertVideo(
       if (!config.retryAllowFpsDrop) {
         emit('convert', `${splitPresetLabel} shared-FPS adjustment skipped: FPS reduction is disabled.`)
       }
-      resultData = rememberCompleteSet(firstPass)
+      resultData = rememberOutputSet(firstPass)
     } else {
       let sizingPass = await runSplitBatch(
         config.gifFps,
@@ -722,7 +719,7 @@ export async function convertVideo(
           'convert',
           `${splitPresetLabel} pass 1 satisfied max-size limits without FPS drop; largest ${largest.name} is ${largest.sizeKb.toFixed(1)}KB.`,
         )
-        resultData = rememberCompleteSet(sizingPass)
+        resultData = rememberOutputSet(sizingPass)
       } else {
         const finalFps =
           sharedFps < config.gifFps && largest.sizeKb > fpsTargetKb
@@ -743,7 +740,7 @@ export async function convertVideo(
           'convert',
           `${splitPresetLabel} pass 2/2: enforcing shared fps=${finalFps} for all ${presetPlan.jobCount} parts.`,
         )
-        resultData = rememberCompleteSet(await runSplitBatch(
+        resultData = rememberOutputSet(await runSplitBatch(
           finalFps,
           false,
           `${splitPresetLabel} pass 2/2: final conversion at shared fps=${finalFps}.`,
@@ -755,7 +752,7 @@ export async function convertVideo(
       }
       if (config.optimizationMode === 'hybrid' && !config.disableOptimizations && !isStillImage) {
         ensureNotFinishing()
-        resultData = rememberCompleteSet(await recoverSplitBatchQuality({
+        resultData = rememberOutputSet(await recoverSplitBatchQuality({
           items: resultData,
           partOrder: prioritizedPartOrder,
           label: splitPresetLabel,
@@ -778,12 +775,15 @@ export async function convertVideo(
       throw error
     }
     completionStatus = 'finished-incomplete'
-    const completedSet = lastCompleteSet as WorkerArtifactData[] | null
-    if (completedSet) {
-      resultData = completedSet
+    const completedSet = error.completedItems.filter((item): item is WorkerArtifactData => (
+      typeof item === 'object' && item !== null && 'fileBytes' in item
+    ))
+    const availableSet = completedSet.length > 0 ? completedSet : resultData
+    if (availableSet.length > 0) {
+      resultData = availableSet
       const message =
-        `Finished early after completing ${completedSet.length}/${expectedOutputs} output(s); ` +
-        'skipped remaining optimization work.'
+        `Finished early with ${availableSet.length}/${expectedOutputs} output(s). ` +
+        'Keeping completed outputs even if they exceed the target size.'
       warnings.push(message)
       emit('warn', message)
     } else {

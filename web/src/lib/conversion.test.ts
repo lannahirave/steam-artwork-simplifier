@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { getDefaultConfig } from './defaults'
 import { convertVideo } from './conversion'
+import { FinishCurrentConversionError } from './conversionWorkerPool'
 import type {
   ConvertPartPayload,
   ProbePayload,
@@ -12,6 +13,7 @@ import type {
 class FakeConversionPool {
   readonly partPayloads: ConvertPartPayload[] = []
   clearFrameCacheCalls = 0
+  finishAfterConvertParts: number | null = null
 
   async warmup(): Promise<void> {
     return undefined
@@ -44,6 +46,12 @@ class FakeConversionPool {
 
     const partPayload = payload as ConvertPartPayload
     this.partPayloads.push(partPayload)
+    if (
+      this.finishAfterConvertParts !== null &&
+      this.partPayloads.length > this.finishAfterConvertParts
+    ) {
+      throw new FinishCurrentConversionError()
+    }
     const rowIndex = Math.floor(partPayload.partIndex / (partPayload.splitColumns ?? 1))
     const columnIndex = partPayload.partIndex % (partPayload.splitColumns ?? 1)
     const heights = partPayload.splitRowHeights?.join('/')
@@ -99,8 +107,9 @@ describe('conversion orchestration', () => {
     expect(pool.clearFrameCacheCalls).toBe(1)
   })
 
-  it('finishes incomplete when requested before a full output set exists', async () => {
+  it('returns completed outputs when finishing before a full output set exists', async () => {
     const pool = new FakeConversionPool()
+    pool.finishAfterConvertParts = 1
     const config = {
       ...getDefaultConfig('workshop'),
       parts: 2,
@@ -109,15 +118,15 @@ describe('conversion orchestration', () => {
     }
     const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
 
-    const result = await convertVideo({ file }, config, pool as never, {
-      shouldFinishCurrent: () => true,
-    })
+    const result = await convertVideo({ file }, config, pool as never)
 
     expect(result.completionStatus).toBe('finished-incomplete')
-    expect(result.artifacts).toHaveLength(0)
-    expect(result.completedOutputs).toBe(0)
+    expect(result.artifacts).toHaveLength(1)
+    expect(result.completedOutputs).toBe(1)
     expect(result.expectedOutputs).toBe(2)
-    expect(result.warnings).toContain('Finished early before a complete output set was produced (0/2 output(s) available).')
+    expect(result.warnings).toContain(
+      'Finished early with 1/2 output(s). Keeping completed outputs even if they exceed the target size.',
+    )
     expect(pool.clearFrameCacheCalls).toBe(1)
   })
 
@@ -143,7 +152,7 @@ describe('conversion orchestration', () => {
     expect(result.artifacts).toHaveLength(2)
     expect(result.completedOutputs).toBe(2)
     expect(result.expectedOutputs).toBe(2)
-    expect(result.warnings.some((warning) => warning.includes('skipped remaining optimization work'))).toBe(true)
+    expect(result.warnings.some((warning) => warning.includes('Keeping completed outputs'))).toBe(true)
     expect(pool.clearFrameCacheCalls).toBe(1)
   })
 })
