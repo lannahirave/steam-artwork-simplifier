@@ -15,6 +15,7 @@ import { ConversionWorkerPool } from '../lib/conversionWorkerPool'
 import { isSupportedConversionSource } from '../lib/validation'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
+import { inspectBrowserSupport, type BrowserSupportReport } from '../lib/browserSupport'
 import { distributeEvenly } from '../lib/workshopRows'
 import {
   appendBrowserMemorySample,
@@ -90,6 +91,7 @@ export interface ConvertMeta {
   presetPlan: PresetPlan
   showLongMp4Memo: boolean
   showWorkshopMemoryMemo: boolean
+  browserSupport: BrowserSupportReport
 }
 
 export interface ConvertContextValue {
@@ -139,6 +141,7 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
 }
 
 export function useConversionSession(): ConvertContextValue {
+  const [browserSupport] = useState<BrowserSupportReport>(() => inspectBrowserSupport())
   const [config, setConfig] = useState<ConversionConfig>(() => getDefaultConfig('workshop'))
   const [sourceFile, setSourceFile] = useState<File | null>(null)
   const [sourceMetadata, setSourceMetadata] = useState<SourceMediaMetadata | null>(null)
@@ -301,8 +304,39 @@ export function useConversionSession(): ConvertContextValue {
     return poolRef.current
   }
 
+  function formatSessionLogTime(date = new Date()): string {
+    const hours = String(date.getHours()).padStart(2, '0')
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    const seconds = String(date.getSeconds()).padStart(2, '0')
+    const millis = String(date.getMilliseconds()).padStart(3, '0')
+    return `${hours}:${minutes}:${seconds}.${millis}`
+  }
+
+  function failForUnsupportedBrowser(): void {
+    resetConvertState()
+    const time = formatSessionLogTime()
+    const entries = browserSupport.diagnosticLog.map((message) => ({
+      stage: 'browser-support',
+      message,
+      time,
+    }))
+    setProgress(entries)
+    setLogs(entries.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`))
+    setWarnings(browserSupport.reasons.map((reason) => `${reason.label}: ${reason.detail}`))
+    setError(browserSupport.summary)
+    setProgressPercent(1)
+    setProgressLabel(`Failed: ${browserSupport.summary}`)
+    setElapsedMs(0)
+    setLastElapsedMs(0)
+  }
+
   async function runConversion(): Promise<void> {
     if (!sourceFile) {
+      return
+    }
+
+    if (!browserSupport.supported) {
+      failForUnsupportedBrowser()
       return
     }
 
@@ -520,6 +554,11 @@ export function useConversionSession(): ConvertContextValue {
       return
     }
 
+    if (!browserSupport.supported) {
+      failForUnsupportedBrowser()
+      return
+    }
+
     setError('')
     setFpsEstimateInfo('')
     setEstimatingFps(true)
@@ -651,6 +690,7 @@ export function useConversionSession(): ConvertContextValue {
       presetPlan,
       showLongMp4Memo,
       showWorkshopMemoryMemo,
+      browserSupport,
     },
   }
 }

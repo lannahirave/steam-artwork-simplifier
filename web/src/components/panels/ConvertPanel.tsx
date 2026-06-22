@@ -15,7 +15,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
   const intl = useIntl()
   const { onboardingTarget } = props
   const { state, actions, meta } = useConvertContext()
-  const [copiedSection, setCopiedSection] = useState<'progress' | null>(null)
+  const [copiedSection, setCopiedSection] = useState<'progress' | 'diagnostics' | null>(null)
   const {
     config,
     sourceFile,
@@ -62,14 +62,16 @@ export function ConvertPanel(props: ConvertPanelProps) {
     presetPlan,
     showLongMp4Memo,
     showWorkshopMemoryMemo,
+    browserSupport,
   } = meta
   const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
+  const diagnosticText = browserSupport.diagnosticLog.join('\n')
   const showMemoryDebug = import.meta.env.DEV
   const resultsGridStyle = resultsGridClassName.includes('workshop-grid')
     ? ({ '--workshop-columns': config.parts } as CSSProperties)
     : undefined
 
-  async function copyText(section: 'progress', text: string): Promise<void> {
+  async function copyText(section: 'progress' | 'diagnostics', text: string): Promise<void> {
     if (!text) {
       return
     }
@@ -100,6 +102,41 @@ export function ConvertPanel(props: ConvertPanelProps) {
     <section className="panel panel-convert" data-onboarding-target={onboardingTarget}>
       <h2>{intl.formatMessage({ id: 'convert.title' })}</h2>
       <p className="panel-intro">{intl.formatMessage({ id: 'convert.intro' })}</p>
+
+      {!browserSupport.supported && (
+        <section className="browser-support-warning" aria-live="polite">
+          <div className="browser-support-head">
+            <div>
+              <p className="browser-support-kicker">
+                {intl.formatMessage({ id: 'convert.browserSupport.kicker' })}
+              </p>
+              <h3>{intl.formatMessage({ id: 'convert.browserSupport.title' })}</h3>
+            </div>
+            <button
+              type="button"
+              className="inline-action"
+              onClick={() => void copyText('diagnostics', diagnosticText)}
+            >
+              {intl.formatMessage({
+                id: copiedSection === 'diagnostics' ? 'convert.copied' : 'convert.browserSupport.copy',
+              })}
+            </button>
+          </div>
+          <p>{browserSupport.summary}</p>
+          <ul>
+            {browserSupport.reasons.map((reason) => (
+              <li key={reason.code}>
+                <strong>{reason.label}</strong>
+                <span>{reason.detail}</span>
+              </li>
+            ))}
+          </ul>
+          <details className="browser-support-details">
+            <summary>{intl.formatMessage({ id: 'convert.browserSupport.details' })}</summary>
+            <pre>{diagnosticText}</pre>
+          </details>
+        </section>
+      )}
 
       <div className="config-groups">
         <section className="config-group">

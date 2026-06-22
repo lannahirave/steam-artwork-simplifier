@@ -122,34 +122,9 @@ export interface OutputItem {
   note: string
 }
 
-export interface IsolationState {
-  ok: boolean
-  reason?: string
-}
-
 interface WorkerStageEvent {
   workerIndex: number
   stage: string
-}
-
-export function getIsolationState(): IsolationState {
-  const params = new URLSearchParams(window.location.search)
-  if (params.get('noiso') === '1') {
-    return {
-      ok: false,
-      reason: 'Simulation mode enabled via ?noiso=1.',
-    }
-  }
-
-  if (window.isSecureContext && window.crossOriginIsolated) {
-    return { ok: true }
-  }
-
-  return {
-    ok: false,
-    reason:
-      'This app requires cross-origin isolation to run WASM media processing workers (SharedArrayBuffer).',
-  }
 }
 
 export function downloadBlob(name: string, blob: Blob): void {
