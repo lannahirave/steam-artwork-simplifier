@@ -12,4 +12,4 @@
 ## Canonical vs Legacy
 
 - Canonical (actively maintained): root `README.md`, `web/README.md`, and all files in this `docs/` folder.
-- Legacy references: `information/*` and root Python script docs (kept for CLI compatibility).
+- Legacy references: `information/*` and Python CLI scripts in `legacy/` (kept for CLI compatibility).

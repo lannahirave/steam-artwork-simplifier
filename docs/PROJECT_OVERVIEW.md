@@ -5,7 +5,7 @@
 Provide one toolkit for Steam artwork preparation with two execution paths:
 
 1. Browser SPA (`web/`) with React + ffmpeg.wasm (primary path)
-2. Legacy Python CLI scripts (compatibility path)
+2. Legacy Python CLI scripts in `legacy/` (compatibility path)
 
 ## Repository Map
 
