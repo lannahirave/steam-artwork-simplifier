@@ -1,6 +1,7 @@
 __pycache__/
 .agents/
 .playwright-mcp/
+.env
 media/*
 !media/test-fixtures/
 !media/test-fixtures/**
