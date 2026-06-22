@@ -84,10 +84,23 @@ test('renders convert tab by default', async ({ page }) => {
   )
 })
 
-test('shows blocking screen when isolation simulation is enabled', async ({ page }) => {
+test('shows browser warning and fail-fast diagnostics when isolation simulation is enabled', async ({ page }) => {
+  await markOnboardingComplete(page)
   await page.goto('/?noiso=1')
-  await expect(page.getByRole('heading', { name: 'Cross-Origin Isolation Required' })).toBeVisible()
-  await expect(page.getByText('Cross-Origin-Opener-Policy: same-origin')).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Media to GIF' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Conversion may not run in this browser' })).toBeVisible()
+  await expect(page.getByText('This browser is not supported for browser-side ffmpeg/gifski conversion.')).toBeVisible()
+  await expect(page.getByText('Technical diagnostics')).toBeVisible()
+
+  await page.setInputFiles('input[type="file"]', {
+    name: 'clip.mp4',
+    mimeType: 'video/mp4',
+    buffer: Buffer.from([0, 0, 0, 0]),
+  })
+  await page.getByRole('button', { name: 'Run Conversion' }).click()
+  const liveProgress = page.locator('.log-box')
+  await expect(liveProgress.getByText('Browser support: unsupported')).toBeVisible()
+  await expect(liveProgress.getByText('Reason [simulated-no-isolation]')).toBeVisible()
 })
 
 test('shows steam helper snippets', async ({ page }) => {
