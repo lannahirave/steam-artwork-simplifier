@@ -25,6 +25,7 @@ Browser-only Steam artwork converter built with React 19 + TypeScript + Vite + f
 - Standalone patch tools for existing files
 - Steam helper snippets with copy buttons and upload links
 - Built-in Guides tab
+- Language selector for English, Ukrainian, and Czech
 - Per-file downloads + ZIP archive export
 - App header shows version from `package.json` (displayed as `Vx.y.z`)
 
