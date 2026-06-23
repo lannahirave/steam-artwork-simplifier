@@ -31,6 +31,7 @@ import type {
   SourceProbe,
   WorkerArtifactData,
 } from './types'
+import type { MessageId } from '../i18n/messages'
 import { isLikelyImageSource } from './validation'
 
 export interface ConversionProgress {
@@ -48,6 +49,7 @@ export interface ConversionOptions {
   onMemoryDebug?: (event: MemoryDebugEvent) => void
   memoryDebugEnabled?: boolean
   shouldFinishCurrent?: () => boolean
+  formatMessage?: (id: MessageId, values?: Record<string, number | string>) => string
 }
 
 interface BrowserHeapMemory {
@@ -101,6 +103,28 @@ function formatHeapSnapshot(): string {
     return `heap ${used}/${formatHeapMb(memory.totalJSHeapSize)}`
   }
   return `heap ${used}`
+}
+
+const fallbackRuntimeMessages: Partial<Record<MessageId, string>> = {
+  'convert.runtime.optimizationsDisabled':
+    'Optimizations disabled: max-size checks and retry ladders are bypassed (raw encode mode).',
+  'convert.runtime.precheckEstimate':
+    'Precheck estimate: {estimatedKb}KB per GIF at {minGifFps}fps (allow {allowedKb}KB with margin).',
+  'convert.runtime.precheckBlocked':
+    'Precheck blocked conversion: estimated {estimatedKb}KB exceeds allowed {allowedKb}KB. Adjust limits/FPS or disable precheck.',
+  'convert.runtime.finishedEarlyWithOutputs':
+    'Finished early with {available}/{expected} output(s). Keeping completed outputs even if they exceed the target size.',
+  'convert.runtime.finishedEarlyWithoutOutputs':
+    'Finished early before a complete output set was produced (0/{expected} output(s) available).',
+  'convert.runtime.oversizeOutputs':
+    'Some outputs still exceed max size ({maxGifKb}KB): {details}. Keeping outputs so you can preview/download anyway.',
+  'convert.runtime.doneComplete': 'Conversion completed successfully.',
+  'convert.runtime.doneFinishedEarly': 'Conversion finished early.',
+}
+
+function formatFallbackMessage(id: MessageId, values: Record<string, number | string> = {}): string {
+  const template = fallbackRuntimeMessages[id] ?? id
+  return template.replace(/\{(\w+)\}/g, (_, key: string) => String(values[key] ?? `{${key}}`))
 }
 
 function toArtifact(
@@ -185,6 +209,7 @@ export async function convertVideo(
   const logs: string[] = []
   const warnings: string[] = []
   const memoryDebugEnabled = options.memoryDebugEnabled === true
+  const formatMessage = options.formatMessage ?? formatFallbackMessage
 
   const emitMemory = (event: MemoryDebugEventData): void => {
     if (!memoryDebugEnabled) {
@@ -269,8 +294,7 @@ export async function convertVideo(
   let activeSplitRowHeights = defaultSplitRowHeights
 
   if (config.disableOptimizations) {
-    const message =
-      'Optimizations disabled: max-size checks and retry ladders are bypassed (raw encode mode).'
+    const message = formatMessage('convert.runtime.optimizationsDisabled')
     warnings.push(message)
     emit('precheck', message)
   } else if (config.precheckEnabled) {
@@ -290,13 +314,18 @@ export async function convertVideo(
       precheckBppf: config.precheckBppf,
       precheckMarginPct: config.precheckMarginPct,
     })
-    warnings.push(precheck.message)
-    emit('precheck', precheck.message)
+    const precheckMessage = formatMessage('convert.runtime.precheckEstimate', {
+      estimatedKb: precheck.estimatedKb.toFixed(1),
+      minGifFps: config.minGifFps,
+      allowedKb: precheck.allowedKb.toFixed(1),
+    })
+    warnings.push(precheckMessage)
+    emit('precheck', precheckMessage)
     if (precheck.shouldBlock) {
-      throw new Error(
-        `Precheck blocked conversion: estimated ${precheck.estimatedKb.toFixed(1)}KB exceeds ` +
-          `allowed ${precheck.allowedKb.toFixed(1)}KB. Adjust limits/FPS or disable precheck.`,
-      )
+      throw new Error(formatMessage('convert.runtime.precheckBlocked', {
+        estimatedKb: precheck.estimatedKb.toFixed(1),
+        allowedKb: precheck.allowedKb.toFixed(1),
+      }))
     }
   }
 
@@ -781,16 +810,17 @@ export async function convertVideo(
     const availableSet = completedSet.length > 0 ? completedSet : resultData
     if (availableSet.length > 0) {
       resultData = availableSet
-      const message =
-        `Finished early with ${availableSet.length}/${expectedOutputs} output(s). ` +
-        'Keeping completed outputs even if they exceed the target size.'
+      const message = formatMessage('convert.runtime.finishedEarlyWithOutputs', {
+        available: availableSet.length,
+        expected: expectedOutputs,
+      })
       warnings.push(message)
       emit('warn', message)
     } else {
       resultData = []
-      const message =
-        `Finished early before a complete output set was produced ` +
-        `(0/${expectedOutputs} output(s) available).`
+      const message = formatMessage('convert.runtime.finishedEarlyWithoutOutputs', {
+        expected: expectedOutputs,
+      })
       warnings.push(message)
       emit('warn', message)
     }
@@ -813,18 +843,19 @@ export async function convertVideo(
       const details = oversize
         .map((artifact) => `${artifact.name} (${artifact.sizeKb.toFixed(1)}KB)`)
         .join(', ')
-      const message =
-        `Some outputs still exceed max size (${config.maxGifKb}KB): ${details}. ` +
-        'Keeping outputs so you can preview/download anyway.'
+      const message = formatMessage('convert.runtime.oversizeOutputs', {
+        maxGifKb: config.maxGifKb,
+        details,
+      })
       warnings.push(message)
       emit('warn', message)
     }
   }
 
   if (completionStatus === 'complete') {
-    emit('done', 'Conversion completed successfully.')
+    emit('done', formatMessage('convert.runtime.doneComplete'))
   } else {
-    emit('done', 'Conversion finished early.')
+    emit('done', formatMessage('convert.runtime.doneFinishedEarly'))
   }
 
   return {
