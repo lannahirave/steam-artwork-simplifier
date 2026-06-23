@@ -33,6 +33,7 @@ provides Steam upload helper snippets without sending source media to a server.
   conversion.
 - Standalone patch tools for existing files.
 - Steam helper snippets and upload links for artwork workflows.
+- Language support for English, Ukrainian, and Czech with saved in-browser preference.
 
 ## Architecture
 

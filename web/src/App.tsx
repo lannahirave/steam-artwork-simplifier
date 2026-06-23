@@ -14,11 +14,17 @@ import { SteamHelpersPanel } from './components/panels/SteamHelpersPanel'
 import { ConvertProvider } from './contexts/convertContext'
 import { PatchToolsProvider } from './contexts/patchToolsContext'
 import { SteamHelpersProvider } from './contexts/steamHelpersContext'
+import { SUPPORTED_LOCALES, localeLabels, type AppLocale } from './i18n/messages'
 import { getStoredOnboardingComplete } from './onboardingStorage'
 
 const APP_VERSION = __APP_VERSION__
 
-function App() {
+interface AppProps {
+  locale: AppLocale
+  onLocaleChange: (locale: AppLocale) => void
+}
+
+function App({ locale, onLocaleChange }: AppProps) {
   const intl = useIntl()
   const [tab, setTab] = useState<TabKey>('convert')
   const [showOnboarding, setShowOnboarding] = useState(
@@ -85,6 +91,18 @@ function App() {
           </nav>
           <div className="global-nav-actions">
             <span className="nav-version">V{APP_VERSION}</span>
+            <select
+              className="nav-language"
+              aria-label={intl.formatMessage({ id: 'app.nav.language' })}
+              value={locale}
+              onChange={(event) => onLocaleChange(event.target.value as AppLocale)}
+            >
+              {SUPPORTED_LOCALES.map((item) => (
+                <option key={item} value={item}>
+                  {localeLabels[item]}
+                </option>
+              ))}
+            </select>
             <button type="button" className="nav-help" onClick={reopenOnboarding}>
               {intl.formatMessage({ id: 'app.nav.help' })}
             </button>
