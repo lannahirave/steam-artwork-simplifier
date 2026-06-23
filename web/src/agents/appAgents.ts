@@ -1,4 +1,5 @@
 import type { ConversionArtifact } from '../lib/types'
+import type { MessageId } from '../i18n/messages'
 export { getQualityReductionPercent } from '../lib/gifskiQuality'
 
 export type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
@@ -8,106 +9,102 @@ export const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
 
 export interface GuideSection {
   key: string
-  title: string
-  badge: string
-  steps: string[]
-  tip?: string
+  title: MessageId
+  badge: MessageId
+  steps: MessageId[]
+  tip?: MessageId
 }
 
 export const GUIDE_SECTIONS: GuideSection[] = [
   {
     key: 'workshop',
-    title: 'Workshop Showcase (5 parts)',
-    badge: 'Convert',
+    title: 'guides.workshop.title',
+    badge: 'guides.badge.convert',
     steps: [
-      'Open Convert tab and keep preset as Workshop (5x150 slices).',
-      'Upload your source media file.',
-      'Set GIF FPS and Min GIF FPS, or click Estimate for auto FPS.',
-      'Click Run Conversion and wait for Output ready in...',
-      'Review all 5 previews, then download single files or ZIP.',
+      'guides.workshop.step1',
+      'guides.workshop.step2',
+      'guides.workshop.step3',
+      'guides.workshop.step4',
+      'guides.workshop.step5',
     ],
-    tip:
-      'If quality drops, keep FPS reduction enabled so frame-rate changes are tried before Quality reduction. Workshop upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
+    tip: 'guides.workshop.tip',
   },
   {
     key: 'featured',
-    title: 'Featured Showcase (single wide)',
-    badge: 'Convert',
+    title: 'guides.featured.title',
+    badge: 'guides.badge.convert',
     steps: [
-      'Switch preset to Featured (single 630px).',
-      'Upload source media (video, gif, png, webp, jpg, jpeg, bmp).',
-      'Tune Featured Width and FPS if needed.',
-      'Run conversion and check size/FPS/quality metadata under output.',
-      'Download originalFileName_featured.gif directly or as part of ZIP.',
+      'guides.featured.step1',
+      'guides.featured.step2',
+      'guides.featured.step3',
+      'guides.featured.step4',
+      'guides.featured.step5',
     ],
-    tip:
-      'Start with lower FPS before increasing lossy settings for better visual quality. Artwork upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
+    tip: 'guides.featured.tip',
   },
   {
     key: 'showcase',
-    title: 'Artwork Showcase (506 + 100)',
-    badge: 'Convert',
+    title: 'guides.showcase.title',
+    badge: 'guides.badge.convert',
     steps: [
-      'Switch preset to Artwork Showcase (fixed 506px + 100px split).',
-      'Upload source media and tune FPS/size limits as needed.',
-      'Run conversion and verify both split outputs in preview.',
-      'Open Steam Helpers tab and copy either Artwork/Featured or Screenshot snippet (only one).',
-      'Run one snippet in Steam Console to prefill invisible title and agreement checkbox.',
+      'guides.showcase.step1',
+      'guides.showcase.step2',
+      'guides.showcase.step3',
+      'guides.showcase.step4',
+      'guides.showcase.step5',
     ],
-    tip:
-      'Use this flow only for the 506 + 100 showcase preset. Artwork/Screenshot upload page: https://steamcommunity.com/sharedfiles/edititem/767/3/#',
+    tip: 'guides.showcase.tip',
   },
   {
     key: 'guide',
-    title: 'Guide Artwork (195x195)',
-    badge: 'Convert',
+    title: 'guides.guide.title',
+    badge: 'guides.badge.convert',
     steps: [
-      'Switch preset to Guide (fixed 195x195 square).',
-      'Upload source media and keep the crop focused on the important area.',
-      'Set GIF FPS if needed, or click Estimate to auto-fill a starting point.',
-      'Run conversion and check the final size and FPS metadata under output.',
-      'Download originalFileName_guide.gif and upload it on the Steam guide page.',
+      'guides.guide.step1',
+      'guides.guide.step2',
+      'guides.guide.step3',
+      'guides.guide.step4',
+      'guides.guide.step5',
     ],
-    tip:
-      'Guide uploads use the fixed 195x195 output. Guide upload page: https://steamcommunity.com/sharedfiles/editguide/?appid=760',
+    tip: 'guides.guide.tip',
   },
   {
     key: 'tuning',
-    title: 'Fix size or quality issues',
-    badge: 'Tuning',
+    title: 'guides.tuning.title',
+    badge: 'guides.badge.tuning',
     steps: [
-      'Keep Allow FPS reduction enabled.',
-      'Set realistic Max GIF KB and Target GIF KB.',
-      'Leave standard retries off for speed-first behavior.',
-      'Enable standard retries if you want extra target-size chasing.',
-      'Use Worker Count 2-3 for speed, or 1 for stability debugging.',
+      'guides.tuning.step1',
+      'guides.tuning.step2',
+      'guides.tuning.step3',
+      'guides.tuning.step4',
+      'guides.tuning.step5',
     ],
-    tip: 'Current pipeline prioritizes FPS drops first and only reduces quality later if still oversize.',
+    tip: 'guides.tuning.tip',
   },
   {
     key: 'patch',
-    title: 'Patch existing files',
-    badge: 'Patch',
+    title: 'guides.patch.title',
+    badge: 'guides.badge.patch',
     steps: [
-      'Open Patch Tools tab.',
-      'Use EOF Patch to rewrite last byte (default 0x21).',
-      'Use GIF Header Patch to set logical width/height bytes.',
-      'Optionally combine header + EOF in one run.',
-      'Download patched outputs from the result list.',
+      'guides.patch.step1',
+      'guides.patch.step2',
+      'guides.patch.step3',
+      'guides.patch.step4',
+      'guides.patch.step5',
     ],
   },
   {
     key: 'steam',
-    title: 'Steam upload autofill',
-    badge: 'Upload',
+    title: 'guides.steam.title',
+    badge: 'guides.badge.upload',
     steps: [
-      'Open Steam Helpers tab and click Copy for workshop, artwork/featured, or screenshot snippet.',
-      'Open the Steam upload page in your browser.',
-      'Open DevTools Console.',
-      'Paste one snippet and run it.',
-      'Verify fields and finish upload.',
+      'guides.steam.step1',
+      'guides.steam.step2',
+      'guides.steam.step3',
+      'guides.steam.step4',
+      'guides.steam.step5',
     ],
-    tip: 'Snippets are intended for Steam upload pages only. Use the matching upload URL from each section.',
+    tip: 'guides.steam.tip',
   },
 ]
 

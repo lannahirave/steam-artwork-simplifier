@@ -6,6 +6,7 @@ import {
   type Dispatch,
   type SetStateAction,
 } from 'react'
+import { useIntl } from 'react-intl'
 import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from '../lib/defaults'
 import { convertVideo, type ConversionProgress } from '../lib/conversion'
 import { estimateFpsForTargetKb, estimateGifKb } from '../lib/precheck'
@@ -40,6 +41,7 @@ import {
   toArtifactViews,
   type ArtifactView,
 } from '../agents/appAgents'
+import type { MessageId } from '../i18n/messages'
 
 export interface ConvertState {
   config: ConversionConfig
@@ -141,6 +143,7 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
 }
 
 export function useConversionSession(): ConvertContextValue {
+  const intl = useIntl()
   const [browserSupport] = useState<BrowserSupportReport>(() => inspectBrowserSupport())
   const [config, setConfig] = useState<ConversionConfig>(() => getDefaultConfig('workshop'))
   const [sourceFile, setSourceFile] = useState<File | null>(null)
@@ -208,6 +211,8 @@ export function useConversionSession(): ConvertContextValue {
   const lossyEffective = !optimizationDisabled && config.lossyOversize
   const showLongMp4Memo = shouldShowLongMp4Memo(sourceMetadata)
   const showWorkshopMemoryMemo = shouldShowWorkshopMemoryMemo(config)
+  const formatMessage = (id: MessageId, values?: Record<string, number | string>): string =>
+    intl.formatMessage({ id }, values)
 
   function readVideoDuration(file: File): Promise<number | null> {
     if (!file.type.trim().toLowerCase().startsWith('video/') && !file.name.trim().toLowerCase().endsWith('.mp4')) {
@@ -325,7 +330,7 @@ export function useConversionSession(): ConvertContextValue {
     setWarnings(browserSupport.reasons.map((reason) => `${reason.label}: ${reason.detail}`))
     setError(browserSupport.summary)
     setProgressPercent(1)
-    setProgressLabel(`Failed: ${browserSupport.summary}`)
+    setProgressLabel(formatMessage('convert.status.failed', { message: browserSupport.summary }))
     setElapsedMs(0)
     setLastElapsedMs(0)
   }
@@ -357,7 +362,7 @@ export function useConversionSession(): ConvertContextValue {
     conversionStartMsRef.current = startedAt
     setBusy(true)
     setProgressPercent(2)
-    setProgressLabel('Starting conversion...')
+    setProgressLabel(formatMessage('convert.status.starting'))
     setElapsedMs(0)
     setLastElapsedMs(null)
     void recordBrowserMemorySample('conversion-start')
@@ -371,10 +376,10 @@ export function useConversionSession(): ConvertContextValue {
       const pool = ensurePool(runtimeConfig.workerCount)
       if (runtimeConfig.workerCount !== config.workerCount) {
         extraWarnings.push(
-          `Worker count capped to ${runtimeConfig.workerCount} for stability with wasm.`,
+          formatMessage('convert.runtime.workerCountCapped', { count: runtimeConfig.workerCount }),
         )
         setProgressLabel(
-          `Starting conversion... (using ${runtimeConfig.workerCount} workers for stability)`,
+          formatMessage('convert.status.startingWithWorkers', { count: runtimeConfig.workerCount }),
         )
       }
       const result = await convertVideo(
@@ -391,6 +396,7 @@ export function useConversionSession(): ConvertContextValue {
           },
           memoryDebugEnabled: import.meta.env.DEV,
           shouldFinishCurrent: () => finishCurrentRequestedRef.current,
+          formatMessage,
         },
       )
 
@@ -417,8 +423,8 @@ export function useConversionSession(): ConvertContextValue {
       setLastElapsedMs(totalMs)
       setProgressLabel(
         result.completionStatus === 'complete'
-          ? `Conversion complete in ${formatElapsed(totalMs)}.`
-          : `Finished current work in ${formatElapsed(totalMs)}.`,
+          ? formatMessage('convert.status.completeIn', { time: formatElapsed(totalMs) })
+          : formatMessage('convert.status.finishedCurrentIn', { time: formatElapsed(totalMs) }),
       )
     } catch (conversionError) {
       const message = conversionError instanceof Error ? conversionError.message : String(conversionError)
@@ -426,7 +432,7 @@ export function useConversionSession(): ConvertContextValue {
       setElapsedMs(totalMs)
       setLastElapsedMs(totalMs)
       setError(message)
-      setProgressLabel(`Failed: ${message}`)
+      setProgressLabel(formatMessage('convert.status.failed', { message }))
     } finally {
       if (memorySampleTimer !== undefined) {
         window.clearInterval(memorySampleTimer)
@@ -445,7 +451,7 @@ export function useConversionSession(): ConvertContextValue {
     }
     finishCurrentRequestedRef.current = true
     setFinishingCurrent(true)
-    setProgressLabel('Finishing active worker tasks...')
+    setProgressLabel(formatMessage('convert.status.finishingActiveWorkers'))
     void poolRef.current?.finishCurrent()
   }
 
@@ -460,8 +466,8 @@ export function useConversionSession(): ConvertContextValue {
     poolRef.current?.cancelAll()
     setBusy(false)
     setFinishingCurrent(false)
-    setError('Conversion cancelled.')
-    setProgressLabel('Conversion cancelled.')
+    setError(formatMessage('convert.status.cancelled'))
+    setProgressLabel(formatMessage('convert.status.cancelled'))
     conversionStartMsRef.current = null
   }
 
@@ -522,7 +528,7 @@ export function useConversionSession(): ConvertContextValue {
       setSourceFile(null)
       setSourceMetadata(null)
       setFpsEstimateInfo('')
-      setError('Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).')
+      setError(formatMessage('convert.error.unsupportedSource'))
       event.target.value = ''
       return
     }

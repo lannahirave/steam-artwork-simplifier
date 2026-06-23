@@ -34,15 +34,15 @@ export function GuidesPanel(props: GuidesPanelProps) {
         {guides.map((guide) => (
           <article key={guide.key} className="guide-card">
             <div className="guide-head">
-              <span className="guide-badge">{guide.badge}</span>
-              <h3>{guide.title}</h3>
+              <span className="guide-badge">{intl.formatMessage({ id: guide.badge })}</span>
+              <h3>{intl.formatMessage({ id: guide.title })}</h3>
             </div>
             <ol className="guide-steps">
               {guide.steps.map((step) => (
-                <li key={step}>{renderTextWithLinks(step)}</li>
+                <li key={step}>{renderTextWithLinks(intl.formatMessage({ id: step }))}</li>
               ))}
             </ol>
-            {guide.tip && <p className="guide-tip">{renderTextWithLinks(guide.tip)}</p>}
+            {guide.tip && <p className="guide-tip">{renderTextWithLinks(intl.formatMessage({ id: guide.tip }))}</p>}
           </article>
         ))}
       </div>
