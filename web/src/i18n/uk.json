@@ -38,7 +38,7 @@
   "app.footer.trademark2": "Цей проєкт є незалежним, неофіційним інструментом і не пов'язаний з Valve Corporation, не схвалений, не спонсорований і не затверджений нею.",
   "app.footer.sourceCode": "Вихідний код:",
   "app.footer.license": "Ліцензія:",
-  "app.footer.notices": "Third-party notices:",
+  "app.footer.notices": "Повідомлення третіх сторін:",
   "app.footer.view": "Переглянути",
   "onboarding.step": "Крок {current} з {total}",
   "onboarding.skip": "Пропустити",

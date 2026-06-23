@@ -38,7 +38,7 @@
   "app.footer.trademark2": "Tento projekt je nezávislý, neoficiální nástroj a není spojen se společností Valve Corporation, není jí podporován, sponzorován ani schválen.",
   "app.footer.sourceCode": "Zdrojový kód:",
   "app.footer.license": "Licence:",
-  "app.footer.notices": "Third-party notices:",
+  "app.footer.notices": "Upozornění třetích stran:",
   "app.footer.view": "Zobrazit",
   "onboarding.step": "Krok {current} z {total}",
   "onboarding.skip": "Přeskočit",
