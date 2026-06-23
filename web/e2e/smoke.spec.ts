@@ -67,6 +67,7 @@ async function expectSpotlightFitsPanel(page: Page, targetName: string): Promise
 test('renders convert tab by default', async ({ page }) => {
   await markOnboardingComplete(page)
   await page.goto('/')
+  await expect(page).toHaveURL(/\/en$/)
   await expect(page.getByRole('heading', { name: /Steam Artwork Studio/i })).toBeVisible()
   await expect(page.getByRole('button', { name: 'Run Conversion' })).toBeVisible()
   const sourceLink = page.getByRole('link', { name: 'GitHub' }).first()
@@ -84,9 +85,28 @@ test('renders convert tab by default', async ({ page }) => {
   )
 })
 
+for (const locale of ['en', 'uk', 'cs'] as const) {
+  test(`renders ${locale} locale route`, async ({ page }) => {
+    await markOnboardingComplete(page)
+    await page.goto(`/${locale}`)
+    await expect(page.locator('html')).toHaveAttribute('lang', locale)
+    await expect(page.getByRole('heading', { name: /Steam Artwork Studio/i })).toBeVisible()
+  })
+}
+
+test('language switch updates the locale route', async ({ page }) => {
+  await markOnboardingComplete(page)
+  await page.goto('/uk')
+  await page.locator('select.nav-language').selectOption('en')
+  await expect(page).toHaveURL(/\/en$/)
+  await expect(page.locator('html')).toHaveAttribute('lang', 'en')
+  await expect(page.getByRole('button', { name: 'Run Conversion' })).toBeVisible()
+})
+
 test('shows browser warning and fail-fast diagnostics when isolation simulation is enabled', async ({ page }) => {
   await markOnboardingComplete(page)
   await page.goto('/?noiso=1')
+  await expect(page).toHaveURL(/\/en\?noiso=1$/)
   await expect(page.getByRole('heading', { name: 'Media to GIF' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Conversion may not run in this browser' })).toBeVisible()
   await expect(page.getByText('This browser is not supported for browser-side ffmpeg/gifski conversion.')).toBeVisible()

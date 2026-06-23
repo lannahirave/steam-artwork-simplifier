@@ -4,50 +4,88 @@ import App from './App'
 import {
   DEFAULT_LOCALE,
   LOCALE_STORAGE_KEY,
-  SUPPORTED_LOCALES,
+  buildLocalePath,
+  detectSystemLocale,
+  getRouteLocale,
   messagesByLocale,
+  normalizeLocale,
   type AppLocale,
 } from './i18n/messages'
 
-function isAppLocale(value: string): value is AppLocale {
-  return SUPPORTED_LOCALES.includes(value as AppLocale)
+function getNavigatorLanguages(): string[] {
+  return Array.from(navigator.languages?.length ? navigator.languages : [navigator.language])
 }
 
-function normalizeLocale(value: string): AppLocale | null {
-  const base = value.toLowerCase().split('-')[0]
-  return isAppLocale(base) ? base : null
+function readStoredLocale(): AppLocale | null {
+  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
+  return stored ? normalizeLocale(stored) : null
+}
+
+function resolveFallbackLocale(): AppLocale {
+  return readStoredLocale() ?? detectSystemLocale(getNavigatorLanguages()) ?? DEFAULT_LOCALE
 }
 
 function resolveInitialLocale(): AppLocale {
-  const stored = window.localStorage.getItem(LOCALE_STORAGE_KEY)
-  if (stored) {
-    const locale = normalizeLocale(stored)
-    if (locale) {
-      return locale
-    }
+  return getRouteLocale(window.location.pathname) ?? resolveFallbackLocale()
+}
+
+function currentRoute(): string {
+  return `${window.location.pathname}${window.location.search}${window.location.hash}`
+}
+
+function updateLocaleRoute(locale: AppLocale, mode: 'push' | 'replace'): void {
+  const nextPath = buildLocalePath(locale, window.location)
+  if (currentRoute() === nextPath) {
+    return
   }
 
-  for (const language of navigator.languages ?? [navigator.language]) {
-    const locale = normalizeLocale(language)
-    if (locale) {
-      return locale
-    }
+  if (mode === 'replace') {
+    window.history.replaceState(null, '', nextPath)
+    return
   }
 
-  return DEFAULT_LOCALE
+  window.history.pushState(null, '', nextPath)
 }
 
 export function AppRoot() {
   const [locale, setLocale] = useState<AppLocale>(resolveInitialLocale)
 
   useEffect(() => {
-    window.localStorage.setItem(LOCALE_STORAGE_KEY, locale)
     document.documentElement.lang = locale
   }, [locale])
 
+  useEffect(() => {
+    if (!getRouteLocale(window.location.pathname)) {
+      updateLocaleRoute(locale, 'replace')
+    }
+  }, [locale])
+
+  useEffect(() => {
+    const handlePopState = (): void => {
+      const routeLocale = getRouteLocale(window.location.pathname)
+      if (routeLocale) {
+        setLocale(routeLocale)
+        return
+      }
+
+      const fallbackLocale = resolveFallbackLocale()
+      setLocale(fallbackLocale)
+      updateLocaleRoute(fallbackLocale, 'replace')
+    }
+
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [])
+
+  function handleLocaleChange(nextLocale: AppLocale): void {
+    window.localStorage.setItem(LOCALE_STORAGE_KEY, nextLocale)
+    setLocale(nextLocale)
+    updateLocaleRoute(nextLocale, 'push')
+  }
+
   return (
     <IntlProvider locale={locale} messages={messagesByLocale[locale]}>
-      <App locale={locale} onLocaleChange={setLocale} />
+      <App locale={locale} onLocaleChange={handleLocaleChange} />
     </IntlProvider>
   )
 }
