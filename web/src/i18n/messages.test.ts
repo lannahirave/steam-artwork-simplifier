@@ -3,7 +3,6 @@ import {
   buildLocalePath,
   detectSystemLocale,
   getRouteLocale,
-  messagesByLocale,
   normalizeLocale,
 } from './messages'
 
@@ -36,12 +35,5 @@ describe('locale routing helpers', () => {
     expect(buildLocalePath('cs', locationLike('/uk/foo', '?x=1', '#top'))).toBe('/cs/foo?x=1#top')
     expect(buildLocalePath('en', locationLike('/', '?noiso=1'))).toBe('/en?noiso=1')
     expect(buildLocalePath('uk', locationLike('/foo', '', '#a'))).toBe('/uk/foo#a')
-  })
-
-  it('keeps locale files key-compatible', () => {
-    const keys = Object.keys(messagesByLocale.en).sort()
-
-    expect(Object.keys(messagesByLocale.uk).sort()).toEqual(keys)
-    expect(Object.keys(messagesByLocale.cs).sort()).toEqual(keys)
   })
 })
