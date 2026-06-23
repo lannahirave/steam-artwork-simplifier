@@ -2,15 +2,23 @@ import { useIntl } from 'react-intl'
 import {
   FEATURED_SNIPPET,
   SCREENSHOT_SNIPPET,
-  STEAM_HELPER_NOTES,
   WORKSHOP_SNIPPET,
 } from '../../lib/steamSnippets'
 import { useSteamHelpersContext } from '../../contexts/steamHelpersContext'
+import type { MessageId } from '../../i18n/messages'
 
 const WORKSHOP_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
 const ARTWORK_UPLOAD_URL = 'https://steamcommunity.com/sharedfiles/edititem/767/3/#'
 const URL_PARTS_PATTERN = /(https?:\/\/[^\s]+)/g
 const URL_WHOLE_PATTERN = /^https?:\/\/[^\s]+$/
+const STEAM_HELPER_NOTE_IDS: MessageId[] = [
+  'steam.note.oneSnippet',
+  'steam.note.previewGlitches',
+  'steam.note.openForm',
+  'steam.note.workshopFields',
+  'steam.note.artworkFields',
+  'steam.note.screenshotFields',
+]
 
 function renderTextWithLinks(text: string) {
   return text.split(URL_PARTS_PATTERN).map((part, index) =>
@@ -40,8 +48,8 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
       <h2>{intl.formatMessage({ id: 'steam.title' })}</h2>
       <p className="panel-intro">{intl.formatMessage({ id: 'steam.intro' })}</p>
       <ul>
-        {STEAM_HELPER_NOTES.map((note) => (
-          <li key={note}>{renderTextWithLinks(note)}</li>
+        {STEAM_HELPER_NOTE_IDS.map((noteId) => (
+          <li key={noteId}>{renderTextWithLinks(intl.formatMessage({ id: noteId }))}</li>
         ))}
       </ul>
 
