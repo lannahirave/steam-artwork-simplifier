@@ -1,6 +1,41 @@
 import { expect, test, type Page } from '@playwright/test'
 
 const ONBOARDING_STORAGE_KEY = 'steam-artwork-studio:onboarding-complete'
+const CHROME_DESKTOP_USER_AGENTS = [
+  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
+  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.0.0 Safari/537.36',
+]
+const CHROME_MOBILE_USER_AGENTS = [
+  {
+    name: 'iPhone',
+    userAgent:
+      'Mozilla/5.0 (iPhone; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.34 Mobile/15E148 Safari/604.1',
+    reason: 'Reason [ios-webkit]',
+    label: 'iOS/iPadOS browser runtime detected',
+  },
+  {
+    name: 'iPad',
+    userAgent:
+      'Mozilla/5.0 (iPad; CPU OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.34 Mobile/15E148 Safari/604.1',
+    reason: 'Reason [ios-webkit]',
+    label: 'iOS/iPadOS browser runtime detected',
+  },
+  {
+    name: 'iPod',
+    userAgent:
+      'Mozilla/5.0 (iPod; CPU iPhone OS 18_7 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) CriOS/150.0.7871.34 Mobile/15E148 Safari/604.1',
+    reason: 'Reason [ios-webkit]',
+    label: 'iOS/iPadOS browser runtime detected',
+  },
+  {
+    name: 'Android',
+    userAgent:
+      'Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/149.0.7827.160 Mobile Safari/537.36',
+    reason: 'Reason [android-runtime]',
+    label: 'Android browser runtime detected',
+  },
+]
 
 async function markOnboardingComplete(page: Page): Promise<void> {
   await page.addInitScript((storageKey) => {
@@ -122,6 +157,40 @@ test('shows browser warning and fail-fast diagnostics when isolation simulation 
   await expect(liveProgress.getByText('Browser support: unsupported')).toBeVisible()
   await expect(liveProgress.getByText('Reason [simulated-no-isolation]')).toBeVisible()
 })
+
+for (const userAgent of CHROME_DESKTOP_USER_AGENTS) {
+  test(`does not show browser warning for desktop Chrome UA: ${userAgent}`, async ({ browser }) => {
+    const context = await browser.newContext({ userAgent })
+    const page = await context.newPage()
+    try {
+      await markOnboardingComplete(page)
+      await page.goto('/')
+      await expect(page.getByRole('heading', { name: 'Media to GIF' })).toBeVisible()
+      await expect(page.getByRole('heading', { name: 'Conversion may not run in this browser' })).toHaveCount(0)
+    } finally {
+      await context.close()
+    }
+  })
+}
+
+for (const mobileUa of CHROME_MOBILE_USER_AGENTS) {
+  test(`shows browser warning for Chrome on ${mobileUa.name}`, async ({ browser }) => {
+    const context = await browser.newContext({ userAgent: mobileUa.userAgent })
+    const page = await context.newPage()
+    try {
+      await markOnboardingComplete(page)
+      await page.goto('/')
+      const warning = page.locator('.browser-support-warning')
+      await expect(page.getByRole('heading', { name: 'Media to GIF' })).toBeVisible()
+      await expect(warning.getByRole('heading', { name: 'Conversion may not run in this browser' })).toBeVisible()
+      await expect(warning.locator('li strong').getByText(mobileUa.label, { exact: true })).toBeVisible()
+      await warning.getByText('Technical diagnostics').click()
+      await expect(warning.locator('pre').getByText(mobileUa.reason)).toBeVisible()
+    } finally {
+      await context.close()
+    }
+  })
+}
 
 test('shows steam helper snippets', async ({ page }) => {
   await markOnboardingComplete(page)
