@@ -75,4 +75,29 @@ describe('browser support diagnostics', () => {
     expect(report.supported).toBe(false)
     expect(report.reasons.map((reason) => reason.code)).toContain('ios-webkit')
   })
+
+  it('marks Chrome on Android as unsupported', () => {
+    const report = inspectBrowserSupport(env({
+      userAgent:
+        'Mozilla/5.0 (Linux; Android 15; Pixel 9 Pro) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/145.0.0.0 Mobile Safari/537.36',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+    }))
+
+    expect(report.supported).toBe(false)
+    expect(report.reasons.map((reason) => reason.code)).toContain('android-runtime')
+    expect(report.diagnosticLog).toContain('Android runtime detected: yes')
+  })
+
+  it('marks Android WebView as unsupported', () => {
+    const report = inspectBrowserSupport(env({
+      userAgent:
+        'Mozilla/5.0 (Linux; Android 14; Pixel Build/AP2A) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/145.0.0.0 Mobile Safari/537.36 wv',
+      platform: 'Linux armv8l',
+      maxTouchPoints: 5,
+    }))
+
+    expect(report.supported).toBe(false)
+    expect(report.reasons.map((reason) => reason.code)).toContain('android-runtime')
+  })
 })

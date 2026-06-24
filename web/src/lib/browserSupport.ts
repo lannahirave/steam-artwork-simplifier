@@ -51,6 +51,10 @@ function isIosWebKit(env: BrowserSupportEnvironment): boolean {
   return mobileIos || desktopModeIpad
 }
 
+function isAndroidRuntime(env: BrowserSupportEnvironment): boolean {
+  return env.userAgent.toLowerCase().includes('android')
+}
+
 function bool(value: boolean): string {
   return value ? 'yes' : 'no'
 }
@@ -61,6 +65,7 @@ export function inspectBrowserSupport(env: BrowserSupportEnvironment = readEnvir
   const simulatedNoIsolation = params.get('noiso') === '1'
   const crossOriginIsolated = env.crossOriginIsolated && !simulatedNoIsolation
   const iosWebKit = isIosWebKit(env)
+  const androidRuntime = isAndroidRuntime(env)
 
   if (!env.secureContext) {
     reasons.push({
@@ -120,6 +125,15 @@ export function inspectBrowserSupport(env: BrowserSupportEnvironment = readEnvir
     })
   }
 
+  if (androidRuntime) {
+    reasons.push({
+      code: 'android-runtime',
+      label: 'Android browser runtime detected',
+      detail:
+        'Android browsers can hit mobile memory and worker limits with this ffmpeg.wasm + gifski.wasm pipeline.',
+    })
+  }
+
   const supported = reasons.length === 0
   const summary = supported
     ? 'This browser has the required APIs for browser-side ffmpeg/gifski conversion.'
@@ -133,6 +147,7 @@ export function inspectBrowserSupport(env: BrowserSupportEnvironment = readEnvir
     `createImageBitmap: ${bool(env.hasCreateImageBitmap)}`,
     `OffscreenCanvas: ${bool(env.hasOffscreenCanvas)}`,
     `iOS/iPadOS WebKit detected: ${bool(iosWebKit)}`,
+    `Android runtime detected: ${bool(androidRuntime)}`,
     `Platform: ${env.platform || 'unknown'}`,
     `User agent: ${env.userAgent || 'unknown'}`,
     ...reasons.map((reason) => `Reason [${reason.code}]: ${reason.label} - ${reason.detail}`),
