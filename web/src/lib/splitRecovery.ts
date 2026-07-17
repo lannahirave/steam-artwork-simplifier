@@ -33,6 +33,7 @@ export interface SplitRecoveryOptions {
     label: string,
   ) => Promise<WorkerArtifactData>
   shouldFinishCurrent?: () => boolean
+  onCheckpoint?: (items: WorkerArtifactData[]) => void
   emit: (stage: string, message: string) => void
 }
 
@@ -139,6 +140,7 @@ async function recoverPartQualityWave(
   fps: number,
   budgetKb: number,
   options: SplitRecoveryOptions,
+  checkpoint: () => void,
 ): Promise<void> {
   let wave = 1
 
@@ -194,6 +196,8 @@ async function recoverPartQualityWave(
     for (const state of states) {
       advanceQualityRecoveryRange(state, options)
     }
+
+    checkpoint()
 
     wave += 1
   }
@@ -269,6 +273,7 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
       }
       currentItems = attempt
       currentFps = fps
+      options.onCheckpoint?.([...currentItems])
       options.emit('quality-recovery', `${options.label} accepted shared fps=${fps}; all parts fit under ${budgetKb}KB.`)
     }
   }
@@ -292,7 +297,17 @@ export async function recoverSplitBatchQuality(options: SplitRecoveryOptions): P
   }
 
   ensureNotFinishing(options)
-  await recoverPartQualityWave(recoveryStates, currentFps, budgetKb, options)
+  const checkpointQualityRecovery = (): void => {
+    for (const state of recoveryStates) {
+      byIndex.set(state.partIndex, state.accepted)
+    }
+    options.onCheckpoint?.(
+      Array.from(byIndex.entries())
+        .sort(([left], [right]) => left - right)
+        .map(([, item]) => item),
+    )
+  }
+  await recoverPartQualityWave(recoveryStates, currentFps, budgetKb, options, checkpointQualityRecovery)
   for (const state of recoveryStates) {
     byIndex.set(state.partIndex, state.accepted)
   }

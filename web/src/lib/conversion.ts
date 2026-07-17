@@ -541,9 +541,15 @@ export async function convertVideo(
   }
 
   let resultData: WorkerArtifactData[] = []
+  let lastCompleteSet: WorkerArtifactData[] | null = null
   let completionStatus: ConversionResult['completionStatus'] = 'complete'
   const expectedOutputs = presetPlan.jobCount
-  const rememberOutputSet = (items: WorkerArtifactData[]): WorkerArtifactData[] => items
+  const rememberOutputSet = (items: WorkerArtifactData[]): WorkerArtifactData[] => {
+    if (items.length === expectedOutputs) {
+      lastCompleteSet = items
+    }
+    return items
+  }
 
   try {
   if (config.preset === 'featured') {
@@ -794,6 +800,7 @@ export async function convertVideo(
           runFixedSplitPart,
           runFixedSplitPartQualityProbe,
           shouldFinishCurrent: finishRequested,
+          onCheckpoint: rememberOutputSet,
           emit,
         }))
       }
@@ -807,7 +814,7 @@ export async function convertVideo(
     const completedSet = error.completedItems.filter((item): item is WorkerArtifactData => (
       typeof item === 'object' && item !== null && 'fileBytes' in item
     ))
-    const availableSet = completedSet.length > 0 ? completedSet : resultData
+    const availableSet = lastCompleteSet ?? (completedSet.length > 0 ? completedSet : resultData)
     if (availableSet.length > 0) {
       resultData = availableSet
       const message = formatMessage('convert.runtime.finishedEarlyWithOutputs', {
