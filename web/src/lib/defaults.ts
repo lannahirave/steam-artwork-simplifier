@@ -1,5 +1,24 @@
 import type { ConversionConfig, Preset, ResolvedPresetSettings } from './types'
 
+const ADVANCED_CONFIG_KEYS = [
+  'minGifFps',
+  'disableOptimizations',
+  'optimizationMode',
+  'standardRetriesEnabled',
+  'retryAllowFpsDrop',
+  'retryAllowQualityDrop',
+  'lossyOversize',
+  'lossyLevel',
+  'lossyMaxAttempts',
+  'precheckEnabled',
+  'eofPatchEnabled',
+  'eofByte',
+  'headerPatchEnabled',
+  'headerWidth',
+  'headerHeight',
+  'workerCount',
+] as const satisfies readonly (keyof ConversionConfig)[]
+
 export const DEFAULTS = {
   gifFps: 15,
   minGifFps: 10,
@@ -136,6 +155,12 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     headerHeight: DEFAULTS.headerHeight,
     workerCount: getDefaultWorkerCount(parts),
   }
+}
+
+export function countAdvancedConfigOverrides(config: ConversionConfig): number {
+  const defaults = getDefaultConfig(config.preset)
+
+  return ADVANCED_CONFIG_KEYS.filter((key) => config[key] !== defaults[key]).length
 }
 
 export function applyPreset(config: ConversionConfig, preset: Preset): ConversionConfig {

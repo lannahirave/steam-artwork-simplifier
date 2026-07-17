@@ -704,6 +704,81 @@ textarea {
   gap: 1rem;
 }
 
+.advanced-options {
+  margin-top: 1rem;
+  border: 1px solid var(--line);
+  background: var(--surface-muted);
+}
+
+.advanced-options > summary {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 1.1rem;
+  cursor: pointer;
+  list-style: none;
+}
+
+.advanced-options > summary::-webkit-details-marker {
+  display: none;
+}
+
+.advanced-options > summary::after {
+  content: '+';
+  display: grid;
+  place-items: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  flex: 0 0 auto;
+  border: 1px solid var(--line-strong);
+  border-radius: 50%;
+  color: var(--ink);
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.advanced-options[open] > summary::after {
+  content: '-';
+}
+
+.advanced-options-heading {
+  display: grid;
+  gap: 0.15rem;
+  margin-right: auto;
+
+}
+
+.advanced-options-heading strong {
+  color: var(--ink);
+}
+
+.advanced-options-heading small {
+  color: var(--ink-soft);
+  font-size: 0.86rem;
+  font-weight: 400;
+}
+
+.advanced-options-status {
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  text-align: right;
+}
+
+.advanced-options-groups {
+  padding: 0 1rem 1rem;
+}
+
+.advanced-options > summary:hover {
+  background: rgba(29, 29, 31, 0.035);
+}
+.advanced-options > summary:focus-visible {
+  outline: none;
+  border-radius: var(--radius-card);
+  box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
+}
+
+
 .config-group {
   padding: 1.1rem;
   background: var(--surface-muted);
@@ -1045,6 +1120,15 @@ button:disabled {
 .hero-primary {
   background: var(--apple-blue);
   color: var(--ink-inverse);
+}
+
+.actions > .action-primary {
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+}
+
+.actions > .action-primary:hover {
+  background: #0077ed;
 }
 
 .hero-primary:hover,
