@@ -120,6 +120,32 @@ test('renders convert tab by default', async ({ page }) => {
   )
 })
 
+test('keeps advanced conversion controls behind a collapsed disclosure', async ({ page }) => {
+  await markOnboardingComplete(page)
+  await page.goto('/')
+
+  const advancedOptions = page.getByTestId('advanced-options')
+  const advancedSummary = page.getByTestId('advanced-options-summary')
+
+  await expect(advancedOptions).not.toHaveAttribute('open')
+  await expect(page.getByRole('heading', { name: 'Performance and Optimization' })).toBeHidden()
+  await expect(page.getByRole('heading', { name: 'Output Patching' })).toBeHidden()
+  await expect(page.getByRole('spinbutton', { name: 'Worker Count' })).toBeHidden()
+  await expect(page.getByRole('checkbox', { name: 'Enable precheck' })).toBeHidden()
+
+  await advancedSummary.click()
+  await expect(page.getByRole('heading', { name: 'Performance and Optimization' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Output Patching' })).toBeVisible()
+
+  const lossyLevel = page.getByRole('spinbutton', { name: 'Lossy Level' })
+  await lossyLevel.fill('3')
+  await expect(advancedSummary).toContainText('1 custom setting')
+
+  await advancedSummary.click()
+  await advancedSummary.click()
+  await expect(lossyLevel).toHaveValue('3')
+})
+
 for (const locale of ['en', 'uk', 'cs'] as const) {
   test(`renders ${locale} locale route`, async ({ page }) => {
     await markOnboardingComplete(page)

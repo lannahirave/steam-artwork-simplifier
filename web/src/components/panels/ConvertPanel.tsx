@@ -1,6 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import type { ConversionConfig, OptimizationMode } from '../../lib/types'
+import { countAdvancedConfigOverrides } from '../../lib/defaults'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
@@ -70,6 +71,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
   const resultsGridStyle = resultsGridClassName.includes('workshop-grid')
     ? ({ '--workshop-columns': config.parts } as CSSProperties)
     : undefined
+  const advancedOverrideCount = countAdvancedConfigOverrides(config)
 
   async function copyText(section: 'progress' | 'diagnostics', text: string): Promise<void> {
     if (!text) {
@@ -307,6 +309,48 @@ export function ConvertPanel(props: ConvertPanelProps) {
               {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
             </label>
 
+            {optimizationDisabled && (
+              <p className="config-note budget-note">
+                {intl.formatMessage({ id: 'convert.rawModeActive' })}
+              </p>
+            )}
+          </div>
+        </section>
+      </div>
+
+        <div className="actions">
+          <button className="action-primary" disabled={convertDisabled} onClick={onRunConversion}>
+            {intl.formatMessage({ id: 'convert.run' })}
+          </button>
+          <button disabled={!busy} onClick={onCancelConversion}>
+            {intl.formatMessage({ id: 'convert.cancel' })}
+          </button>
+          <button disabled={!busy || finishingCurrent} onClick={onFinishCurrentConversion}>
+            {intl.formatMessage({ id: finishingCurrent ? 'convert.finishingCurrent' : 'convert.finishCurrent' })}
+          </button>
+          <button onClick={onResetConvertState}>{intl.formatMessage({ id: 'convert.reset' })}</button>
+        </div>
+
+        <details className="advanced-options" data-testid="advanced-options">
+          <summary data-testid="advanced-options-summary">
+            <span className="advanced-options-heading">
+              <strong>{intl.formatMessage({ id: 'convert.advancedOptions' })}</strong>
+              <small>{intl.formatMessage({ id: 'convert.advancedOptions.description' })}</small>
+            </span>
+            <span className="advanced-options-status">
+              {advancedOverrideCount === 0
+                ? intl.formatMessage({ id: 'convert.advancedOptions.defaults' })
+                : intl.formatMessage(
+                    { id: 'convert.advancedOptions.custom' },
+                    { count: advancedOverrideCount },
+                  )}
+            </span>
+          </summary>
+
+          <div className="config-groups advanced-options-groups">
+        <section className="config-group">
+          <h3>{intl.formatMessage({ id: 'convert.performance' })}</h3>
+          <div className="form-grid form-grid-performance">
             <label title="Lowest FPS allowed during recompression attempts.">
               {intl.formatMessage({ id: 'convert.minGifFps' })}
               <input
@@ -326,12 +370,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
               title="Estimate output size before encoding and stop early if likely too large."
               onChange={(checked) => setConfig((prev) => ({ ...prev, precheckEnabled: checked }))}
             />
-          </div>
-        </section>
 
-        <section className="config-group">
-          <h3>{intl.formatMessage({ id: 'convert.performance' })}</h3>
-          <div className="form-grid form-grid-performance">
             <div className="raw-mode-card" title="Raw mode skips retry ladders and ignores max/target size checks.">
               <button
                 type="button"
@@ -531,18 +570,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
         </section>
       </div>
 
-      <div className="actions">
-        <button disabled={convertDisabled} onClick={onRunConversion}>
-          {intl.formatMessage({ id: 'convert.run' })}
-        </button>
-        <button disabled={!busy} onClick={onCancelConversion}>
-          {intl.formatMessage({ id: 'convert.cancel' })}
-        </button>
-        <button disabled={!busy || finishingCurrent} onClick={onFinishCurrentConversion}>
-          {intl.formatMessage({ id: finishingCurrent ? 'convert.finishingCurrent' : 'convert.finishCurrent' })}
-        </button>
-        <button onClick={onResetConvertState}>{intl.formatMessage({ id: 'convert.reset' })}</button>
-      </div>
+      </details>
 
       {(busy || progressPercent > 0) && (
         <div className="progress-panel">

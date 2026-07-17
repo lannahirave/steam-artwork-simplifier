@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest'
-import { applyPreset, computeTargetHeight, getDefaultConfig, resolvePresetSettings } from './defaults'
+import {
+  applyPreset,
+  computeTargetHeight,
+  countAdvancedConfigOverrides,
+  getDefaultConfig,
+  resolvePresetSettings,
+} from './defaults'
 
 describe('preset defaults', () => {
   it('builds workshop defaults', () => {
@@ -46,5 +52,18 @@ describe('preset defaults', () => {
 
   it('computes target height with preserved ratio', () => {
     expect(computeTargetHeight(1920, 1080, 750)).toBe(422)
+  })
+
+  it('counts advanced settings that differ from the current preset defaults', () => {
+    const defaults = getDefaultConfig('workshop')
+
+    expect(countAdvancedConfigOverrides(defaults)).toBe(0)
+    expect(
+      countAdvancedConfigOverrides({
+        ...defaults,
+        lossyLevel: 3,
+        minGifFps: 8,
+      }),
+    ).toBe(2)
   })
 })
