@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { recoverSplitBatchQuality } from './splitRecovery'
+import { FinishCurrentConversionError } from './conversionWorkerPool'
 import type { WorkerArtifactData } from './types'
 
 function artifact(part: number, sizeKb: number, finalQuality: number, finalFps = 10): WorkerArtifactData {
@@ -127,6 +128,7 @@ describe('split batch quality recovery', () => {
 
   it('stops shared fps recovery after the limiting part fails', async () => {
     const fpsAttempts: number[] = []
+    const checkpoints: WorkerArtifactData[][] = []
     const result = await recoverSplitBatchQuality({
       items: [artifact(1, 4300, 100, 10), artifact(2, 3000, 100, 10), artifact(3, 3000, 100, 10)],
       partOrder: [0, 1, 2],
@@ -136,6 +138,7 @@ describe('split batch quality recovery', () => {
       originalFps: 11,
       retryAllowFpsDrop: true,
       retryAllowQualityDrop: false,
+      onCheckpoint: (items) => checkpoints.push(items),
       emit: () => undefined,
       runFixedSplitPart: async (partIndex, fps, quality) => {
         fpsAttempts.push(partIndex)
@@ -146,6 +149,7 @@ describe('split batch quality recovery', () => {
 
     expect(result.every((item) => item.finalFps === 10)).toBe(true)
     expect(fpsAttempts).toEqual([0])
+    expect(checkpoints).toHaveLength(0)
   })
 
   it('uses the current largest fitted part as the shared fps limiter', async () => {
@@ -169,8 +173,37 @@ describe('split batch quality recovery', () => {
 
     expect(result.every((item) => item.finalFps === 10)).toBe(true)
     expect(fpsAttempts).toEqual([0])
+
   })
 
+  it('checkpoints the latest fully accepted quality wave before finishing', async () => {
+    let finishRequested = false
+    const checkpoints: WorkerArtifactData[][] = []
+
+    await expect(recoverSplitBatchQuality({
+      items: [artifact(1, 3000, 68)],
+      partOrder: [0],
+      label: 'Workshop',
+      targetGifKb: 4500,
+      maxGifKb: 5000,
+      originalFps: 10,
+      retryAllowFpsDrop: true,
+      retryAllowQualityDrop: true,
+      shouldFinishCurrent: () => finishRequested,
+      onCheckpoint: (items) => {
+        checkpoints.push(items)
+        finishRequested = true
+      },
+      emit: () => undefined,
+      runFixedSplitPart: async (partIndex, fps, quality) => artifact(partIndex + 1, 3000, quality, fps),
+      runFixedSplitPartQualityProbe: async (partIndex, fps, quality) => artifact(partIndex + 1, 3200, quality, fps),
+    })).rejects.toBeInstanceOf(FinishCurrentConversionError)
+
+    expect(checkpoints).toHaveLength(1)
+    expect(checkpoints[0]).toHaveLength(1)
+    expect(checkpoints[0][0].finalQuality).toBe(72)
+    expect(checkpoints[0][0].finalFps).toBe(10)
+  })
   it('runs independent per-part quality recovery in parallel', async () => {
     let activeSearches = 0
     let maxActiveSearches = 0

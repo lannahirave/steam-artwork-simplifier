@@ -14,6 +14,7 @@ class FakeConversionPool {
   readonly partPayloads: ConvertPartPayload[] = []
   clearFrameCacheCalls = 0
   finishAfterConvertParts: number | null = null
+  sharedFpsRecoveryFixture = false
 
   async warmup(): Promise<void> {
     return undefined
@@ -65,8 +66,22 @@ class FakeConversionPool {
 
     return {
       name: `clip_row_${String(rowIndex + 1).padStart(2, '0')}_part_${String(columnIndex + 1).padStart(2, '0')}.gif`,
-      fileBytes: new Uint8Array([partPayload.partIndex]),
-      sizeKb: partPayload.disableOptimizations ? sizingSize : 900,
+      fileBytes: this.sharedFpsRecoveryFixture
+        ? new Uint8Array([partPayload.gifFps, partPayload.disableOptimizations ? 1 : 0, partPayload.fixedQuality ?? 0])
+        : new Uint8Array([partPayload.partIndex]),
+      sizeKb: this.sharedFpsRecoveryFixture
+        ? partPayload.disableOptimizations
+          ? partPayload.fixedQuality !== undefined || partPayload.fixedQualityCandidates !== undefined
+            ? partPayload.gifFps === 10
+              ? 3000
+              : 3200
+            : 6000
+          : partPayload.gifFps === 10
+            ? 3000
+            : 3200
+        : partPayload.disableOptimizations
+          ? sizingSize
+          : 900,
       width: partPayload.partWidth,
       height: partPayload.splitRowHeights?.[rowIndex] ?? 50,
       status: 'recompressed',
@@ -130,6 +145,36 @@ describe('conversion orchestration', () => {
     expect(pool.clearFrameCacheCalls).toBe(1)
   })
 
+  it('keeps the newest accepted shared FPS output when finishing after recovery checkpoint', async () => {
+    const pool = new FakeConversionPool()
+    pool.sharedFpsRecoveryFixture = true
+    const config = {
+      ...getDefaultConfig('workshop'),
+      parts: 2,
+      workshopRows: 1 as const,
+      partWidth: 150,
+      gifFps: 13,
+      minGifFps: 10,
+      targetGifKb: 3500,
+      maxGifKb: 4500,
+      retryAllowQualityDrop: true,
+      workerCount: 2,
+    }
+    const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
+
+    const result = await convertVideo({ file }, config, pool as never, {
+      shouldFinishCurrent: () =>
+        pool.partPayloads.filter((payload) => payload.disableOptimizations && payload.gifFps === 13 && payload.fixedQuality !== undefined).length >= 2,
+    })
+
+    expect(result.completionStatus).toBe('finished-incomplete')
+    expect(result.artifacts).toHaveLength(2)
+    expect(result.artifacts.every((artifact) => artifact.finalFps === 13)).toBe(true)
+    const outputBytes = await Promise.all(result.artifacts.map(async (artifact) => Array.from(new Uint8Array(await artifact.blob.arrayBuffer()))))
+    expect(outputBytes.map(([fps, raw]) => [fps, raw])).toEqual([[13, 1], [13, 1]])
+    expect(result.completedOutputs).toBe(2)
+    expect(result.expectedOutputs).toBe(2)
+  })
   it('keeps the last complete output set when finishing before quality recovery', async () => {
     const pool = new FakeConversionPool()
     const config = {
