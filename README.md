@@ -6,7 +6,7 @@ Steam Artwork Toolkit turns source media into correctly sized GIFs for Steam Wor
 
 > **Browser-first and local by design:** source media is processed in the browser with WebAssembly and Web Workers. The application does not require a conversion server.
 
-![Steam Artwork Toolkit converter](docs/assets/steam-artwork-toolkit-hero.png)
+[![Steam Artwork Toolkit converter](docs/assets/steam-artwork-toolkit-hero.png)](https://artwork-helper-by-val.netlify.app)
 
 
 ## Why use it?
