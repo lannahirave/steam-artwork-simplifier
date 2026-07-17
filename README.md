@@ -6,7 +6,8 @@ Steam Artwork Toolkit turns source media into correctly sized GIFs for Steam Wor
 
 > **Browser-first and local by design:** source media is processed in the browser with WebAssembly and Web Workers. The application does not require a conversion server.
 
-<!-- Add the primary product screenshot here once captured. See the screenshot checklist below. -->
+![Steam Artwork Toolkit converter](docs/assets/steam-artwork-toolkit-hero.png)
+
 
 ## Why use it?
 
@@ -51,6 +52,18 @@ Output names use the source file base name:
 - Conversion ZIP: `<source>.zip`
 - EOF patch ZIP: `eof-patch-output.zip`
 - Header patch ZIP: `header-patch-output.zip`
+
+## Example output
+
+<p>
+  <img src="docs/assets/steam-artwork-part-01.gif" alt="Generated Steam artwork part 1" width="180">
+  <img src="docs/assets/steam-artwork-part-02.gif" alt="Generated Steam artwork part 2" width="180">
+  <img src="docs/assets/steam-artwork-part-03.gif" alt="Generated Steam artwork part 3" width="180">
+  <img src="docs/assets/steam-artwork-part-04.gif" alt="Generated Steam artwork part 4" width="180">
+  <img src="docs/assets/steam-artwork-part-05.gif" alt="Generated Steam artwork part 5" width="180">
+</p>
+
+*Source video: [TikTok @denyx079](https://www.tiktok.com/@denyx079).*
 
 ## Privacy and local processing
 
