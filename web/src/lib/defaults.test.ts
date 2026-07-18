@@ -63,6 +63,7 @@ describe('preset defaults', () => {
         ...defaults,
         lossyLevel: 3,
         minGifFps: 8,
+        optimizationMode: 'fast-fit',
       }),
     ).toBe(2)
   })

@@ -3,7 +3,6 @@ import type { ConversionConfig, Preset, ResolvedPresetSettings } from './types'
 const ADVANCED_CONFIG_KEYS = [
   'minGifFps',
   'disableOptimizations',
-  'optimizationMode',
   'standardRetriesEnabled',
   'retryAllowFpsDrop',
   'retryAllowQualityDrop',

@@ -310,6 +310,24 @@ export function ConvertPanel(props: ConvertPanelProps) {
               {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
             </label>
 
+            <label title="Choose how the optimizer balances speed, size, and quality.">
+              {intl.formatMessage({ id: 'convert.optimizationMode' })}
+              <select
+                disabled={optimizationDisabled}
+                value={config.optimizationMode}
+                onChange={(event) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    optimizationMode: event.target.value as OptimizationMode,
+                  }))
+                }
+              >
+                <option value="hybrid">{intl.formatMessage({ id: 'convert.optimizationMode.hybrid' })}</option>
+                <option value="quality-first">{intl.formatMessage({ id: 'convert.optimizationMode.qualityFirst' })}</option>
+                <option value="fast-fit">{intl.formatMessage({ id: 'convert.optimizationMode.fastFit' })}</option>
+              </select>
+            </label>
+
             {optimizationDisabled && (
               <p className="config-note budget-note">
                 {intl.formatMessage({ id: 'convert.rawModeActive' })}
@@ -393,24 +411,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 })}
               </small>
             </div>
-
-            <label title="Choose how the optimizer balances speed, size, and quality.">
-              {intl.formatMessage({ id: 'convert.optimizationMode' })}
-              <select
-                disabled={optimizationDisabled}
-                value={config.optimizationMode}
-                onChange={(event) =>
-                  setConfig((prev) => ({
-                    ...prev,
-                    optimizationMode: event.target.value as OptimizationMode,
-                  }))
-                }
-              >
-                <option value="hybrid">{intl.formatMessage({ id: 'convert.optimizationMode.hybrid' })}</option>
-                <option value="quality-first">{intl.formatMessage({ id: 'convert.optimizationMode.qualityFirst' })}</option>
-                <option value="fast-fit">{intl.formatMessage({ id: 'convert.optimizationMode.fastFit' })}</option>
-              </select>
-            </label>
 
             <label title="How many conversion jobs run in parallel (higher can be faster but less stable).">
               {intl.formatMessage({ id: 'convert.workerCount' })}
