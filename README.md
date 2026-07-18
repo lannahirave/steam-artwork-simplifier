@@ -56,11 +56,11 @@ Output names use the source file base name:
 ## Example output
 
 <p>
-  <img src="docs/assets/steam-artwork-part-01.gif" alt="Generated Steam artwork part 1" width="180">
-  <img src="docs/assets/steam-artwork-part-02.gif" alt="Generated Steam artwork part 2" width="180">
-  <img src="docs/assets/steam-artwork-part-03.gif" alt="Generated Steam artwork part 3" width="180">
-  <img src="docs/assets/steam-artwork-part-04.gif" alt="Generated Steam artwork part 4" width="180">
-  <img src="docs/assets/steam-artwork-part-05.gif" alt="Generated Steam artwork part 5" width="180">
+  <img src="docs/assets/steam-artwork-part-01.gif" alt="Generated Steam artwork part 1" width="19%">
+  <img src="docs/assets/steam-artwork-part-02.gif" alt="Generated Steam artwork part 2" width="19%">
+  <img src="docs/assets/steam-artwork-part-03.gif" alt="Generated Steam artwork part 3" width="19%">
+  <img src="docs/assets/steam-artwork-part-04.gif" alt="Generated Steam artwork part 4" width="19%">
+  <img src="docs/assets/steam-artwork-part-05.gif" alt="Generated Steam artwork part 5" width="19%">
 </p>
 
 *Source video: [TikTok @denyx079](https://www.tiktok.com/@denyx079).*
