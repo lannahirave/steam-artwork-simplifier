@@ -2,6 +2,7 @@ import { useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import type { ConversionConfig, OptimizationMode } from '../../lib/types'
 import { countAdvancedConfigOverrides } from '../../lib/defaults'
+import { MAX_SAFE_WASM_WORKERS } from '../../lib/presetPlan'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
@@ -416,11 +417,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
               <input
                 type="number"
                 min={1}
-                max={3}
+                max={MAX_SAFE_WASM_WORKERS}
                 value={config.workerCount}
-                onChange={(event) =>
-                  setConfig((prev) => ({ ...prev, workerCount: Number.parseInt(event.target.value, 10) || 1 }))
-                }
+                onChange={(event) => {
+                  const requestedWorkerCount = Number.parseInt(event.target.value, 10) || 1
+                  const workerCount = Math.max(1, Math.min(MAX_SAFE_WASM_WORKERS, requestedWorkerCount))
+                  setConfig((prev) => ({ ...prev, workerCount }))
+                }}
               />
             </label>
 
