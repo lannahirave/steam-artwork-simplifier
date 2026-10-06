@@ -45,7 +45,7 @@ Provide one toolkit for Steam artwork preparation with two execution paths:
 10. Preview cards with metadata (size, final FPS, color reduction).
 11. Per-file download plus ZIP download.
 12. Guide tab with workflow tips and Steam upload URLs.
-13. Language selector for English, Ukrainian, and Czech with saved browser preference.
+13. Language selector for English, Ukrainian, Czech, and Spanish with saved browser preference.
 14. Theme modes: auto/light/dark.
 15. App version shown in UI, sourced from `web/package.json`.
 

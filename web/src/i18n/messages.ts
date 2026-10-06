@@ -1,8 +1,9 @@
 import en from './en.json'
 import uk from './uk.json'
 import cs from './cs.json'
+import es from './es.json'
 
-export const SUPPORTED_LOCALES = ['en', 'uk', 'cs'] as const
+export const SUPPORTED_LOCALES = ['en', 'uk', 'cs', 'es'] as const
 export const DEFAULT_LOCALE = 'en'
 export const LOCALE_STORAGE_KEY = 'steam-artwork-studio:locale'
 
@@ -12,12 +13,14 @@ export const localeLabels: Record<AppLocale, string> = {
   en: 'English',
   uk: '\u0423\u043a\u0440\u0430\u0457\u043d\u0441\u044c\u043a\u0430',
   cs: '\u010ce\u0161tina',
+  es: 'Espa\u00f1ol',
 }
 
 export const messagesByLocale: Record<AppLocale, typeof en> = {
   en,
   uk,
   cs,
+  es,
 }
 
 export const messages = messagesByLocale[DEFAULT_LOCALE]
