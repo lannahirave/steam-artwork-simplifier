@@ -802,6 +802,14 @@ textarea {
   grid-column: span 2;
 }
 
+.form-grid-source > .field-preset {
+  grid-column: span 2;
+}
+
+.form-grid-source > .field-layout-compact {
+  max-width: 8rem;
+}
+
 .form-grid-source > .field-source,
 .form-grid-source > .source-advisory {
   grid-column: 1 / -1;
@@ -1895,6 +1903,10 @@ button:disabled {
   .patch-grid > .subpanel,
   .guides-grid > .guide-card {
     grid-column: auto;
+  }
+
+  .form-grid-source > .field-layout-compact {
+    max-width: none;
   }
 
   .hero {
