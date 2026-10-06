@@ -146,7 +146,7 @@ test('keeps advanced conversion controls behind a collapsed disclosure', async (
   await expect(lossyLevel).toHaveValue('3')
 })
 
-for (const locale of ['en', 'uk', 'cs'] as const) {
+for (const locale of ['en', 'uk', 'cs', 'es'] as const) {
   test(`renders ${locale} locale route`, async ({ page }) => {
     await markOnboardingComplete(page)
     await page.goto(`/${locale}`)
