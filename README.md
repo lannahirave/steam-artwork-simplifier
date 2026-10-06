@@ -18,7 +18,7 @@ Steam Artwork Toolkit turns source media into correctly sized GIFs for Steam Wor
 - **Export in one step** - download individual GIFs or a ZIP archive for multi-part artwork.
 - **Keep working locally** - conversion runs in the browser using dedicated workers and WebAssembly.
 - **Repair existing GIFs** - use the standalone EOF-byte and GIF-header patch tools when a file needs a final adjustment.
-- **Use the interface your way** - English, Ukrainian, Czech, and Spanish are supported, with an onboarding tour for first-time users.
+- **Use the interface your way** - English, Ukrainian, Czech, Spanish, and Simplified Chinese are supported, with an onboarding tour for first-time users.
 
 ## How it works
 
