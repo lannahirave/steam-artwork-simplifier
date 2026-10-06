@@ -802,12 +802,15 @@ textarea {
   grid-column: span 2;
 }
 
-.form-grid-source > .field-preset {
-  grid-column: span 2;
+.form-grid-source > .field-preset,
+.form-grid-source > .workshop-fields {
+  grid-column: 1 / -1;
 }
 
-.form-grid-source > .field-layout-compact {
-  max-width: 8rem;
+.form-grid-source > .workshop-fields {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.85rem;
 }
 
 .form-grid-source > .field-source,
@@ -1905,8 +1908,8 @@ button:disabled {
     grid-column: auto;
   }
 
-  .form-grid-source > .field-layout-compact {
-    max-width: none;
+  .form-grid-source > .workshop-fields {
+    grid-template-columns: 1fr;
   }
 
   .hero {
