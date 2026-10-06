@@ -160,7 +160,10 @@ export function ConvertPanel(props: ConvertPanelProps) {
 
             {presetPlan.preset === 'workshop' && (
               <>
-                <label className="field-layout" title="Number of output slices for workshop preset.">
+                <label
+                  className="field-layout field-layout-compact"
+                  title="Number of output slices for workshop preset."
+                >
                   {intl.formatMessage({ id: 'convert.parts' })}
                   <input
                     type="number"
@@ -172,7 +175,10 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     }
                   />
                 </label>
-                <label className="field-layout" title="Width in pixels of each workshop slice.">
+                <label
+                  className="field-layout field-layout-compact"
+                  title="Width in pixels of each workshop slice."
+                >
                   {intl.formatMessage({ id: 'convert.partWidth' })}
                   <input
                     type="number"
