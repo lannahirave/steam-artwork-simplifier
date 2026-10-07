@@ -1,1 +1,3 @@
+/api/track /.netlify/functions/track 200
+/api/stats /.netlify/functions/track 200
 /* /index.html 200

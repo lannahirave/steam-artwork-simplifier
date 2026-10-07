@@ -2,3 +2,4 @@
   base = "web"
   command = "npm run build"
   publish = "dist"
+  functions = "netlify/functions"

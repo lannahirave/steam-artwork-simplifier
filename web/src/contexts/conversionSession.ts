@@ -14,6 +14,7 @@ import type { ConversionConfig, MemoryDebugSession } from '../lib/types'
 import { createZip } from '../lib/zip'
 import { ConversionWorkerPool } from '../lib/conversionWorkerPool'
 import { isSupportedConversionSource } from '../lib/validation'
+import { trackConversionComplete } from '../lib/trackConversion'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
 import { inspectBrowserSupport, type BrowserSupportReport } from '../lib/browserSupport'
@@ -417,6 +418,9 @@ export function useConversionSession(): ConvertContextValue {
         }
       }
       setArtifactViews(nextArtifactViews)
+      if (result.artifacts.length > 0) {
+        trackConversionComplete()
+      }
       setProgressPercent(100)
       const totalMs = Date.now() - startedAt
       setElapsedMs(totalMs)
