@@ -6,7 +6,7 @@
 
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { getStore } from '@netlify/blobs'
-import handler from './track'
+import handler from '../functions/track'
 
 vi.mock('@netlify/blobs', () => ({ getStore: vi.fn() }))
 
@@ -173,3 +173,4 @@ describe('other methods', () => {
     expect(store.list).not.toHaveBeenCalled()
   })
 })
+

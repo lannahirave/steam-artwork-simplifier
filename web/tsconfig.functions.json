@@ -19,5 +19,5 @@
     "erasableSyntaxOnly": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["netlify/functions"]
+  "include": ["netlify/functions", "netlify/tests"]
 }
