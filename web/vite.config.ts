@@ -42,7 +42,8 @@ export default defineConfig({
     globals: true,
     include: [
       'src/**/*.{test,spec}.{ts,tsx}',
-      'netlify/functions/**/*.{test,spec}.{ts,tsx}',
+      'netlify/tests/**/*.{test,spec}.{ts,tsx}',
     ],
   },
 })
+

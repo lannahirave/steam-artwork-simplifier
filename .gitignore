@@ -6,3 +6,4 @@ media/*
 !media/test-fixtures/
 !media/test-fixtures/**
 web/.vite/
+web/.netlify/
