@@ -62,6 +62,7 @@ export interface ConvertState {
   estimatingFps: boolean
   fpsEstimateInfo: string
   memoryDebug: MemoryDebugSession
+  feedbackPromptOpen: boolean
 }
 
 export interface ConvertActions {
@@ -76,6 +77,7 @@ export interface ConvertActions {
   onResetConvertState: () => void
   onUpdateWorkshopParts: (parts: number) => void
   onUpdateWorkshopRows: (rows: ConversionConfig['workshopRows']) => void
+  onDismissFeedbackPrompt: () => void
 }
 
 export interface ConvertMeta {
@@ -164,12 +166,14 @@ export function useConversionSession(): ConvertContextValue {
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
+  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false)
 
   const poolRef = useRef<ConversionWorkerPool | null>(null)
   const totalJobsRef = useRef(1)
   const workerWeightsRef = useRef<Record<number, number>>({})
   const conversionStartMsRef = useRef<number | null>(null)
   const finishCurrentRequestedRef = useRef(false)
+  const feedbackPromptShownRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -420,6 +424,13 @@ export function useConversionSession(): ConvertContextValue {
       setArtifactViews(nextArtifactViews)
       if (result.artifacts.length > 0) {
         trackConversionComplete()
+        // Ask for guide feedback once per browser session, right after the
+        // aggregate counter is reported. It never blocks or alters the
+        // conversion result and stays dismissible for the rest of the session.
+        if (!feedbackPromptShownRef.current) {
+          feedbackPromptShownRef.current = true
+          setFeedbackPromptOpen(true)
+        }
       }
       setProgressPercent(100)
       const totalMs = Date.now() - startedAt
@@ -491,6 +502,10 @@ export function useConversionSession(): ConvertContextValue {
       archiveName,
     )
     downloadBlob(zip.name, zip.blob)
+  }
+
+  function dismissFeedbackPrompt(): void {
+    setFeedbackPromptOpen(false)
   }
 
   function updatePreset(nextPreset: ConversionConfig['preset']): void {
@@ -670,6 +685,7 @@ export function useConversionSession(): ConvertContextValue {
       estimatingFps,
       fpsEstimateInfo,
       memoryDebug,
+      feedbackPromptOpen,
     },
     actions: {
       setConfig,
@@ -683,6 +699,7 @@ export function useConversionSession(): ConvertContextValue {
       onResetConvertState: resetConvertState,
       onUpdateWorkshopParts: updateWorkshopParts,
       onUpdateWorkshopRows: updateWorkshopRows,
+      onDismissFeedbackPrompt: dismissFeedbackPrompt,
     },
     meta: {
       convertDisabled: busy || !sourceFile,

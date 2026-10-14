@@ -374,6 +374,134 @@ textarea {
   backdrop-filter: saturate(180%) blur(20px);
 }
 
+/* Post-conversion feedback nudge. Dismissible, out of the way of the results
+   area, and stacked below the onboarding overlay so the tour stays on top. */
+.feedback-prompt {
+  position: fixed;
+  top: 4.25rem;
+  right: max(1rem, calc((100vw - var(--content-width)) / 2));
+  z-index: 28;
+  width: min(21rem, calc(100vw - 2rem));
+  padding: 0.9rem 1rem 1rem;
+  border: 1px solid rgba(29, 29, 31, 0.14);
+  border-radius: var(--radius-panel);
+  background: rgba(255, 255, 255, 0.97);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  backdrop-filter: saturate(180%) blur(20px);
+  animation: feedback-prompt-in 220ms ease-out;
+}
+
+.feedback-prompt:focus-visible {
+  outline: 2px solid var(--apple-blue-light);
+  outline-offset: 2px;
+}
+
+@keyframes feedback-prompt-in {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .feedback-prompt {
+    animation: none;
+  }
+}
+
+.feedback-prompt-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.feedback-prompt-kicker {
+  color: var(--ink-muted);
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.feedback-prompt-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 1.15rem;
+  line-height: 1;
+  padding: 0.15rem 0.35rem;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+}
+
+.feedback-prompt-close:hover {
+  color: var(--ink);
+  background: rgba(29, 29, 31, 0.06);
+}
+
+.feedback-prompt h2 {
+  margin: 0.4rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+.feedback-prompt p {
+  margin: 0.45rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+  line-height: 1.45;
+}
+
+.feedback-prompt-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.85rem;
+}
+
+.feedback-prompt-primary,
+.feedback-prompt-secondary {
+  appearance: none;
+  min-height: 2.1rem;
+  padding: 0.45rem 0.8rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.feedback-prompt-primary {
+  border: 0;
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+  text-decoration: none;
+}
+
+.feedback-prompt-primary:hover {
+  background: var(--apple-blue-dark);
+  text-decoration: none;
+}
+
+.feedback-prompt-secondary {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.feedback-prompt-secondary:hover {
+  color: var(--ink);
+  border-color: var(--ink-muted);
+}
+
 .onboarding-spotlight {
   position: fixed;
   top: 0;
@@ -1956,6 +2084,13 @@ button:disabled {
     width: auto;
     max-height: calc(100vh - 2rem);
     overflow: auto;
+  }
+
+  .feedback-prompt {
+    top: 0.75rem;
+    right: 0.75rem;
+    left: 0.75rem;
+    width: auto;
   }
 
   .hero-primary,

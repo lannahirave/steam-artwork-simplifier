@@ -7,6 +7,7 @@ import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
 import { SwitchCard } from '../SwitchCard'
+import { FeedbackPrompt } from '../FeedbackPrompt'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
 
 interface ConvertPanelProps {
@@ -34,6 +35,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     error,
     artifactViews,
     memoryDebug,
+    feedbackPromptOpen,
   } = state
   const {
     setConfig,
@@ -47,6 +49,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onResetConvertState,
     onUpdateWorkshopParts,
     onUpdateWorkshopRows,
+    onDismissFeedbackPrompt,
   } = actions
   const {
     convertDisabled,
@@ -688,6 +691,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
           </section>
         </>
       )}
+
+      <FeedbackPrompt open={feedbackPromptOpen} onDismiss={onDismissFeedbackPrompt} />
     </section>
   )
 }
