@@ -1855,17 +1855,22 @@ button:disabled {
 .results-grid.workshop-strip,
 .results-grid.workshop-grid,
 .results-grid.showcase-strip {
-  display: flex;
-  align-items: flex-start;
-  gap: 0;
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: max-content;
+  grid-template-rows: repeat(4, auto);
+  align-items: start;
+  column-gap: 0;
+  row-gap: 0.25rem;
   overflow-x: auto;
   padding-bottom: 0.35rem;
 }
 
 .results-grid.workshop-grid {
-  display: grid;
+  grid-auto-flow: row;
   grid-template-columns: repeat(var(--workshop-columns, 5), max-content);
-  align-items: start;
+  grid-template-rows: none;
+  grid-auto-rows: auto;
   justify-content: start;
 }
 
@@ -1885,7 +1890,10 @@ button:disabled {
 .results-grid.workshop-strip .result-card,
 .results-grid.workshop-grid .result-card,
 .results-grid.showcase-strip .result-card {
-  flex: 0 0 auto;
+  /* Share the parent's four row tracks (caption, image, meta, download) so every
+     slice's image and buttons line up even when a narrow card's text wraps. */
+  grid-row: span 4;
+  grid-template-rows: subgrid;
   min-width: 0;
   gap: 0.25rem;
   padding: 0;
@@ -1893,6 +1901,12 @@ button:disabled {
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+}
+
+.results-grid.workshop-strip .result-card > *,
+.results-grid.workshop-grid .result-card > *,
+.results-grid.showcase-strip .result-card > * {
+  align-self: start;
 }
 
 .results-grid.workshop-strip .result-card img,
