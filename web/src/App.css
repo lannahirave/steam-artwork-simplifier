@@ -1002,8 +1002,86 @@ textarea {
 }
 
 .form-grid-source > .field-source,
-.form-grid-source > .source-advisory {
+.form-grid-source > .source-advisory,
+.form-grid-source > .cut-preview {
   grid-column: 1 / -1;
+}
+
+.cut-preview {
+  display: grid;
+  gap: 0.55rem;
+  min-width: 0;
+}
+
+.cut-preview-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 0.25rem 0.75rem;
+}
+
+.cut-preview-head strong {
+  color: var(--ink);
+  font-size: 0.92rem;
+}
+
+.cut-preview-head span,
+.cut-preview-note {
+  margin: 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The stage has the aspect ratio of the scaled source; the media fills it and pieces are placed in %. */
+.cut-preview-stage {
+  position: relative;
+  width: min(100%, 40rem, calc(20rem * var(--cut-preview-ratio, 1.7778)));
+  aspect-ratio: var(--cut-preview-ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: 10px;
+  background: #000;
+}
+
+.cut-preview-media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+}
+
+.cut-preview-piece {
+  position: absolute;
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    inset 0 0 0 2px rgb(0 0 0 / 0.35);
+}
+
+/* Guide trims the overflow around a centered square: shade everything outside it. */
+.cut-preview-stage.is-trimmed .cut-preview-piece {
+  box-shadow:
+    inset 0 0 0 1px rgb(255 255 255 / 0.9),
+    0 0 0 100vmax rgb(0 0 0 / 0.6);
+}
+
+.cut-preview-label {
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  display: inline-flex;
+  gap: 0.3rem;
+  max-width: calc(100% - 8px);
+  overflow: hidden;
+  padding: 0.1rem 0.35rem;
+  border-radius: 6px;
+  background: rgb(0 0 0 / 0.62);
+  color: #fff;
+  font-size: 0.68rem;
+  line-height: 1.35;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
 }
 
 .form-grid-budget {
@@ -1857,8 +1935,11 @@ button:disabled {
 .results-grid.showcase-strip {
   display: grid;
   grid-auto-flow: column;
+  /* Drop the base 220px card columns so every slice column is exactly as wide as its GIF. */
+  grid-template-columns: none;
   grid-auto-columns: max-content;
   grid-template-rows: repeat(4, auto);
+  justify-content: start;
   align-items: start;
   column-gap: 0;
   row-gap: 0.25rem;
@@ -1901,6 +1982,14 @@ button:disabled {
   border-radius: 0;
   box-shadow: none;
   background: transparent;
+}
+
+/* Lifting one slice on hover would break the seam between neighbours. */
+.results-grid.workshop-strip .result-card:hover,
+.results-grid.workshop-grid .result-card:hover,
+.results-grid.showcase-strip .result-card:hover {
+  transform: none;
+  box-shadow: none;
 }
 
 .results-grid.workshop-strip .result-card > *,
