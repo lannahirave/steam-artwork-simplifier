@@ -1,0 +1,32 @@
+# Steam Artwork Studio
+
+> Free, browser-only tool that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides. Files are processed locally with ffmpeg.wasm and gifski.wasm and are never uploaded.
+
+## Use cases
+
+- Make animated Steam profile artwork from a video or GIF
+- Split one GIF into the 5 x 150px parts of a Workshop Showcase
+- Make a 630px wide Featured Showcase GIF
+- Make a 506px + 100px split Artwork Showcase
+- Make a 195x195px Guide GIF
+- Shrink a GIF under Steam's upload size limits (automatic FPS, size, and color reduction)
+
+## Presets
+
+- Workshop Showcase: 5 parts, 150px wide each, max 5000KB per part
+- Featured Showcase: single 630px wide GIF, max 4500KB
+- Artwork Showcase: 506px + 100px split, max 5000KB
+- Guide: 195x195px, max 2000KB
+
+## Details
+
+- Input: video, GIF, PNG, WebP, JPG, BMP
+- Output: GIF per part, with per-file download or ZIP export
+- Optional GIF EOF byte and header width/height patching
+- Languages: English, Ukrainian, Czech, Spanish, Simplified Chinese
+- Requires a modern browser with JavaScript and WebAssembly
+
+## Links
+
+- [App](https://artwork-helper-by-val.netlify.app/): the tool itself
+- [Source code](https://github.com/lannahirave/steam-artwork-simplifier): AGPL-3.0-or-later
