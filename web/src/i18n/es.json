@@ -7,6 +7,7 @@
   "app.nav.help": "Ayuda",
   "app.nav.github": "GitHub",
   "app.nav.language": "Idioma",
+  "app.nav.theme": "Tema oscuro",
   "app.hero.summary": "Convierte medios de origen, parchea GIFs terminados y prepara subidas a Steam desde tu navegador.",
   "app.hero.openConvert": "Abrir Convertir",
   "app.hero.exploreWorkflow": "Explorar el flujo de trabajo",

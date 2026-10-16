@@ -7,6 +7,7 @@
   "app.nav.help": "Nápověda",
   "app.nav.github": "GitHub",
   "app.nav.language": "Jazyk",
+  "app.nav.theme": "Tmavý režim",
   "app.hero.summary": "Převádějte zdrojová média, patchujte hotové GIFy a připravujte nahrání na Steam přímo v prohlížeči.",
   "app.hero.openConvert": "Otevřít převod",
   "app.hero.exploreWorkflow": "Prozkoumat workflow",

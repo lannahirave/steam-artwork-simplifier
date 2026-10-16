@@ -5,6 +5,14 @@
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1d1d1f" />
+    <script>
+      // Apply the saved theme before first paint to avoid a light flash.
+      try {
+        if (localStorage.getItem('steam-artwork-studio:theme') === 'dark') {
+          document.documentElement.dataset.theme = 'dark'
+        }
+      } catch (e) {}
+    </script>
 
     <title>Steam Artwork Maker – Free Animated GIF &amp; Showcase Tool</title>
     <meta

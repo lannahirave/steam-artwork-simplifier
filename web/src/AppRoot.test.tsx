@@ -1,8 +1,9 @@
-import { render, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRoot } from './AppRoot'
 import { LOCALE_STORAGE_KEY } from './i18n/messages'
+import { THEME_STORAGE_KEY } from './theme'
 
 const ONBOARDING_STORAGE_KEY = 'steam-artwork-studio:onboarding-complete'
 
@@ -73,5 +74,35 @@ describe('AppRoot locale routing', () => {
     expect(window.location.pathname).toBe('/en')
     expect(window.localStorage.getItem(LOCALE_STORAGE_KEY)).toBe('en')
     expect(document.documentElement.lang).toBe('en')
+  })
+})
+
+describe('AppRoot theme', () => {
+  it('defaults to the light theme', () => {
+    render(<AppRoot />)
+
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('applies the stored dark theme on load', () => {
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark')
+
+    render(<AppRoot />)
+
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(screen.getByRole('button', { name: 'Dark theme' })).toHaveAttribute('aria-pressed', 'true')
+  })
+
+  it('toggle switches the theme and stores the choice', async () => {
+    render(<AppRoot />)
+    const toggle = screen.getByRole('button', { name: 'Dark theme' })
+
+    await userEvent.click(toggle)
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
+
+    await userEvent.click(toggle)
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
   })
 })
