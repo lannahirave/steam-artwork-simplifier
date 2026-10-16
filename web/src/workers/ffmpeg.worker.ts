@@ -20,6 +20,7 @@ import {
 import { postError, postMemoryDebug, postProgress, postResult } from './workerMessaging'
 import { runProbe } from './mediaProbe'
 import { createGifFrameCache } from './gifFrameCache'
+import { withShadowDarkening } from '../lib/shadowDarkening'
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -69,7 +70,7 @@ function buildSearchOptions(
     postMemoryDebug: payload.memoryDebugEnabled ? postMemoryDebug : undefined,
     inputName,
     sourceCacheKey: payload.sourceCacheKey,
-    baseFilter,
+    baseFilter: withShadowDarkening(baseFilter, payload.shadowDarkening),
     isStillImage: payload.isStillImage,
     gifFps: payload.gifFps,
     minGifFps: payload.minGifFps,

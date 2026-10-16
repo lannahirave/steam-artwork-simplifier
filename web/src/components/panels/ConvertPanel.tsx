@@ -1,8 +1,9 @@
 import { useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
-import type { ConversionConfig, OptimizationMode } from '../../lib/types'
+import type { ConversionConfig, OptimizationMode, ShadowDarkening } from '../../lib/types'
 import { countAdvancedConfigOverrides } from '../../lib/defaults'
 import { MAX_SAFE_WASM_WORKERS } from '../../lib/presetPlan'
+import { SHADOW_DARKENING_LEVELS } from '../../lib/shadowDarkening'
 import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
@@ -386,6 +387,26 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   setConfig((prev) => ({ ...prev, minGifFps: Number.parseInt(event.target.value, 10) || 1 }))
                 }
               />
+            </label>
+
+            <label title="Crush near-black pixels to pure black to remove noise and dithering artifacts in dark areas.">
+              {intl.formatMessage({ id: 'convert.shadowDarkening' })}
+              <select
+                value={config.shadowDarkening}
+                onChange={(event) =>
+                  setConfig((prev) => ({
+                    ...prev,
+                    shadowDarkening: event.target.value as ShadowDarkening,
+                  }))
+                }
+              >
+                {SHADOW_DARKENING_LEVELS.map((level) => (
+                  <option key={level} value={level}>
+                    {intl.formatMessage({ id: `convert.shadowDarkening.${level}` })}
+                  </option>
+                ))}
+              </select>
+              <small className="field-note">{intl.formatMessage({ id: 'convert.shadowDarkening.note' })}</small>
             </label>
 
             <SwitchCard
