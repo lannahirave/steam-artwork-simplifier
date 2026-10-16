@@ -668,7 +668,13 @@ export function ConvertPanel(props: ConvertPanelProps) {
                           width: `${item.artifact.width}px`,
                           height: `${item.artifact.height}px`,
                         }
-                      : undefined
+                      : {
+                          // Show the GIF at its real output size (e.g. 195x195 for guides)
+                          // instead of stretching it to the card width.
+                          width: `${item.artifact.width}px`,
+                          maxWidth: '100%',
+                          height: 'auto',
+                        }
                   }
                 />
                 <div className={isCompactStrip ? 'gif-meta compact' : 'gif-meta'}>
