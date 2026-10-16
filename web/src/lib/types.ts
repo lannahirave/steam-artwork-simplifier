@@ -3,6 +3,7 @@ export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
 export type OptimizationMode = 'hybrid' | 'quality-first' | 'fast-fit'
 export type WorkshopRows = 1 | 2 | 3
+export type ShadowDarkening = 'off' | 'low' | 'medium' | 'high'
 
 export interface ConversionConfig {
   preset: Preset
@@ -16,6 +17,7 @@ export interface ConversionConfig {
   maxGifKb: number
   targetGifKb: number
   optimizationMode: OptimizationMode
+  shadowDarkening: ShadowDarkening
   standardRetriesEnabled: boolean
   retryAllowFpsDrop: boolean
   retryAllowQualityDrop: boolean
@@ -206,6 +208,7 @@ export interface ConvertPayloadBase {
   lossyOversize: boolean
   lossyLevel: number
   lossyMaxAttempts: number
+  shadowDarkening?: ShadowDarkening
   startOffsetSec?: number
   memoryDebugEnabled?: boolean
 }

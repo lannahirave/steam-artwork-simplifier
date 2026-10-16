@@ -1,6 +1,7 @@
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import { computeCutLayout } from '../lib/cutPreview'
+import { SHADOW_BLACK_POINTS } from '../lib/shadowDarkening'
 import type { ConversionConfig } from '../lib/types'
 
 interface CutPreviewProps {
@@ -28,6 +29,8 @@ export function CutPreview({ file, config }: CutPreviewProps) {
   const [size, setSize] = useState<SourceSize | null>(null)
   const [failed, setFailed] = useState(false)
   const isVideo = isVideoFile(file)
+  const shadowFilterId = `cut-preview-shadows-${useId().replace(/:/g, '')}`
+  const blackPoint = SHADOW_BLACK_POINTS[config.shadowDarkening] ?? 0
 
   useEffect(() => {
     const url = URL.createObjectURL(file)
@@ -49,9 +52,28 @@ export function CutPreview({ file, config }: CutPreviewProps) {
     ? ({ '--cut-preview-ratio': layout.frameWidth / layout.frameHeight } as CSSProperties)
     : undefined
 
+  // Same math as ffmpeg's colorlevels black point: out = (in - b) / (1 - b), clipped.
+  const shadowSlope = 1 / (1 - blackPoint)
+  const shadowIntercept = -blackPoint / (1 - blackPoint)
+  const shadowFilter =
+    blackPoint > 0 ? (
+      <svg className="cut-preview-filter-defs" aria-hidden="true" focusable="false">
+        <filter id={shadowFilterId} colorInterpolationFilters="sRGB">
+          <feComponentTransfer>
+            <feFuncR type="linear" slope={shadowSlope} intercept={shadowIntercept} />
+            <feFuncG type="linear" slope={shadowSlope} intercept={shadowIntercept} />
+            <feFuncB type="linear" slope={shadowSlope} intercept={shadowIntercept} />
+          </feComponentTransfer>
+        </filter>
+      </svg>
+    ) : null
+  const mediaStyle: CSSProperties | undefined =
+    blackPoint > 0 ? { filter: `url(#${shadowFilterId})` } : undefined
+
   const media = isVideo ? (
     <video
       className="cut-preview-media"
+      style={mediaStyle}
       src={sourceUrl}
       autoPlay
       muted
@@ -65,6 +87,7 @@ export function CutPreview({ file, config }: CutPreviewProps) {
   ) : (
     <img
       className="cut-preview-media"
+      style={mediaStyle}
       src={sourceUrl}
       alt=""
       onLoad={(event) =>
@@ -97,6 +120,7 @@ export function CutPreview({ file, config }: CutPreviewProps) {
         <p className="cut-preview-note">{intl.formatMessage({ id: 'convert.cutPreview.unavailable' })}</p>
       ) : (
         <div className={`cut-preview-stage${isGuide ? ' is-trimmed' : ''}`} style={stageStyle}>
+          {shadowFilter}
           {media}
           {layout?.pieces.map((piece) => (
             <div

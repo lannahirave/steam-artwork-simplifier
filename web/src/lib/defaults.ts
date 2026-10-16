@@ -2,6 +2,7 @@ import type { ConversionConfig, Preset, ResolvedPresetSettings } from './types'
 
 const ADVANCED_CONFIG_KEYS = [
   'minGifFps',
+  'shadowDarkening',
   'disableOptimizations',
   'standardRetriesEnabled',
   'retryAllowFpsDrop',
@@ -45,6 +46,7 @@ export const DEFAULTS = {
   },
   disableOptimizations: false,
   optimizationMode: 'hybrid',
+  shadowDarkening: 'off',
   standardRetriesEnabled: true,
   retryAllowFpsDrop: true,
   retryAllowQualityDrop: true,
@@ -138,6 +140,7 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
             ? DEFAULTS.showcase.targetGifKb
           : DEFAULTS.workshop.targetGifKb,
     optimizationMode: DEFAULTS.optimizationMode,
+    shadowDarkening: DEFAULTS.shadowDarkening,
     standardRetriesEnabled: DEFAULTS.standardRetriesEnabled,
     retryAllowFpsDrop: DEFAULTS.retryAllowFpsDrop,
     retryAllowQualityDrop: DEFAULTS.retryAllowQualityDrop,
