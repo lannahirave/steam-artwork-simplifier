@@ -196,8 +196,10 @@ export function applyPreset(config: ConversionConfig, preset: Preset): Conversio
 
   return {
     ...next,
+    parts: DEFAULTS.workshop.parts,
     workshopRows: DEFAULTS.workshop.rows,
-    workerCount: getDefaultWorkerCount(config.parts),
+    partWidth: DEFAULTS.workshop.partWidth,
+    workerCount: getDefaultWorkerCount(DEFAULTS.workshop.parts),
     maxGifKb: DEFAULTS.workshop.maxGifKb,
     targetGifKb: DEFAULTS.workshop.targetGifKb,
   }
