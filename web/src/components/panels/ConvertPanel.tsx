@@ -7,6 +7,7 @@ import { parseHexByte } from '../../lib/validation'
 import { formatElapsed } from '../../agents/appAgents'
 import { useConvertContext } from '../../contexts/convertContext'
 import { SwitchCard } from '../SwitchCard'
+import { CutPreview } from '../CutPreview'
 import { FeedbackPrompt } from '../FeedbackPrompt'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
 
@@ -254,6 +255,8 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 onChange={onSourceFileChange}
               />
             </label>
+
+            {sourceFile && <CutPreview file={sourceFile} config={config} />}
 
             {showLongMp4Memo && (
               <div className="advisory-memo source-advisory">
