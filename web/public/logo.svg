@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Steam Artwork Studio">
+  <defs>
+    <linearGradient id="sas-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#1d1d1f" />
+      <stop offset="1" stop-color="#3a3a3d" />
+    </linearGradient>
+    <linearGradient id="sas-accent" x1="0" y1="1" x2="1" y2="0">
+      <stop offset="0" stop-color="#0071e3" />
+      <stop offset="1" stop-color="#2997ff" />
+    </linearGradient>
+  </defs>
+
+  <!-- Rounded app tile -->
+  <rect x="2" y="2" width="60" height="60" rx="14" fill="url(#sas-bg)" />
+
+  <!-- Three vertical showcase slices, reading as a Steam artwork strip -->
+  <rect x="13" y="18" width="9" height="28" rx="2.5" fill="#ffffff" opacity="0.92" />
+  <rect x="27.5" y="13" width="9" height="38" rx="2.5" fill="url(#sas-accent)" />
+  <rect x="42" y="18" width="9" height="28" rx="2.5" fill="#ffffff" opacity="0.92" />
+</svg>
