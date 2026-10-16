@@ -39,6 +39,19 @@ describe('preset defaults', () => {
     expect(showcase.targetGifKb).toBe(4500)
   })
 
+  it('restores workshop parts and width after visiting showcase', () => {
+    const showcase = applyPreset(getDefaultConfig('workshop'), 'showcase')
+
+    for (const detour of [showcase, applyPreset(showcase, 'featured')]) {
+      const workshop = applyPreset(detour, 'workshop')
+
+      expect(workshop.preset).toBe('workshop')
+      expect(workshop.parts).toBe(5)
+      expect(workshop.partWidth).toBe(150)
+      expect(workshop.workerCount).toBe(getDefaultConfig('workshop').workerCount)
+    }
+  })
+
   it('uses 2000KB limits for guide preset', () => {
     const workshop = getDefaultConfig('workshop')
     const guideFromPresetSwitch = applyPreset(workshop, 'guide')
