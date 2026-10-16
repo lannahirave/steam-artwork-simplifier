@@ -11,7 +11,7 @@
   "app.nav.theme.toLight": "Switch to light theme",
   "app.hero.summary": "Convert source media, patch finished GIFs, and prepare Steam uploads from your browser.",
   "app.hero.openConvert": "Open Convert",
-  "app.hero.exploreWorkflow": "Explore workflow",
+  "app.hero.openGuide": "Open guide on Steam",
   "app.hero.sourceCode": "Source Code",
   "app.tabs.convert.eyebrow": "Studio",
   "app.tabs.convert.summary": "Turn source media into Steam-ready GIF layouts with tuned presets, size control, and deliberate post-processing.",

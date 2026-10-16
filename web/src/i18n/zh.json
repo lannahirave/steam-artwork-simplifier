@@ -11,7 +11,7 @@
   "app.nav.theme.toLight": "切换到浅色模式",
   "app.hero.summary": "在浏览器中转换源媒体、修补成品 GIF 并准备 Steam 上传。",
   "app.hero.openConvert": "打开转换",
-  "app.hero.exploreWorkflow": "探索工作流程",
+  "app.hero.openGuide": "在 Steam 上打开指南",
   "app.hero.sourceCode": "源代码",
   "app.tabs.convert.eyebrow": "工作室",
   "app.tabs.convert.summary": "使用调校好的预设、尺寸控制和精细的后期处理，将源媒体转换为可直接用于 Steam 的 GIF 布局。",

@@ -11,7 +11,7 @@
   "app.nav.theme.toLight": "Přepnout na světlý režim",
   "app.hero.summary": "Převádějte zdrojová média, patchujte hotové GIFy a připravujte nahrání na Steam přímo v prohlížeči.",
   "app.hero.openConvert": "Otevřít převod",
-  "app.hero.exploreWorkflow": "Prozkoumat workflow",
+  "app.hero.openGuide": "Otevřít průvodce na Steamu",
   "app.hero.sourceCode": "Zdrojový kód",
   "app.tabs.convert.eyebrow": "Studio",
   "app.tabs.convert.summary": "Převádějte média na Steam-ready GIF layouty s vyladěnými presety, kontrolou velikosti a řízeným post-processingem.",

@@ -11,7 +11,7 @@
   "app.nav.theme.toLight": "Перемкнути на світлу тему",
   "app.hero.summary": "Конвертуйте медіа, патчте готові GIF і готуйте завантаження в Steam прямо в браузері.",
   "app.hero.openConvert": "Відкрити конвертацію",
-  "app.hero.exploreWorkflow": "Переглянути workflow",
+  "app.hero.openGuide": "Відкрити гайд у Steam",
   "app.hero.sourceCode": "Вихідний код",
   "app.tabs.convert.eyebrow": "Студія",
   "app.tabs.convert.summary": "Перетворюйте медіа у Steam-ready GIF-макети з налаштованими пресетами, контролем розміру та post-processing.",
