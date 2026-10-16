@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
+import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { AppRoot } from './AppRoot'
@@ -77,31 +77,82 @@ describe('AppRoot locale routing', () => {
   })
 })
 
+type SystemThemeListener = (event: MediaQueryListEvent) => void
+
+function mockSystemTheme(initial: 'light' | 'dark'): (next: 'light' | 'dark') => void {
+  let matches = initial === 'dark'
+  const listeners = new Set<SystemThemeListener>()
+
+  Object.defineProperty(window, 'matchMedia', {
+    configurable: true,
+    value: (query: string) => ({
+      get matches() {
+        return query.includes('dark') && matches
+      },
+      media: query,
+      addEventListener: (_: string, listener: SystemThemeListener) => listeners.add(listener),
+      removeEventListener: (_: string, listener: SystemThemeListener) => listeners.delete(listener),
+    }),
+  })
+
+  return (next) => {
+    matches = next === 'dark'
+    listeners.forEach((listener) => listener({ matches } as MediaQueryListEvent))
+  }
+}
+
 describe('AppRoot theme', () => {
-  it('defaults to the light theme', () => {
+  it('follows a light system theme when nothing is stored', () => {
+    mockSystemTheme('light')
+
+    render(<AppRoot />)
+
+    expect(document.documentElement.dataset.theme).toBe('light')
+    expect(screen.getByRole('button', { name: 'Switch to dark theme' })).toBeInTheDocument()
+  })
+
+  it('follows a dark system theme when nothing is stored', () => {
+    mockSystemTheme('dark')
+
+    render(<AppRoot />)
+
+    expect(document.documentElement.dataset.theme).toBe('dark')
+    expect(screen.getByRole('button', { name: 'Switch to light theme' })).toBeInTheDocument()
+  })
+
+  it('tracks live system theme changes until the user picks a theme', async () => {
+    const setSystemTheme = mockSystemTheme('light')
+    render(<AppRoot />)
+
+    act(() => setSystemTheme('dark'))
+    expect(document.documentElement.dataset.theme).toBe('dark')
+
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light theme' }))
+    expect(document.documentElement.dataset.theme).toBe('light')
+
+    act(() => setSystemTheme('light'))
+    act(() => setSystemTheme('dark'))
+    expect(document.documentElement.dataset.theme).toBe('light')
+  })
+
+  it('stored choice overrides the system theme', () => {
+    mockSystemTheme('dark')
+    window.localStorage.setItem(THEME_STORAGE_KEY, 'light')
+
     render(<AppRoot />)
 
     expect(document.documentElement.dataset.theme).toBe('light')
   })
 
-  it('applies the stored dark theme on load', () => {
-    window.localStorage.setItem(THEME_STORAGE_KEY, 'dark')
-
-    render(<AppRoot />)
-
-    expect(document.documentElement.dataset.theme).toBe('dark')
-    expect(screen.getByRole('button', { name: 'Dark theme' })).toHaveAttribute('aria-pressed', 'true')
-  })
-
   it('toggle switches the theme and stores the choice', async () => {
+    mockSystemTheme('light')
     render(<AppRoot />)
-    const toggle = screen.getByRole('button', { name: 'Dark theme' })
 
-    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to dark theme' }))
     expect(document.documentElement.dataset.theme).toBe('dark')
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('dark')
 
-    await userEvent.click(toggle)
+    await userEvent.click(screen.getByRole('button', { name: 'Switch to light theme' }))
     expect(document.documentElement.dataset.theme).toBe('light')
     expect(window.localStorage.getItem(THEME_STORAGE_KEY)).toBe('light')
   })

@@ -6,11 +6,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#1d1d1f" />
     <script>
-      // Apply the saved theme before first paint to avoid a light flash.
+      // Apply the saved (or system) theme before first paint to avoid a flash.
       try {
-        if (localStorage.getItem('steam-artwork-studio:theme') === 'dark') {
-          document.documentElement.dataset.theme = 'dark'
-        }
+        var saved = localStorage.getItem('steam-artwork-studio:theme')
+        var dark =
+          saved === 'dark' ||
+          (saved !== 'light' && window.matchMedia('(prefers-color-scheme: dark)').matches)
+        document.documentElement.dataset.theme = dark ? 'dark' : 'light'
       } catch (e) {}
     </script>
 

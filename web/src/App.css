@@ -249,8 +249,36 @@ textarea {
   font-weight: 400;
 }
 
-.nav-theme[aria-pressed='true'] {
+.nav-theme {
+  appearance: none;
+  display: inline-grid;
+  place-items: center;
+  width: 2rem;
+  min-height: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: color 160ms ease;
+}
+
+.nav-theme svg {
+  width: 1.15rem;
+  height: 1.15rem;
+}
+
+.global-nav .nav-theme:not(:disabled):hover,
+.nav-theme:focus-visible {
   color: var(--ink-inverse);
+}
+
+.nav-theme:focus-visible {
+  outline: 2px solid var(--apple-blue);
+  outline-offset: 0.2rem;
+  box-shadow: none;
 }
 
 .shell {

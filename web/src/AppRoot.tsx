@@ -11,7 +11,14 @@ import {
   normalizeLocale,
   type AppLocale,
 } from './i18n/messages'
-import { applyTheme, readStoredTheme, storeTheme, type AppTheme } from './theme'
+import {
+  applyTheme,
+  readStoredTheme,
+  readSystemTheme,
+  storeTheme,
+  watchSystemTheme,
+  type AppTheme,
+} from './theme'
 
 function getNavigatorLanguages(): string[] {
   return Array.from(navigator.languages?.length ? navigator.languages : [navigator.language])
@@ -50,7 +57,11 @@ function updateLocaleRoute(locale: AppLocale, mode: 'push' | 'replace'): void {
 
 export function AppRoot() {
   const [locale, setLocale] = useState<AppLocale>(resolveInitialLocale)
-  const [theme, setTheme] = useState<AppTheme>(readStoredTheme)
+  const [themeChoice, setThemeChoice] = useState<AppTheme | null>(readStoredTheme)
+  const [systemTheme, setSystemTheme] = useState<AppTheme>(readSystemTheme)
+  const theme = themeChoice ?? systemTheme
+
+  useEffect(() => watchSystemTheme(setSystemTheme), [])
 
   useEffect(() => {
     applyTheme(theme)
@@ -92,7 +103,7 @@ export function AppRoot() {
   function handleThemeToggle(): void {
     const nextTheme: AppTheme = theme === 'dark' ? 'light' : 'dark'
     storeTheme(nextTheme)
-    setTheme(nextTheme)
+    setThemeChoice(nextTheme)
   }
 
   return (
