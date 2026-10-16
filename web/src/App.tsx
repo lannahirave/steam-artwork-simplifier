@@ -16,6 +16,7 @@ import { PatchToolsProvider } from './contexts/patchToolsContext'
 import { SteamHelpersProvider } from './contexts/steamHelpersContext'
 import { SUPPORTED_LOCALES, localeLabels, type AppLocale } from './i18n/messages'
 import { getStoredOnboardingComplete } from './onboardingStorage'
+import { ThemeIcon } from './components/ThemeIcon'
 import type { AppTheme } from './theme'
 
 const APP_VERSION = __APP_VERSION__
@@ -108,11 +109,16 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
             </select>
             <button
               type="button"
-              className="nav-help nav-theme"
-              aria-pressed={theme === 'dark'}
+              className="nav-theme"
+              aria-label={intl.formatMessage({
+                id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
+              })}
+              title={intl.formatMessage({
+                id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
+              })}
               onClick={onThemeToggle}
             >
-              {intl.formatMessage({ id: 'app.nav.theme' })}
+              <ThemeIcon theme={theme} />
             </button>
             <button type="button" className="nav-help" onClick={reopenOnboarding}>
               {intl.formatMessage({ id: 'app.nav.help' })}

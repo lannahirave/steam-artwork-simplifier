@@ -1,13 +1,15 @@
 export const THEME_STORAGE_KEY = 'steam-artwork-studio:theme'
-export const DEFAULT_THEME = 'light'
+const DARK_QUERY = '(prefers-color-scheme: dark)'
 
 export type AppTheme = 'light' | 'dark'
 
-export function readStoredTheme(): AppTheme {
+/** The theme the user picked explicitly, or null when they follow the system. */
+export function readStoredTheme(): AppTheme | null {
   try {
-    return window.localStorage.getItem(THEME_STORAGE_KEY) === 'dark' ? 'dark' : DEFAULT_THEME
+    const stored = window.localStorage.getItem(THEME_STORAGE_KEY)
+    return stored === 'light' || stored === 'dark' ? stored : null
   } catch {
-    return DEFAULT_THEME
+    return null
   }
 }
 
@@ -17,6 +19,24 @@ export function storeTheme(theme: AppTheme): void {
   } catch {
     // Storage can be blocked (private mode); the theme still applies for this session.
   }
+}
+
+export function readSystemTheme(): AppTheme {
+  return window.matchMedia?.(DARK_QUERY).matches ? 'dark' : 'light'
+}
+
+/** Calls `onChange` whenever the OS color scheme flips; returns an unsubscribe function. */
+export function watchSystemTheme(onChange: (theme: AppTheme) => void): () => void {
+  const query = window.matchMedia?.(DARK_QUERY)
+  if (!query) {
+    return () => {}
+  }
+
+  const handleChange = (event: MediaQueryListEvent): void => {
+    onChange(event.matches ? 'dark' : 'light')
+  }
+  query.addEventListener('change', handleChange)
+  return () => query.removeEventListener('change', handleChange)
 }
 
 export function applyTheme(theme: AppTheme): void {
