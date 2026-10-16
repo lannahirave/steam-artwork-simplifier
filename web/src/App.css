@@ -419,6 +419,15 @@ textarea {
   border-color: rgba(255, 255, 255, 0.42);
 }
 
+.hero-link-guide {
+  gap: 0.5rem;
+}
+
+.hero-link-star {
+  color: #ffc83d;
+  font-size: 1.1em;
+}
+
 .onboarding-card {
   position: fixed;
   top: 4.25rem;

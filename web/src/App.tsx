@@ -142,8 +142,16 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
               <button type="button" className="hero-primary" onClick={openConvertWorkspace}>
                 {intl.formatMessage({ id: 'app.hero.openConvert' })}
               </button>
-              <a className="hero-link hero-link-pill" href="#workspace">
-                {intl.formatMessage({ id: 'app.hero.exploreWorkflow' })}
+              <a
+                className="hero-link hero-link-pill hero-link-guide"
+                href="https://steamcommunity.com/sharedfiles/filedetails/?id=3813335509"
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                <span className="hero-link-star" aria-hidden="true">
+                  ★
+                </span>
+                {intl.formatMessage({ id: 'app.hero.openGuide' })}
               </a>
               <a className="hero-link" href="https://github.com/lannahirave/steam-artwork-simplifier">
                 {intl.formatMessage({ id: 'app.hero.sourceCode' })}
