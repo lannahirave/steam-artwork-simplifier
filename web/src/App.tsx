@@ -16,15 +16,18 @@ import { PatchToolsProvider } from './contexts/patchToolsContext'
 import { SteamHelpersProvider } from './contexts/steamHelpersContext'
 import { SUPPORTED_LOCALES, localeLabels, type AppLocale } from './i18n/messages'
 import { getStoredOnboardingComplete } from './onboardingStorage'
+import type { AppTheme } from './theme'
 
 const APP_VERSION = __APP_VERSION__
 
 interface AppProps {
   locale: AppLocale
   onLocaleChange: (locale: AppLocale) => void
+  theme: AppTheme
+  onThemeToggle: () => void
 }
 
-function App({ locale, onLocaleChange }: AppProps) {
+function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
   const intl = useIntl()
   const [tab, setTab] = useState<TabKey>('convert')
   const [showOnboarding, setShowOnboarding] = useState(
@@ -103,6 +106,14 @@ function App({ locale, onLocaleChange }: AppProps) {
                 </option>
               ))}
             </select>
+            <button
+              type="button"
+              className="nav-help nav-theme"
+              aria-pressed={theme === 'dark'}
+              onClick={onThemeToggle}
+            >
+              {intl.formatMessage({ id: 'app.nav.theme' })}
+            </button>
             <button type="button" className="nav-help" onClick={reopenOnboarding}>
               {intl.formatMessage({ id: 'app.nav.help' })}
             </button>

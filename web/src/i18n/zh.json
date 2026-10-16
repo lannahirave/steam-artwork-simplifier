@@ -7,6 +7,7 @@
   "app.nav.help": "帮助",
   "app.nav.github": "GitHub",
   "app.nav.language": "语言",
+  "app.nav.theme": "深色模式",
   "app.hero.summary": "在浏览器中转换源媒体、修补成品 GIF 并准备 Steam 上传。",
   "app.hero.openConvert": "打开转换",
   "app.hero.exploreWorkflow": "探索工作流程",

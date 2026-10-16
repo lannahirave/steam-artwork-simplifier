@@ -7,6 +7,7 @@
   "app.nav.help": "Help",
   "app.nav.github": "GitHub",
   "app.nav.language": "Language",
+  "app.nav.theme": "Dark theme",
   "app.hero.summary": "Convert source media, patch finished GIFs, and prepare Steam uploads from your browser.",
   "app.hero.openConvert": "Open Convert",
   "app.hero.exploreWorkflow": "Explore workflow",
