@@ -4,16 +4,121 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/logo.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#1d1d1f" />
+
     <title>Steam Artwork Maker – Free Animated GIF &amp; Showcase Tool</title>
     <meta
       name="description"
       content="Create animated Steam profile artwork for free. Make, resize, split, and optimize GIFs for Steam Artwork and Featured Showcases."
     />
-    <meta name="robots" content="index, follow" />
+    <meta
+      name="keywords"
+      content="Steam artwork, Steam animated artwork, Steam showcase GIF, Steam workshop showcase, Steam featured showcase, Steam guide GIF, GIF splitter, video to GIF, Steam profile"
+    />
+    <meta name="author" content="Valerii" />
+    <meta
+      name="robots"
+      content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1"
+    />
     <link rel="canonical" href="https://artwork-helper-by-val.netlify.app/" />
+
+    <!-- Open Graph (Facebook, Discord, Telegram, Slack, LinkedIn, ...) -->
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Steam Artwork Studio" />
+    <meta property="og:title" content="Steam Artwork Maker – Free Animated GIF &amp; Showcase Tool" />
+    <meta
+      property="og:description"
+      content="Turn videos and images into animated Steam profile artwork. Split, resize, and optimize GIFs for Workshop, Artwork, and Featured Showcases and Guides – free, in your browser."
+    />
+    <meta property="og:url" content="https://artwork-helper-by-val.netlify.app/" />
+    <meta property="og:image" content="https://artwork-helper-by-val.netlify.app/og-image.png" />
+    <meta property="og:image:type" content="image/png" />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="Steam Artwork Studio – animated GIF and showcase tool for Steam profiles" />
+    <meta property="og:locale" content="en_US" />
+    <meta property="og:locale:alternate" content="uk_UA" />
+    <meta property="og:locale:alternate" content="cs_CZ" />
+    <meta property="og:locale:alternate" content="es_ES" />
+    <meta property="og:locale:alternate" content="zh_CN" />
+
+    <!-- Twitter / X -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Steam Artwork Maker – Free Animated GIF &amp; Showcase Tool" />
+    <meta
+      name="twitter:description"
+      content="Turn videos and images into animated Steam profile artwork. Split, resize, and optimize GIFs for Steam showcases – free, in your browser."
+    />
+    <meta name="twitter:image" content="https://artwork-helper-by-val.netlify.app/og-image.png" />
+    <meta name="twitter:image:alt" content="Steam Artwork Studio – animated GIF and showcase tool for Steam profiles" />
+
+    <!-- Machine-readable description for crawlers and AI agents -->
+    <link rel="alternate" type="text/markdown" href="/llms.txt" title="llms.txt" />
+    <link rel="sitemap" type="application/xml" href="/sitemap.xml" />
+    <script type="application/ld+json">
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Steam Artwork Studio",
+        "alternateName": "Steam Artwork Maker",
+        "url": "https://artwork-helper-by-val.netlify.app/",
+        "description": "Free browser-based tool that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides.",
+        "applicationCategory": "MultimediaApplication",
+        "applicationSubCategory": "GIF converter",
+        "operatingSystem": "Any (modern web browser)",
+        "browserRequirements": "Requires JavaScript and WebAssembly",
+        "inLanguage": ["en", "uk", "cs", "es", "zh-Hans"],
+        "isAccessibleForFree": true,
+        "offers": { "@type": "Offer", "price": "0", "priceCurrency": "USD" },
+        "image": "https://artwork-helper-by-val.netlify.app/og-image.png",
+        "license": "https://www.gnu.org/licenses/agpl-3.0.html",
+        "codeRepository": "https://github.com/lannahirave/steam-artwork-simplifier",
+        "author": { "@type": "Person", "name": "Valerii" },
+        "featureList": [
+          "Convert video and images to animated GIF in the browser",
+          "Workshop Showcase preset (5 x 150px slices)",
+          "Featured Showcase preset (630px wide)",
+          "Artwork Showcase preset (506px + 100px split)",
+          "Guide preset (195x195px)",
+          "Automatic FPS, size, and color optimization to fit Steam upload limits",
+          "Optional GIF EOF and header patching",
+          "ZIP export of all generated parts",
+          "No upload: files are processed locally on your device"
+        ]
+      }
+    </script>
   </head>
   <body>
-    <div id="root"></div>
+    <!--
+      Static content for crawlers that do not run JavaScript (many AI and social
+      crawlers). React replaces everything inside #root as soon as the app mounts.
+    -->
+    <div id="root">
+      <main style="max-width: 44rem; margin: 2rem auto; padding: 0 1rem; font-family: system-ui, sans-serif">
+        <h1>Steam Artwork Studio – free animated GIF and showcase maker</h1>
+        <p>
+          Steam Artwork Studio converts videos and images into animated GIFs sized and optimized for Steam profile
+          Artwork, Workshop and Featured Showcases, and Guides. It runs entirely in your browser – your files are
+          never uploaded.
+        </p>
+        <h2>Presets</h2>
+        <ul>
+          <li>Workshop Showcase – 5 slices of 150px wide</li>
+          <li>Featured Showcase – a single 630px wide GIF</li>
+          <li>Artwork Showcase – a 506px + 100px split</li>
+          <li>Guide – 195x195px</li>
+        </ul>
+        <h2>Features</h2>
+        <ul>
+          <li>Video, GIF, PNG, WebP, JPG, and BMP input</li>
+          <li>Automatic FPS, size, and color reduction to fit Steam upload limits</li>
+          <li>Optional GIF EOF and header patching</li>
+          <li>Per-file download or ZIP export</li>
+          <li>Available in English, Ukrainian, Czech, Spanish, and Simplified Chinese</li>
+        </ul>
+        <noscript><p>This tool requires JavaScript and WebAssembly. Please enable JavaScript to use it.</p></noscript>
+      </main>
+    </div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
