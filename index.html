@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Steam Artwork Studio has moved</title>
+    <meta name="robots" content="noindex, follow" />
+    <link rel="canonical" href="https://artwork-helper-by-val.netlify.app/" />
+    <meta http-equiv="refresh" content="8; url=https://artwork-helper-by-val.netlify.app/" />
+    <style>
+      :root { color-scheme: dark; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        background: #0f1115;
+        color: #e6e8ec;
+        font: 16px/1.6 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+      }
+      main {
+        max-width: 34rem;
+        padding: 2rem;
+        text-align: center;
+      }
+      h1 { font-size: 1.5rem; margin: 0 0 1rem; }
+      p { margin: 0 0 1rem; color: #b4b9c3; }
+      a.button {
+        display: inline-block;
+        margin-top: 0.5rem;
+        padding: 0.7rem 1.4rem;
+        border-radius: 6px;
+        background: #d33;
+        color: #fff;
+        font-weight: 600;
+        text-decoration: none;
+      }
+      a.button:hover { background: #e44; }
+      code { color: #e6e8ec; }
+      .small { font-size: 0.875rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Steam Artwork Studio lives on Netlify</h1>
+      <p>
+        You've reached <code>lannahirave.github.io/steam-artwork-simplifier</code>.
+        The app has never been hosted here. Some search tools and AI assistants guess this
+        address from the GitHub repository name, so this page sends you to the real site.
+      </p>
+      <p>
+        The official address is
+        <a href="https://artwork-helper-by-val.netlify.app/">artwork-helper-by-val.netlify.app</a>.
+        Please bookmark that one.
+      </p>
+      <a class="button" id="go" href="https://artwork-helper-by-val.netlify.app/">Open Steam Artwork Studio</a>
+      <p class="small" id="countdown">Redirecting in <span id="seconds">8</span> seconds…</p>
+    </main>
+    <script>
+      (function () {
+        var target = 'https://artwork-helper-by-val.netlify.app/'
+        var repoPrefix = /^\/steam-artwork-simplifier\/?/
+        var path = location.pathname.replace(repoPrefix, '')
+        var url = target + path + location.search + location.hash
+        document.getElementById('go').href = url
+
+        var seconds = 8
+        var label = document.getElementById('seconds')
+        var timer = setInterval(function () {
+          seconds -= 1
+          label.textContent = seconds
+          if (seconds <= 0) {
+            clearInterval(timer)
+            location.replace(url)
+          }
+        }, 1000)
+      })()
+    </script>
+  </body>
+</html>
