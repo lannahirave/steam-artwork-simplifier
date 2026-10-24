@@ -46,7 +46,7 @@ export const DEFAULTS = {
   },
   disableOptimizations: false,
   optimizationMode: 'hybrid',
-  shadowDarkening: 'off',
+  shadowDarkening: 'medium',
   standardRetriesEnabled: true,
   retryAllowFpsDrop: true,
   retryAllowQualityDrop: true,
