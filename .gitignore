@@ -8,14 +8,5 @@ media/*
 web/.vite/
 web/.netlify/
 
-# bench scratch output
-bench/baseline-*.json
-bench/quick-*.json
-bench/p[0-9]-*.json
-bench/mt-probe.json
-bench/smoke-try.json
-bench/old/
-bench/peek.png
-bench/preview-server.log
-bench/chatexport/frames/
-bench/chatexport/frames3/
+# local benchmarks and chat export work (kept on disk, never committed)
+bench/
