@@ -7,3 +7,32 @@ directory = "./dist"
 binding = "ASSETS"
 not_found_handling = "single-page-application"
 run_worker_first = true
+
+# Aggregate conversion counters for /api/track and /api/stats.
+# Schema lives in ./migrations; apply with `npx wrangler d1 migrations apply steam-artwork-stats`.
+# Before the first deploy, run `npx wrangler d1 create steam-artwork-stats` and add the printed
+# database_id below (it is not secret). Without it, deploy may bind a different database.
+[[d1_databases]]
+binding = "DB"
+database_name = "steam-artwork-stats"
+migrations_dir = "migrations"
+# database_id = "<from wrangler d1 create>"
+
+# Per-visitor burst limit for /api/track, keyed on the client IP (not stored).
+# Counters are per Cloudflare location; period must be 10 or 60 seconds.
+[[ratelimits]]
+name = "TRACK_LIMITER"
+namespace_id = "1001"
+
+  [ratelimits.simple]
+  limit = 10
+  period = 60
+
+[vars]
+# Comma-separated origins allowed to POST /api/track. Override locally in .dev.vars.
+ALLOWED_ORIGINS = "https://artworkstudio.lannahirave.com"
+# Counted beacons per visitor (daily-salted IP hash) per UTC day.
+STATS_VISITOR_DAILY_LIMIT = "300"
+# Backstop for floods across many IPs: keeps worst-case writes under the D1 free plan's 100k rows/day.
+STATS_DAILY_LIMIT = "20000"
+# STATS_TOKEN is a secret: `npx wrangler secret put STATS_TOKEN`.

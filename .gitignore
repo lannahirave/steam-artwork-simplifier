@@ -5,7 +5,8 @@ media/*
 !media/test-fixtures/
 !media/test-fixtures/**
 web/.vite/
-web/.netlify/
+web/.wrangler/
+web/.dev.vars
 
 # local benchmarks and chat export work (kept on disk, never committed)
 bench/

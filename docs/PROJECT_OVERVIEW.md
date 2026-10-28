@@ -62,8 +62,8 @@ Patch output ZIP names are fixed:
 - ffmpeg.wasm runs in dedicated Web Workers.
 - Cross-origin isolation (COOP/COEP) is mandatory for conversion runtime.
 - Deploy targets:
-  - Netlify (auto deploy on push to `main`)
-  - Optional Cloudflare Worker static-assets deployment
+  - Cloudflare Worker static-assets deployment (production)
+  - Netlify (legacy, `netlify` branch only)
 
 ## Licensing and Source Availability
 

@@ -167,17 +167,6 @@ Local Vite dev and preview servers set these headers in `web/vite.config.ts`. Pr
 
 ## Deployment
 
-### Netlify
-
-The root `netlify.toml` builds from `web/` and publishes `web/dist`:
-
-```toml
-[build]
-  base = "web"
-  command = "npm run build"
-  publish = "dist"
-```
-
 ### Cloudflare Workers
 
 Cloudflare deployment is configured with:
@@ -192,7 +181,11 @@ cd web
 npm run deploy
 ```
 
-The Cloudflare Worker serves the static app with the required COOP/COEP headers.
+The Cloudflare Worker serves the static app with the required COOP/COEP headers and handles the
+aggregate conversion counter (`/api/track`, stored in D1). One-time D1 setup is in
+`docs/DEPLOYMENT_RUNBOOK.md`.
+
+The legacy Netlify deployment builds only from the `netlify` branch.
 
 ## Quality checks
 

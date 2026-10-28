@@ -109,9 +109,10 @@ npm run bench:workshop
 
 ## Deployment Notes
 
-- Netlify is configured from repo root (`netlify.toml`) with `base = "web"`, `publish = "dist"`.
-- Production deploy on Netlify is triggered by pushes to `main`.
-- Optional Cloudflare deploy is available with `npm run deploy` (Wrangler).
+- Production runs on a Cloudflare Worker: `npm run deploy` (Wrangler).
+- `/api/track` and `/api/stats` are served by `cloudflare/stats.ts` with D1 storage; setup is in
+  `../docs/DEPLOYMENT_RUNBOOK.md`.
+- The legacy Netlify deployment builds only from the `netlify` branch.
 - gifski runtime assets are pinned and self-hosted in `public/vendor/gifski/2.2.0/`.
 
 ## License and Source

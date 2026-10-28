@@ -1,6 +1,6 @@
 // Shared guard logic for the site stats endpoint (/api/track).
-// Pure string/number helpers only, so the Netlify Functions runtime and the
-// browser tsconfig can both consume it and the logic stays unit-testable.
+// Pure string/number helpers only, so the Cloudflare Worker and the browser
+// tsconfig can both consume it and the logic stays unit-testable.
 
 export interface SourceHeaders {
   origin?: string | null
@@ -41,22 +41,14 @@ export function refererOrigin(value: string | null | undefined): string | null {
 }
 
 /**
- * Build the allowed-origin allowlist from Netlify system env vars plus an
- * optional explicit extension list (useful for custom domains). Empty when
- * nothing is configured, which makes the endpoint fail closed.
+ * Build the allowed-origin allowlist from the comma-separated ALLOWED_ORIGINS
+ * value. Empty when nothing is configured, which makes the endpoint fail closed.
  */
-export function resolveAllowedOrigins(env: {
-  URL?: string | undefined
-  DEPLOY_PRIME_URL?: string | undefined
-  ALLOWED_ORIGINS?: string | undefined
-}): string[] {
-  const system = [normalizeOrigin(env.URL ?? null), normalizeOrigin(env.DEPLOY_PRIME_URL ?? null)]
+export function resolveAllowedOrigins(env: { ALLOWED_ORIGINS?: string | undefined }): string[] {
   const explicit = (env.ALLOWED_ORIGINS ?? '')
     .split(',')
     .map((entry) => normalizeOrigin(entry))
-  return [...new Set([...system, ...explicit])].filter(
-    (entry): entry is string => entry !== null,
-  )
+  return [...new Set(explicit)].filter((entry): entry is string => entry !== null)
 }
 
 /**
@@ -76,11 +68,6 @@ export function isAllowedSource(source: SourceHeaders, allowedOrigins: string[])
     return allowedOrigins.includes(fromReferer)
   }
   return false
-}
-
-/** Aggregate minute bucket, e.g. `2026-10-07T09:41`, used by the rate cap. */
-export function minuteBucketKey(date: Date): string {
-  return date.toISOString().slice(0, 16)
 }
 
 /** Aggregate day bucket, e.g. `2026-10-07`, used by the daily counter key. */

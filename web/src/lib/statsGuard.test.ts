@@ -2,7 +2,6 @@ import { describe, expect, it } from 'vitest'
 import {
   dayBucketKey,
   isAllowedSource,
-  minuteBucketKey,
   normalizeOrigin,
   parsePositiveInt,
   refererOrigin,
@@ -43,22 +42,20 @@ describe('refererOrigin', () => {
 })
 
 describe('resolveAllowedOrigins', () => {
-  it('uses system env vars and trims duplicates', () => {
+  it('normalizes entries and trims duplicates', () => {
     expect(
       resolveAllowedOrigins({
-        URL: 'https://artwork-helper.netlify.app',
-        DEPLOY_PRIME_URL: 'https://artwork-helper.netlify.app/',
+        ALLOWED_ORIGINS: 'https://artworkstudio.lannahirave.com,https://ArtworkStudio.lannahirave.com/',
       }),
-    ).toEqual(['https://artwork-helper.netlify.app'])
+    ).toEqual(['https://artworkstudio.lannahirave.com'])
   })
 
-  it('merges explicit extra origins like custom domains', () => {
+  it('accepts several origins and drops unusable entries', () => {
     expect(
       resolveAllowedOrigins({
-        URL: 'https://artwork-helper.netlify.app',
-        ALLOWED_ORIGINS: ' https://artworkbyval.com , bad value ',
+        ALLOWED_ORIGINS: ' https://artworkstudio.lannahirave.com , http://localhost:8787 , bad value ',
       }),
-    ).toEqual(['https://artwork-helper.netlify.app', 'https://artworkbyval.com'])
+    ).toEqual(['https://artworkstudio.lannahirave.com', 'http://localhost:8787'])
   })
 
   it('fails closed with no configuration', () => {
@@ -95,10 +92,6 @@ describe('isAllowedSource', () => {
 
 describe('bucket keys', () => {
   const date = new Date('2026-10-07T09:41:59.000Z')
-
-  it('derives a minute bucket for the rate cap', () => {
-    expect(minuteBucketKey(date)).toBe('2026-10-07T09:41')
-  })
 
   it('derives a day bucket for daily counters', () => {
     expect(dayBucketKey(date)).toBe('2026-10-07')

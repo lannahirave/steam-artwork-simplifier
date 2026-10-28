@@ -11,7 +11,7 @@
 - Packaging: `jszip`
 - Unit tests: Vitest
 - E2E smoke tests: Playwright
-- Hosting: Netlify (auto deploy on `main`) or Cloudflare Worker assets
+- Hosting: Cloudflare Worker assets (Netlify legacy on the `netlify` branch)
 
 ## High-Level Components
 
@@ -149,16 +149,14 @@ Conversion ZIP name is generated in app shell as `<source>.zip`.
 
 ## Deployment Architecture
 
-Netlify path (automatic):
-
-- root `netlify.toml`
-- `base = "web"`, `command = "npm run build"`, `publish = "dist"`
-- production deploy on push to `main`
-
-Cloudflare path (optional):
+Cloudflare Worker (production):
 
 - `web/wrangler.toml`
-- `web/cloudflare/worker.ts` injects required COOP/COEP headers for assets
+- `web/cloudflare/worker.ts` injects required COOP/COEP headers for assets and routes
+  `/api/track` and `/api/stats` to `web/cloudflare/stats.ts`
+- aggregate conversion counters live in D1 (`web/migrations/`)
+
+Netlify (legacy) builds only from the `netlify` branch until it is replaced by a redirect.
 
 Required headers for conversion runtime:
 
