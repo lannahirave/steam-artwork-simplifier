@@ -2,10 +2,7 @@
 
 ## Goal
 
-Provide one toolkit for Steam artwork preparation with two execution paths:
-
-1. Browser SPA (`web/`) with React + ffmpeg.wasm (primary path)
-2. Legacy Python CLI scripts in `legacy/` (compatibility path)
+Provide one browser toolkit for Steam artwork preparation: a React + ffmpeg.wasm SPA in `web/`.
 
 ## Repository Map
 
@@ -13,10 +10,6 @@ Provide one toolkit for Steam artwork preparation with two execution paths:
 - `web/src/lib/*`: conversion defaults, orchestration, worker pool, sizing, patch, validation.
 - `web/src/workers/ffmpeg.worker.ts`: ffmpeg worker runtime.
 - `web/src/components/panels/*`: tab panels (Convert, Patch Tools, Steam Helpers, Guides).
-- `legacy/video_parts_pipeline.py`: legacy video->GIF pipeline.
-- `legacy/steam_hex_patch.py`: legacy EOF patch utility.
-- `legacy/steam_hex_edit_header.py`: legacy GIF header editor.
-- `autofill/*.js`: legacy Steam autofill snippets.
 - `docs/`: technical + operational docs.
 
 ## Product Capabilities

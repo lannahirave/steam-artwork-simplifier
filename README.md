@@ -244,24 +244,8 @@ Important implementation areas:
 - `web/public/vendor/gifski/2.2.0/` - pinned, self-hosted gifski WASM runtime.
 - `web/e2e/` - Playwright smoke tests.
 - `web/src/**/*.test.ts` - Vitest coverage for conversion helpers, worker pool, patching, i18n, defaults, browser support, and sizing logic.
-- `legacy/` - older Python CLI media and patching tools.
-- `autofill/` - older Steam upload autofill snippets.
 - `media/test-fixtures/` - local media fixtures for manual and automated testing.
 - `docs/` - project overview, architecture, conversion pipeline, deployment, and troubleshooting notes.
-
-## Legacy CLI tools
-
-The browser app is the main workflow. These scripts remain available for older local workflows:
-
-- `legacy/video_parts_pipeline.py` - local video-to-GIF pipeline.
-- `legacy/steam_hex_patch.py` - local EOF-byte patch utility.
-- `legacy/steam_hex_edit_header.py` - local GIF-header width/height editor.
-
-Example:
-
-```bash
-python .\\legacy\\video_parts_pipeline.py --input .\\media\\my_video.mp4 --preset workshop
-```
 
 ## Documentation
 

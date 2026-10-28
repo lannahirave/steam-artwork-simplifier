@@ -9,7 +9,6 @@
 - `TROUBLESHOOTING.md`: common failures, diagnostics, and operational fixes.
 - `CHROME_MCP_TESTING.md`: browser-level smoke/regression workflow.
 
-## Canonical vs Legacy
+## Canonical Docs
 
-- Canonical (actively maintained): root `README.md`, `web/README.md`, and all files in this `docs/` folder.
-- Legacy references: `information/*` and Python CLI scripts in `legacy/` (kept for CLI compatibility).
+- Actively maintained: root `README.md`, `web/README.md`, and all files in this `docs/` folder.
