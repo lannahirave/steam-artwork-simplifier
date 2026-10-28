@@ -33,6 +33,7 @@ import type {
 } from './types'
 import type { MessageId } from '../i18n/messages'
 import { isLikelyImageSource } from './validation'
+import { outputMimeType, resolveStillImageFormat } from './stillImage'
 
 export interface ConversionProgress {
   stage: string
@@ -131,10 +132,10 @@ function toArtifact(
   data: WorkerArtifactData,
   emitMemory?: (event: MemoryDebugEventData) => void,
 ): ConversionArtifact {
-  const blob = bytesToBlob(data.fileBytes, 'image/gif')
+  const blob = bytesToBlob(data.fileBytes, outputMimeType(data.name))
   emitMemory?.({
     bucket: 'output-blob',
-    label: 'Output GIF bytes copied into Blob',
+    label: 'Output bytes copied into Blob',
     bytes: data.fileBytes.byteLength,
     kind: 'retained',
     stage: 'output',
@@ -163,7 +164,9 @@ async function applyPostPatches(
 
   for (const artifact of artifacts) {
     let bytes = await toBytes(artifact.blob)
-    if (config.headerPatchEnabled || config.eofPatchEnabled) {
+    // The header patch rewrites GIF screen dimensions, so it only applies to GIF outputs.
+    const headerPatch = config.headerPatchEnabled && artifact.blob.type === 'image/gif'
+    if (headerPatch || config.eofPatchEnabled) {
       emitMemory?.({
         bucket: 'patch-copy',
         label: 'Output GIF bytes copied for post-patching',
@@ -174,7 +177,7 @@ async function applyPostPatches(
       })
     }
 
-    if (config.headerPatchEnabled) {
+    if (headerPatch) {
       const headerPatched = patchGifHeaderBytes(
         bytes,
         config.headerWidth,
@@ -192,7 +195,7 @@ async function applyPostPatches(
 
     out.push({
       ...artifact,
-      blob: bytesToBlob(bytes, 'image/gif'),
+      blob: bytesToBlob(bytes, artifact.blob.type),
       sizeKb: bytes.byteLength / 1024,
     })
   }
@@ -281,7 +284,15 @@ export async function convertVideo(
   if (probe.startOffsetSec > 0) {
     emit('probe', `Detected dark intro; encoding starts at ${probe.startOffsetSec.toFixed(2)}s.`)
   }
-  const isStillImage = imageLikeSource && probe.duration <= 0.001
+  // ffmpeg reports a one-frame duration (e.g. 0.04s) for JPEGs, so only GIFs, which can be
+  // animated, are judged by duration. PNG/JPG/WEBP/BMP decode to a single frame.
+  const sourceImageFormat = imageLikeSource ? resolveStillImageFormat(input.file) : undefined
+  const isStillImage =
+    sourceImageFormat !== undefined && (sourceImageFormat !== 'gif' || probe.duration <= 0.001)
+  const stillFormat = isStillImage ? sourceImageFormat : undefined
+  if (stillFormat && stillFormat !== 'gif') {
+    emit('probe', `Static image source: outputs stay ${stillFormat.toUpperCase()}, resized and cropped only.`)
+  }
 
   const presetPlan = resolvePresetPlan(config)
   const defaultSplitRowHeights =
@@ -377,6 +388,7 @@ export async function convertVideo(
       fileBytes,
       sourceCacheKey,
       isStillImage,
+      stillFormat,
       srcWidth: probe.width,
       srcHeight: probe.height,
       duration: probe.duration,
@@ -571,6 +583,7 @@ export async function convertVideo(
           fileBytes,
           sourceCacheKey,
           isStillImage,
+          stillFormat,
           srcWidth: probe.width,
           srcHeight: probe.height,
           duration: probe.duration,
@@ -617,6 +630,7 @@ export async function convertVideo(
           fileBytes,
           sourceCacheKey,
           isStillImage,
+          stillFormat,
           srcWidth: probe.width,
           srcHeight: probe.height,
           duration: probe.duration,

@@ -121,8 +121,8 @@ export function getArtifactLayoutClassName(artifactViews: ArtifactView[]): {
   isCompactStrip: boolean
   resultsGridClassName: string
 } {
-  const isPartNamedOutput = (name: string): boolean => /_part_\d{2}\.gif$/i.test(name)
-  const isWorkshopGridOutput = (name: string): boolean => /_row_\d{2}_part_\d{2}\.gif$/i.test(name)
+  const isPartNamedOutput = (name: string): boolean => /_part_\d{2}\.(?:gif|png|jpg|webp)$/i.test(name)
+  const isWorkshopGridOutput = (name: string): boolean => /_row_\d{2}_part_\d{2}\.(?:gif|png|jpg|webp)$/i.test(name)
   const isWorkshopStrip =
     artifactViews.length === 5 &&
     artifactViews.every((item) => isPartNamedOutput(item.artifact.name))

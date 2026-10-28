@@ -59,11 +59,16 @@ Defaults are in `web/src/lib/defaults.ts`.
 
 ### Still images
 
-When source is image-like and duration is effectively zero:
+PNG, JPG, WEBP, and BMP sources are always treated as still. GIF sources are still when their
+duration is effectively zero.
 
-- worker uses resize-only single-frame encode path
-- no temporal frame sampling
-- split presets still produce multiple sliced outputs
+- Outputs keep the source format: PNG stays PNG, JPG stays JPG, WEBP stays WEBP. BMP becomes
+  PNG because Steam does not accept BMP. A still GIF stays on the GIF path.
+- The worker only scales and crops with the same preset geometry (`web/src/workers/stillImageEncoder.ts`). Shadow darkening and gifski are not applied.
+- JPG and WEBP step down in quality only when an output is above the max size. PNG is lossless
+  and never changes.
+- The EOF byte patch applies to every format. The GIF header patch applies to GIF outputs only.
+- Split presets still produce multiple sliced outputs.
 
 ### Video / animated sources
 

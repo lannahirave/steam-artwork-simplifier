@@ -1,3 +1,5 @@
+import type { StillImageFormat } from './stillImage'
+
 export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
 
 export type ArtifactStatus = 'original' | 'recompressed' | 'lossy'
@@ -189,6 +191,8 @@ export interface ConvertPayloadBase {
   fileBytes: Uint8Array
   sourceCacheKey: string
   isStillImage: boolean
+  /** Output format for still image sources; anything but 'gif' skips the GIF encoder. */
+  stillFormat?: StillImageFormat
   srcWidth: number
   srcHeight: number
   duration: number

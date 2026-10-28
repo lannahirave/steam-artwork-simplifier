@@ -21,6 +21,7 @@ import { postError, postMemoryDebug, postProgress, postResult } from './workerMe
 import { runProbe } from './mediaProbe'
 import { createGifFrameCache } from './gifFrameCache'
 import { withShadowDarkening } from '../lib/shadowDarkening'
+import { encodeStillImage } from './stillImageEncoder'
 
 declare const self: DedicatedWorkerGlobalScope
 
@@ -29,6 +30,8 @@ const ffmpegLogBuffer: string[] = []
 const frameCache = createGifFrameCache()
 let loaded = false
 let currentRequestId = ''
+
+type ConvertPayload = ConvertPartPayload | ConvertFeaturedPayload | ConvertGuidePayload
 
 ffmpeg.on('log', ({ message }) => {
   ffmpegLogBuffer.push(message)
@@ -59,7 +62,7 @@ async function ensureLoaded(requestId: string): Promise<void> {
 
 function buildSearchOptions(
   requestId: string,
-  payload: ConvertPartPayload | ConvertFeaturedPayload | ConvertGuidePayload,
+  payload: ConvertPayload,
   inputName: string,
   baseFilter: string,
 ) {
@@ -92,6 +95,31 @@ function buildSearchOptions(
     requestId,
     frameCache,
   }
+}
+
+/** Encodes one output: still images keep their format, everything else goes through gifski. */
+async function encodeOutput(
+  requestId: string,
+  payload: ConvertPayload,
+  inputName: string,
+  baseFilter: string,
+) {
+  if (payload.isStillImage && payload.stillFormat && payload.stillFormat !== 'gif') {
+    const still = await encodeStillImage({
+      ffmpeg,
+      ffmpegLogBuffer,
+      postProgress,
+      requestId,
+      inputName,
+      baseFilter,
+      format: payload.stillFormat,
+      maxKb: payload.maxGifKb,
+      disableOptimizations: payload.disableOptimizations,
+    })
+    return { ...still, extension: still.format }
+  }
+  const best = await searchBestEncode(buildSearchOptions(requestId, payload, inputName, baseFilter))
+  return { ...best, extension: 'gif' }
 }
 
 function postMemfsInputDebug(requestId: string, inputName: string, bytes: number): void {
@@ -140,17 +168,15 @@ async function runConvertPart(requestId: string, payload: ConvertPartPayload): P
 
   try {
     const geometry = buildPartGeometry(payload)
-    const best = await searchBestEncode(
-      buildSearchOptions(requestId, payload, inputName, geometry.baseFilter),
-    )
+    const best = await encodeOutput(requestId, payload, inputName, geometry.baseFilter)
 
     const columns = Math.max(1, Math.floor(payload.splitColumns ?? payload.parts))
     const rows = Math.max(1, Math.floor(payload.splitRows ?? 1))
     const columnIndex = payload.partIndex % columns
     const rowIndex = Math.floor(payload.partIndex / columns)
     const outputName = rows > 1
-      ? `${sourceBaseName(payload.fileName)}_row_${String(rowIndex + 1).padStart(2, '0')}_part_${String(columnIndex + 1).padStart(2, '0')}.gif`
-      : `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.gif`
+      ? `${sourceBaseName(payload.fileName)}_row_${String(rowIndex + 1).padStart(2, '0')}_part_${String(columnIndex + 1).padStart(2, '0')}.${best.extension}`
+      : `${sourceBaseName(payload.fileName)}_part_${String(payload.partIndex + 1).padStart(2, '0')}.${best.extension}`
 
     return {
       name: outputName,
@@ -185,12 +211,10 @@ async function runConvertFeatured(
 
   try {
     const geometry = buildFeaturedGeometry(payload)
-    const best = await searchBestEncode(
-      buildSearchOptions(requestId, payload, inputName, geometry.baseFilter),
-    )
+    const best = await encodeOutput(requestId, payload, inputName, geometry.baseFilter)
 
     return {
-      name: `${sourceBaseName(payload.fileName)}_featured.gif`,
+      name: `${sourceBaseName(payload.fileName)}_featured.${best.extension}`,
       fileBytes: best.bytes,
       sizeKb: best.sizeKb,
       width: geometry.width,
@@ -222,12 +246,10 @@ async function runConvertGuide(
 
   try {
     const geometry = buildGuideGeometry(payload)
-    const best = await searchBestEncode(
-      buildSearchOptions(requestId, payload, inputName, geometry.baseFilter),
-    )
+    const best = await encodeOutput(requestId, payload, inputName, geometry.baseFilter)
 
     return {
-      name: `${sourceBaseName(payload.fileName)}_guide.gif`,
+      name: `${sourceBaseName(payload.fileName)}_guide.${best.extension}`,
       fileBytes: best.bytes,
       sizeKb: best.sizeKb,
       width: geometry.width,

@@ -118,5 +118,5 @@ Checks:
 
 1. Use split presets with `Worker Count` between `2-3`.
 2. Confirm conversion reached worker encode stages (`worker-x:*`).
-3. Large/static differences are expected (static images encode differently).
+3. Large/static differences are expected (static images are only resized and cropped, in their own format).
 4. Reduce retries/disable standard retries for speed-first flow.

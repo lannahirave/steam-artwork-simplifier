@@ -201,3 +201,54 @@ describe('conversion orchestration', () => {
     expect(pool.clearFrameCacheCalls).toBe(1)
   })
 })
+
+function stillImagePool(probeDuration: number) {
+  const partPayloads: ConvertPartPayload[] = []
+  const pool = {
+    warmup: async () => undefined,
+    clearFrameCaches: async () => undefined,
+    runTask: async (command: WorkerCommand, payload: unknown) => {
+      if (command === 'probe') {
+        return { width: 1000, height: 500, duration: probeDuration, fps: 0, startOffsetSec: 0 }
+      }
+      const part = payload as ConvertPartPayload
+      partPayloads.push(part)
+      return {
+        name: `art_part_${String(part.partIndex + 1).padStart(2, '0')}.${part.stillFormat ?? 'gif'}`,
+        fileBytes: new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x00]),
+        sizeKb: 1,
+        width: part.partWidth,
+        height: 50,
+        status: 'original',
+        finalFps: 0,
+        finalQuality: 100,
+      }
+    },
+  }
+  return { pool, partPayloads }
+}
+
+describe('still image sources', () => {
+  it('treats a JPEG as still even when ffmpeg reports a one-frame duration', async () => {
+    const { pool, partPayloads } = stillImagePool(0.04)
+    const file = new File([new Uint8Array([1])], 'art.jpg', { type: 'image/jpeg' })
+
+    const result = await convertVideo({ file }, getDefaultConfig('workshop'), pool as never)
+
+    expect(partPayloads.every((payload) => payload.isStillImage && payload.stillFormat === 'jpg')).toBe(true)
+    expect(result.artifacts.every((artifact) => artifact.blob.type === 'image/jpeg')).toBe(true)
+  })
+
+  it('keeps PNG sources as PNG and skips the GIF-only header patch', async () => {
+    const { pool, partPayloads } = stillImagePool(0)
+    const config = { ...getDefaultConfig('workshop'), headerPatchEnabled: true, eofPatchEnabled: true, eofByte: 0x21 }
+    const file = new File([new Uint8Array([1])], 'art.png', { type: 'image/png' })
+
+    const result = await convertVideo({ file }, config, pool as never)
+
+    expect(partPayloads.every((payload) => payload.isStillImage && payload.stillFormat === 'png')).toBe(true)
+    expect(result.artifacts.every((artifact) => artifact.blob.type === 'image/png')).toBe(true)
+    const bytes = new Uint8Array(await result.artifacts[0].blob.arrayBuffer())
+    expect([...bytes]).toEqual([0x89, 0x50, 0x4e, 0x47, 0x21])
+  })
+})

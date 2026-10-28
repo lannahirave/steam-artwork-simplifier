@@ -699,7 +699,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   }
                 />
                 <div className={isCompactStrip ? 'gif-meta compact' : 'gif-meta'}>
-                  <span>{intl.formatMessage({ id: 'convert.fpsMeta' }, { fps: item.artifact.finalFps })}</span>
+                  {item.artifact.finalFps > 0 && (
+                    <span>{intl.formatMessage({ id: 'convert.fpsMeta' }, { fps: item.artifact.finalFps })}</span>
+                  )}
                   <span>
                     {intl.formatMessage(
                       { id: 'convert.qualityReductionMeta' },
