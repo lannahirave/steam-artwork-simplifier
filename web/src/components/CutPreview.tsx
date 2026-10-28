@@ -34,6 +34,8 @@ export function CutPreview({ file, config }: CutPreviewProps) {
 
   useEffect(() => {
     const url = URL.createObjectURL(file)
+    // The object URL is an external resource that must be revoked on cleanup, so it lives in an effect.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setSourceUrl(url)
     setSize(null)
     setFailed(false)
