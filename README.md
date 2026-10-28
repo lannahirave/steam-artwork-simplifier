@@ -1,5 +1,11 @@
 # Steam Artwork Toolkit
 
+> [!WARNING]
+> **This branch and the Netlify deployment are being deprecated.** The `netlify` branch only keeps
+> `artwork-helper-by-val.netlify.app` running while the app moves to Cloudflare Workers at
+> `artworkstudio.lannahirave.com`. After the move, this branch will only redirect the old Netlify URL
+> to the new domain. Active development happens on `main`; do not open pull requests against this branch.
+
 Create Steam-ready animated artwork from local videos and images - directly in your browser.
 
 Steam Artwork Toolkit turns source media into correctly sized GIFs for Steam Workshop, Artwork, Featured, and Guide showcases. Choose a preset, set a size budget, run the conversion, preview the result, and download ready-to-upload files.
@@ -167,7 +173,9 @@ Local Vite dev and preview servers set these headers in `web/vite.config.ts`. Pr
 
 ## Deployment
 
-### Netlify
+### Netlify (deprecated)
+
+Netlify builds production from the `netlify` branch until the Cloudflare migration is done, then serves only a redirect to the new domain.
 
 The root `netlify.toml` builds from `web/` and publishes `web/dist`:
 
