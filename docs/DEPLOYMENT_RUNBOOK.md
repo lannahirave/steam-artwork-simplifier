@@ -79,7 +79,11 @@ Visitors behind a shared IP (mobile networks, offices) share the per-visitor lim
 If the database is missing or over quota, the stats routes return `503`; the app ignores the
 result.
 
-Read the counters with `GET /api/stats?token=<STATS_TOKEN>`.
+Read the counters with the token in a header (the URL form `?token=` is not accepted):
+
+```
+curl -H "Authorization: Bearer <STATS_TOKEN>" https://artworkstudio.lannahirave.com/api/stats
+```
 
 ### Local Worker run
 

@@ -67,6 +67,14 @@ function allowedOriginRequest(method: 'GET' | 'POST' | 'DELETE', url: string, ip
   return new Request(`${ORIGIN}${url}`, { method, headers: { origin: ORIGIN, 'cf-connecting-ip': ip } })
 }
 
+function statsRequest(authorization?: string): Request {
+  const headers: Record<string, string> = { origin: ORIGIN }
+  if (authorization) {
+    headers.authorization = authorization
+  }
+  return new Request(`${ORIGIN}/api/stats`, { method: 'GET', headers })
+}
+
 function track(ip?: string): Promise<Response> {
   return handleStats(allowedOriginRequest('POST', '/api/track', ip), env)
 }
@@ -241,7 +249,7 @@ describe('global daily cap', () => {
 
 describe('GET /api/stats', () => {
   it('is unavailable without STATS_TOKEN', async () => {
-    const response = await handleStats(allowedOriginRequest('GET', '/api/stats?token=secret'), env)
+    const response = await handleStats(statsRequest('Bearer secret'), env)
 
     expect(response.status).toBe(404)
   })
@@ -252,7 +260,7 @@ describe('GET /api/stats', () => {
       "INSERT INTO counters (key, n) VALUES ('day/2026-10-06', 15), ('day/2026-10-07', 26), ('visitor/2026-10-07/abc', 3)",
     )
 
-    const response = await handleStats(allowedOriginRequest('GET', '/api/stats?token=secret'), env)
+    const response = await handleStats(statsRequest('Bearer secret'), env)
 
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
@@ -264,7 +272,23 @@ describe('GET /api/stats', () => {
   it('rejects the wrong token', async () => {
     env.STATS_TOKEN = 'secret'
 
-    const response = await handleStats(allowedOriginRequest('GET', '/api/stats?token=nope'), env)
+    const response = await handleStats(statsRequest('Bearer nope'), env)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('ignores a token passed in the URL', async () => {
+    env.STATS_TOKEN = 'secret'
+
+    const response = await handleStats(allowedOriginRequest('GET', '/api/stats?token=secret'), env)
+
+    expect(response.status).toBe(404)
+  })
+
+  it('rejects a token without the Bearer scheme', async () => {
+    env.STATS_TOKEN = 'secret'
+
+    const response = await handleStats(statsRequest('secret'), env)
 
     expect(response.status).toBe(404)
   })

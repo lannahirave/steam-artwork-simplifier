@@ -1,7 +1,6 @@
 /// <reference lib="webworker" />
 
 import { FFmpeg } from '@ffmpeg/ffmpeg'
-import { toBlobURL } from '@ffmpeg/util'
 import type {
   AnyWorkerRequest,
   ConvertFeaturedPayload,
@@ -40,6 +39,37 @@ ffmpeg.on('log', ({ message }) => {
   }
 })
 
+// The core is loaded from the CDN because ffmpeg-core.wasm (~31 MB) exceeds the 25 MiB
+// per-file limit for Cloudflare Worker assets. Each file is checked against the SHA-256 of
+// the npm tarball for @ffmpeg/core@0.12.10, so a tampered CDN response never runs.
+const FFMPEG_CORE_BASE = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm'
+const FFMPEG_CORE_FILES = {
+  js: {
+    url: `${FFMPEG_CORE_BASE}/ffmpeg-core.js`,
+    type: 'text/javascript',
+    sha256: '67a48f11645f85439f3fde4f2119042c16b374b910206b7a7a24f342e28dcae3',
+  },
+  wasm: {
+    url: `${FFMPEG_CORE_BASE}/ffmpeg-core.wasm`,
+    type: 'application/wasm',
+    sha256: '9f57947a5bd530d8f00c5b3f2cb2a3492faa7e5d823315342d6a8656d0a6b7b7',
+  },
+} as const
+
+async function verifiedBlobURL(file: { url: string; type: string; sha256: string }): Promise<string> {
+  const response = await fetch(file.url)
+  if (!response.ok) {
+    throw new Error(`Failed to download ${file.url} (HTTP ${response.status}).`)
+  }
+  const bytes = await response.arrayBuffer()
+  const digest = new Uint8Array(await crypto.subtle.digest('SHA-256', bytes))
+  const hex = [...digest].map((byte) => byte.toString(16).padStart(2, '0')).join('')
+  if (hex !== file.sha256) {
+    throw new Error(`Integrity check failed for ${file.url}.`)
+  }
+  return URL.createObjectURL(new Blob([bytes], { type: file.type }))
+}
+
 async function ensureLoaded(requestId: string): Promise<void> {
   if (loaded) {
     return
@@ -48,10 +78,9 @@ async function ensureLoaded(requestId: string): Promise<void> {
   postProgress(requestId, 'init', 'Loading FFmpeg WASM core...')
 
   // Use single-thread core in browser workers for higher stability.
-  const baseURL = 'https://cdn.jsdelivr.net/npm/@ffmpeg/core@0.12.10/dist/esm'
   await ffmpeg.load({
-    coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-    wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+    coreURL: await verifiedBlobURL(FFMPEG_CORE_FILES.js),
+    wasmURL: await verifiedBlobURL(FFMPEG_CORE_FILES.wasm),
   })
 
   postProgress(requestId, 'init', `Loading gifski WASM runtime (${GIFSKI_RUNTIME_VERSION})...`)

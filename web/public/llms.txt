@@ -28,5 +28,5 @@
 
 ## Links
 
-- [App](https://artwork-helper-by-val.netlify.app/): the tool itself
+- [App](https://artworkstudio.lannahirave.com/): the tool itself
 - [Source code](https://github.com/lannahirave/steam-artwork-simplifier): AGPL-3.0-or-later

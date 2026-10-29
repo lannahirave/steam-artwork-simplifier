@@ -3,11 +3,15 @@
 // POST /api/track  -> increments the per-day conversion counter in D1.
 //                     No request body is read; no IP, user agent, or session
 //                     identifier is stored.
-// GET  /api/stats?token=<STATS_TOKEN> -> returns per-day counts and their total.
+// GET  /api/stats with `Authorization: Bearer <STATS_TOKEN>` -> returns per-day
+//                     counts and their total. The token is not accepted in the
+//                     URL, so it stays out of browser history and request logs.
 //
 // Hardening:
 // - Origin/Referer allowlist from ALLOWED_ORIGINS. Requests with no origin
-//   hint fail closed, which blocks cross-site beacon spam and bare curl calls.
+//   hint fail closed, which stops browsers on other sites from sending beacons.
+//   Scripts can forge these headers, so the rate limit and daily caps below are
+//   what bound abuse.
 // - Per-visitor burst limit through the optional TRACK_LIMITER rate limiting
 //   binding, keyed on the client IP. Counters live in Cloudflare's memory, not
 //   in D1.
@@ -169,7 +173,8 @@ async function readStats(req: Request, env: StatsEnv): Promise<Response> {
   if (!expectedToken) {
     return json({ error: 'stats unavailable' }, 404)
   }
-  const providedToken = new URL(req.url).searchParams.get('token') ?? ''
+  const authorization = req.headers.get('authorization') ?? ''
+  const providedToken = authorization.startsWith('Bearer ') ? authorization.slice('Bearer '.length) : ''
   if (!(await tokensMatch(providedToken, expectedToken))) {
     return json({ error: 'stats unavailable' }, 404)
   }

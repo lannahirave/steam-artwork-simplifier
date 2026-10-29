@@ -16,4 +16,4 @@ User-agent: CCBot
 Allow: /
 Disallow: /api/
 
-Sitemap: https://artwork-helper-by-val.netlify.app/sitemap.xml
+Sitemap: https://artworkstudio.lannahirave.com/sitemap.xml
