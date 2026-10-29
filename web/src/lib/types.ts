@@ -1,3 +1,4 @@
+import type { SourceEdit } from './sourceEdit'
 import type { StillImageFormat } from './stillImage'
 
 export type Preset = 'workshop' | 'featured' | 'guide' | 'showcase'
@@ -39,6 +40,8 @@ export interface ConversionConfig {
 
 export interface ConversionInput {
   file: File
+  /** Crop and trim from the Cut Preview editor, applied before the preset geometry. */
+  edit?: SourceEdit | null
 }
 
 export interface SourceProbe {
@@ -193,6 +196,8 @@ export interface ConvertPayloadBase {
   isStillImage: boolean
   /** Output format for still image sources; anything but 'gif' skips the GIF encoder. */
   stillFormat?: StillImageFormat
+  /** ffmpeg filters for the user's crop/trim, placed in front of the preset scale/crop chain. */
+  sourceFilter?: string
   srcWidth: number
   srcHeight: number
   duration: number

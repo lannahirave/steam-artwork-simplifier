@@ -24,6 +24,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
   const {
     config,
     sourceFile,
+    sourceEdit,
     busy,
     finishingCurrent,
     estimatingFps,
@@ -43,6 +44,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     setConfig,
     onUpdatePreset,
     onSourceFileChange,
+    onSourceEditChange,
     onEstimateAndApplyFps,
     onRunConversion,
     onCancelConversion,
@@ -257,7 +259,15 @@ export function ConvertPanel(props: ConvertPanelProps) {
               />
             </label>
 
-            {sourceFile && <CutPreview file={sourceFile} config={config} />}
+            {sourceFile && (
+              <CutPreview
+                file={sourceFile}
+                config={config}
+                edit={sourceEdit}
+                onEditChange={onSourceEditChange}
+                disabled={busy}
+              />
+            )}
 
             {showLongMp4Memo && (
               <div className="advisory-memo source-advisory">

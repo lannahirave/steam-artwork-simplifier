@@ -34,6 +34,7 @@ import type {
 import type { MessageId } from '../i18n/messages'
 import { isLikelyImageSource } from './validation'
 import { outputMimeType, resolveStillImageFormat } from './stillImage'
+import { applySourceEditToProbe, buildSourceEditFilter, normalizeCrop, normalizeTrim } from './sourceEdit'
 
 export interface ConversionProgress {
   stage: string
@@ -275,20 +276,36 @@ export async function convertVideo(
     stage: 'probe',
     detail: input.file.name,
   })
-  const probe = await pool.runTask('probe', {
+  const rawProbe = await pool.runTask('probe', {
     fileName: input.file.name,
     fileBytes: probeFileBytes,
   }, {
     timeoutMs: 45_000,
   })
-  if (probe.startOffsetSec > 0) {
-    emit('probe', `Detected dark intro; encoding starts at ${probe.startOffsetSec.toFixed(2)}s.`)
+  if (rawProbe.startOffsetSec > 0 && !input.edit?.trim) {
+    emit('probe', `Detected dark intro; encoding starts at ${rawProbe.startOffsetSec.toFixed(2)}s.`)
   }
   // ffmpeg reports a one-frame duration (e.g. 0.04s) for JPEGs, so only GIFs, which can be
   // animated, are judged by duration. PNG/JPG/WEBP/BMP decode to a single frame.
   const sourceImageFormat = imageLikeSource ? resolveStillImageFormat(input.file) : undefined
   const isStillImage =
-    sourceImageFormat !== undefined && (sourceImageFormat !== 'gif' || probe.duration <= 0.001)
+    sourceImageFormat !== undefined && (sourceImageFormat !== 'gif' || rawProbe.duration <= 0.001)
+  // The editor measured the source in the browser; clamp the edit to what ffmpeg decodes.
+  const sourceEdit = input.edit
+    ? {
+        crop: input.edit.crop ? normalizeCrop(input.edit.crop, rawProbe.width, rawProbe.height) : null,
+        trim: input.edit.trim && !isStillImage ? normalizeTrim(input.edit.trim, rawProbe.duration) : null,
+      }
+    : null
+  const probe = applySourceEditToProbe(rawProbe, sourceEdit, isStillImage)
+  const sourceFilter = buildSourceEditFilter(sourceEdit, isStillImage)
+  if (sourceEdit?.crop) {
+    const { x, y, width, height } = sourceEdit.crop
+    emit('probe', `Using edited source: crop ${width}x${height} at ${x},${y}.`)
+  }
+  if (sourceEdit?.trim) {
+    emit('probe', `Using edited source: trim ${sourceEdit.trim.startSec.toFixed(2)}s-${sourceEdit.trim.endSec.toFixed(2)}s.`)
+  }
   const stillFormat = isStillImage ? sourceImageFormat : undefined
   if (stillFormat && stillFormat !== 'gif') {
     emit('probe', `Static image source: outputs stay ${stillFormat.toUpperCase()}, resized and cropped only.`)
@@ -389,6 +406,7 @@ export async function convertVideo(
       sourceCacheKey,
       isStillImage,
       stillFormat,
+      sourceFilter,
       srcWidth: probe.width,
       srcHeight: probe.height,
       duration: probe.duration,
@@ -584,6 +602,7 @@ export async function convertVideo(
           sourceCacheKey,
           isStillImage,
           stillFormat,
+          sourceFilter,
           srcWidth: probe.width,
           srcHeight: probe.height,
           duration: probe.duration,
@@ -631,6 +650,7 @@ export async function convertVideo(
           sourceCacheKey,
           isStillImage,
           stillFormat,
+          sourceFilter,
           srcWidth: probe.width,
           srcHeight: probe.height,
           duration: probe.duration,

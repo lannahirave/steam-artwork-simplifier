@@ -14,6 +14,7 @@ import type { ConversionConfig, MemoryDebugSession } from '../lib/types'
 import { createZip } from '../lib/zip'
 import { ConversionWorkerPool } from '../lib/conversionWorkerPool'
 import { isSupportedConversionSource } from '../lib/validation'
+import { applySourceEditToProbe, type SourceEdit } from '../lib/sourceEdit'
 import { trackConversionComplete } from '../lib/trackConversion'
 import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
@@ -47,6 +48,8 @@ import type { MessageId } from '../i18n/messages'
 export interface ConvertState {
   config: ConversionConfig
   sourceFile: File | null
+  /** Crop/trim from the Cut Preview editor; reset whenever the source changes. */
+  sourceEdit: SourceEdit | null
   sourceMetadata: SourceMediaMetadata | null
   busy: boolean
   finishingCurrent: boolean
@@ -69,6 +72,7 @@ export interface ConvertActions {
   setConfig: Dispatch<SetStateAction<ConversionConfig>>
   onUpdatePreset: (preset: ConversionConfig['preset']) => void
   onSourceFileChange: (event: ChangeEvent<HTMLInputElement>) => void
+  onSourceEditChange: (edit: SourceEdit | null) => void
   onEstimateAndApplyFps: () => void
   onRunConversion: () => void
   onCancelConversion: () => void
@@ -150,6 +154,7 @@ export function useConversionSession(): ConvertContextValue {
   const [browserSupport] = useState<BrowserSupportReport>(() => inspectBrowserSupport())
   const [config, setConfig] = useState<ConversionConfig>(() => getDefaultConfig('workshop'))
   const [sourceFile, setSourceFile] = useState<File | null>(null)
+  const [sourceEdit, setSourceEdit] = useState<SourceEdit | null>(null)
   const [sourceMetadata, setSourceMetadata] = useState<SourceMediaMetadata | null>(null)
   const [busy, setBusy] = useState(false)
   const [finishingCurrent, setFinishingCurrent] = useState(false)
@@ -388,7 +393,7 @@ export function useConversionSession(): ConvertContextValue {
         )
       }
       const result = await convertVideo(
-        { file: sourceFile },
+        { file: sourceFile, edit: sourceEdit },
         runtimeConfig,
         pool,
         {
@@ -536,6 +541,7 @@ export function useConversionSession(): ConvertContextValue {
 
   function handleSourceFileChange(event: ChangeEvent<HTMLInputElement>): void {
     const file = event.target.files?.[0] ?? null
+    setSourceEdit(null)
     if (!file) {
       setSourceFile(null)
       setSourceMetadata(null)
@@ -591,12 +597,13 @@ export function useConversionSession(): ConvertContextValue {
       const plan = resolvePresetPlan(config)
       const pool = ensurePool(plan.effectiveWorkerCount)
       const sourceBytes = new Uint8Array(await sourceFile.arrayBuffer())
-      const probe = await pool.runTask('probe', {
+      const rawProbe = await pool.runTask('probe', {
         fileName: sourceFile.name,
         fileBytes: sourceBytes.slice(),
       }, {
         timeoutMs: 45_000,
       })
+      const probe = applySourceEditToProbe(rawProbe, sourceEdit, false)
 
       const perGifWidth = plan.sampleGifWidth
       const totalTargetHeight = computePresetTargetHeight(config, probe.width, probe.height)
@@ -670,6 +677,7 @@ export function useConversionSession(): ConvertContextValue {
     state: {
       config,
       sourceFile,
+      sourceEdit,
       sourceMetadata,
       busy,
       finishingCurrent,
@@ -691,6 +699,7 @@ export function useConversionSession(): ConvertContextValue {
       setConfig,
       onUpdatePreset: updatePreset,
       onSourceFileChange: handleSourceFileChange,
+      onSourceEditChange: setSourceEdit,
       onEstimateAndApplyFps: () => void estimateAndApplyFps(),
       onRunConversion: () => void runConversion(),
       onCancelConversion: cancelConversion,

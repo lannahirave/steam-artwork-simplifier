@@ -55,6 +55,21 @@ Defaults are in `web/src/lib/defaults.ts`.
    - EOF byte patch
 8. Artifacts are sorted, previewed, and made downloadable.
 
+## Source Edits (Cut Preview)
+
+The Cut Preview shows the source at the real output size, with the preset's cut lines on top.
+Clicking it opens an editor for a crop rectangle and, for videos, a trim range
+(`web/src/components/SourceEditor.tsx`, `web/src/lib/sourceEdit.ts`). The edit is stored with the
+picked file and cleared when the file changes.
+
+The source file itself is never re-encoded. On conversion:
+
+- The probe is adjusted to the edit: the cropped width and height, the trimmed duration, and the
+  trim start as the seek offset. A manual trim replaces the automatic dark intro skip.
+- Workers put `trim=duration=…,crop=w:h:x:y` in front of the preset scale/crop chain, so the
+  preset geometry, precheck, and FPS estimate all see the edited frame.
+- Still images use the crop only.
+
 ## Source-Type Behavior
 
 ### Still images

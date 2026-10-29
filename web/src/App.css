@@ -1093,6 +1093,231 @@ textarea {
   white-space: nowrap;
 }
 
+/* The stage is sized in real pixels; narrow screens scroll instead of shrinking it. */
+.cut-preview-scroll {
+  max-width: 100%;
+  overflow-x: auto;
+}
+
+.cut-preview-stage.is-editable {
+  cursor: zoom-in;
+}
+
+.cut-preview-stage.is-editable:hover,
+.cut-preview-stage.is-editable:focus-visible {
+  outline: 2px solid var(--apple-blue);
+  outline-offset: 2px;
+}
+
+.cut-preview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-left: auto;
+}
+
+.cut-preview-button,
+.source-editor-primary,
+.source-editor-secondary {
+  min-height: 2.1rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+.cut-preview-button,
+.source-editor-secondary {
+  border: 1px solid var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.source-editor-primary {
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+}
+
+.source-editor-primary:not(:disabled):hover {
+  background: var(--apple-blue-dark);
+}
+
+.cut-preview-edited {
+  margin: 0;
+  color: var(--apple-blue-dark);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.source-editor {
+  width: min(64rem, calc(100vw - 2rem));
+  max-height: calc(100vh - 2rem);
+  padding: 1rem 1.1rem;
+  border: 1px solid rgb(var(--ink-rgb) / 0.14);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+}
+
+.source-editor[open] {
+  display: grid;
+  gap: 0.85rem;
+}
+
+.source-editor::backdrop {
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.source-editor-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.source-editor-head h2 {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.source-editor-head p {
+  margin: 0.25rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.88rem;
+}
+
+.source-editor-close {
+  min-height: 2rem;
+  padding: 0.2rem 0.65rem;
+  font-size: 1.3rem;
+}
+
+/* Fits the whole source in the dialog; the crop box is placed in % of the source frame. */
+.source-editor-canvas {
+  position: relative;
+  justify-self: center;
+  width: min(100%, calc(55vh * var(--source-editor-ratio, 1.7778)));
+  aspect-ratio: var(--source-editor-ratio, 16 / 9);
+  overflow: hidden;
+  border-radius: 8px;
+  background: #000;
+  touch-action: none;
+  user-select: none;
+}
+
+.source-editor-media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: fill;
+  pointer-events: none;
+}
+
+.source-editor-crop {
+  position: absolute;
+  box-shadow:
+    0 0 0 100vmax rgb(0 0 0 / 0.55),
+    inset 0 0 0 2px rgb(255 255 255 / 0.95);
+  cursor: move;
+  touch-action: none;
+}
+
+.source-editor-handle {
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--apple-blue);
+  border-radius: 50%;
+  background: #fff;
+  touch-action: none;
+}
+
+/* Handles sit just inside the box, so they stay grabbable when the crop touches the frame edge. */
+.source-editor-handle.is-nw { left: 0; top: 0; cursor: nwse-resize; }
+.source-editor-handle.is-n { left: 50%; top: 0; transform: translateX(-50%); cursor: ns-resize; }
+.source-editor-handle.is-ne { right: 0; top: 0; cursor: nesw-resize; }
+.source-editor-handle.is-e { right: 0; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+.source-editor-handle.is-se { right: 0; bottom: 0; cursor: nwse-resize; }
+.source-editor-handle.is-s { left: 50%; bottom: 0; transform: translateX(-50%); cursor: ns-resize; }
+.source-editor-handle.is-sw { left: 0; bottom: 0; cursor: nesw-resize; }
+.source-editor-handle.is-w { left: 0; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+
+.source-editor-controls {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr));
+  gap: 0.75rem;
+}
+
+.source-editor-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(6.5rem, 1fr));
+  align-items: end;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.6rem 0.75rem 0.75rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-card);
+}
+
+.source-editor-group legend {
+  padding: 0 0.3rem;
+  color: var(--ink);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.source-editor-group label {
+  display: grid;
+  gap: 0.25rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-soft);
+  font-size: 0.8rem;
+}
+
+.source-editor-group input,
+.source-editor-group select {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+.source-editor-playback {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.source-editor-playback input[type='range'] {
+  flex: 1;
+  min-width: 0;
+}
+
+.source-editor-foot {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.6rem;
+}
+
+.source-editor-summary {
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.source-editor-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+}
+
 .form-grid-budget {
   grid-template-columns: repeat(auto-fit, minmax(min(100%, 13.5rem), 1fr));
 }

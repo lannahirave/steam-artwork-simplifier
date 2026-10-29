@@ -102,8 +102,10 @@ async function encodeOutput(
   requestId: string,
   payload: ConvertPayload,
   inputName: string,
-  baseFilter: string,
+  presetFilter: string,
 ) {
+  // The user's crop/trim runs first, so the preset geometry sees the edited frame.
+  const baseFilter = payload.sourceFilter ? `${payload.sourceFilter},${presetFilter}` : presetFilter
   if (payload.isStillImage && payload.stillFormat && payload.stillFormat !== 'gif') {
     const still = await encodeStillImage({
       ffmpeg,
