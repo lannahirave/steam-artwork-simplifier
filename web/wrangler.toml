@@ -1,6 +1,12 @@
-name = "carlos-gif-wasm-toolkit"
+name = "steam-artwork-studio"
 main = "cloudflare/worker.ts"
 compatibility_date = "2026-03-02"
+
+# Production URL. Wrangler creates the DNS record and certificate for the custom domain
+# (the lannahirave.com zone is in the same Cloudflare account).
+routes = [{ pattern = "artworkstudio.lannahirave.com", custom_domain = true }]
+# Serve only the custom domain, not a duplicate *.workers.dev copy of the site.
+workers_dev = false
 
 [assets]
 directory = "./dist"
@@ -10,13 +16,11 @@ run_worker_first = true
 
 # Aggregate conversion counters for /api/track and /api/stats.
 # Schema lives in ./migrations; apply with `npx wrangler d1 migrations apply steam-artwork-stats`.
-# Before the first deploy, run `npx wrangler d1 create steam-artwork-stats` and add the printed
-# database_id below (it is not secret). Without it, deploy may bind a different database.
 [[d1_databases]]
 binding = "DB"
 database_name = "steam-artwork-stats"
+database_id = "5cd9e01d-dbda-416b-85b0-6960ba9c3355"
 migrations_dir = "migrations"
-# database_id = "<from wrangler d1 create>"
 
 # Per-visitor burst limit for /api/track, keyed on the client IP (not stored).
 # Counters are per Cloudflare location; period must be 10 or 60 seconds.

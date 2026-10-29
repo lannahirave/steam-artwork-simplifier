@@ -40,6 +40,11 @@ npm run deploy
 
 This builds the app and deploys the Worker serving `dist` assets.
 
+The `routes` entry in `web/wrangler.toml` attaches the Worker to `artworkstudio.lannahirave.com`
+as a custom domain. On deploy, Wrangler creates the DNS record and certificate (the
+`lannahirave.com` zone is in the same Cloudflare account). `workers_dev = false` keeps the site off
+`*.workers.dev`.
+
 ### Stats endpoint setup (one time)
 
 The conversion counter stores per-day counts in D1; `/api/stats` adds them up for the total.
@@ -49,9 +54,9 @@ rows are deleted once the day is over.
 
 1. Create the database: `npx wrangler d1 create steam-artwork-stats`.
    Add the printed `database_id` to the `[[d1_databases]]` block in `web/wrangler.toml` and
-   commit it (it is not secret). Do this before the first deploy; without an id, deploy may
-   bind a different database than the one the migrations ran on.
+   commit it (it is not secret). Done for production: the id is in `web/wrangler.toml`.
 2. Apply the schema: `npx wrangler d1 migrations apply steam-artwork-stats --remote`.
+   Done for production (`0001_counters.sql`); rerun after adding a migration.
 3. Set the stats read token: `npx wrangler secret put STATS_TOKEN`.
 4. Check `ALLOWED_ORIGINS` in `web/wrangler.toml` lists every production origin.
    Beacons from any other origin get `403`.
