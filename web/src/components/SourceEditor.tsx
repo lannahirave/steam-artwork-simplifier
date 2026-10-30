@@ -96,6 +96,27 @@ export function SourceEditor({
     }
   }, [])
 
+  // timeupdate only fires every ~250ms, so the slider would skip the start of each loop. Follow the
+  // video every frame instead, and wrap at the trim end here too so the loop restarts exactly.
+  useEffect(() => {
+    if (!isVideo) {
+      return
+    }
+    let frame = 0
+    const tick = () => {
+      const video = videoRef.current
+      if (video && !video.paused && duration > 0) {
+        if (video.currentTime >= effectiveTrimEnd || video.currentTime < trimStart - 0.05) {
+          video.currentTime = trimStart
+        }
+        setCurrentTime(video.currentTime)
+      }
+      frame = requestAnimationFrame(tick)
+    }
+    frame = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(frame)
+  }, [isVideo, duration, trimStart, effectiveTrimEnd])
+
   const layout = computeCutLayout(config, crop.width, crop.height)
   const firstPiece = layout?.pieces[0]
 
