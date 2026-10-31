@@ -111,36 +111,31 @@ npm run bench:workshop
 
 ## Deploying
 
-Cloudflare Workers Builds deploys each branch: every Worker is connected to this repository in
-the Cloudflare dashboard (Worker → Settings → Builds) and watches one branch. No API token is
-stored in GitHub.
+Deploys are manual, from your machine, with Wrangler logged in (`npx wrangler login`):
 
-| Branch | Site | Worker | Stats database |
-| --- | --- | --- | --- |
-| `beta` | https://artworkstudio-beta.lannahirave.com | `steam-artwork-studio-beta` (`[env.beta]`) | `steam-artwork-stats-beta` |
-| `main` | https://artworkstudio.lannahirave.com | `steam-artwork-studio` | `steam-artwork-stats` |
+| Command | Branch | Site | Worker | Stats database |
+| --- | --- | --- | --- | --- |
+| `npm run release:beta` | `beta` | https://artworkstudio-beta.lannahirave.com | `steam-artwork-studio-beta` (`[env.beta]`) | `steam-artwork-stats-beta` |
+| `npm run release:prod` | `main` | https://artworkstudio.lannahirave.com | `steam-artwork-studio` | `steam-artwork-stats` |
 
-Build settings (root directory `web`):
+`scripts/deploy.mjs` refuses to deploy unless you are on the target branch with a clean working
+tree and HEAD matches the pushed `origin/<branch>`, so the deployed code is always public. It then
+runs lint and tests, builds, applies D1 migrations, deploys with the commit in the version message,
+and checks that the site answers. Production asks you to type `prod` first (`--yes` skips this;
+`--skip-checks` skips lint and tests).
 
-| Worker | Build command | Deploy command |
-| --- | --- | --- |
-| `steam-artwork-studio` | `npm run build` | `npx wrangler d1 migrations apply DB --remote && npx wrangler deploy` |
-| `steam-artwork-studio-beta` | `npm run build:beta` | `npx wrangler d1 migrations apply DB --remote --env beta && npx wrangler deploy --env beta` |
+Work on `beta` (or a feature branch merged into it), push, run `npm run release:beta`, check the
+beta site, then merge `beta` into `main`, push, and run `npm run release:prod`. The beta build
+(`npm run build:beta`, Vite mode `beta`) points the profile preview at
+https://previewartwork-beta.lannahirave.com (`.env.beta`), and the beta Worker sends
+`X-Robots-Tag: noindex`.
 
-Turn off non-production branch builds, so each Worker only builds its own branch.
-
-Work on `beta` (or a feature branch merged into it), check the beta site, then merge `beta` into
-`main` to release. Cloudflare deploys a push even if lint or tests fail, so run
-`npm run lint && npm test` before pushing. The beta build (`npm run build:beta`, Vite mode `beta`)
-points the profile preview at https://previewartwork-beta.lannahirave.com (`.env.beta`), and the
-beta Worker sends `X-Robots-Tag: noindex`.
-
-Manual deploys still work: `npm run deploy` (production) and `npm run deploy:beta`. The beta
+`npm run deploy` and `npm run deploy:beta` still deploy without any of these checks. The beta
 `STATS_TOKEN` is a separate secret: `npx wrangler secret put STATS_TOKEN --env beta`.
 
 ## Deployment Notes
 
-- Production runs on a Cloudflare Worker: `npm run deploy` (Wrangler), or automatically from `main` through Workers Builds.
+- Production runs on a Cloudflare Worker: `npm run release:prod` from `main` (see "Deploying").
 - `/api/track` and `/api/stats` are served by `cloudflare/stats.ts` with D1 storage; setup is in
   `../docs/DEPLOYMENT_RUNBOOK.md`.
 - The legacy Netlify deployment builds only from the `netlify` branch.

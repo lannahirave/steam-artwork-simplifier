@@ -1,7 +1,7 @@
 {
   "name": "web",
   "private": true,
-  "version": "1.2.15",
+  "version": "1.2.16",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -17,7 +17,9 @@
     "test:e2e": "playwright test",
     "bench:workshop": "node ./scripts/benchmark-workshop.mjs",
     "bench:memory": "node ./scripts/benchmark-memory.mjs",
-    "bench:memory:cleanup": "node ./scripts/benchmark-memory.mjs --scenario smoke --summary-only --assert-frame-cache-cleared"
+    "bench:memory:cleanup": "node ./scripts/benchmark-memory.mjs --scenario smoke --summary-only --assert-frame-cache-cleared",
+    "release:beta": "node scripts/deploy.mjs beta",
+    "release:prod": "node scripts/deploy.mjs prod"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
