@@ -111,29 +111,36 @@ npm run bench:workshop
 
 ## Deploying
 
-GitHub Actions (`../.github/workflows/ci.yml`) lints, tests and builds every push and pull request,
-then deploys:
+Cloudflare Workers Builds deploys each branch: every Worker is connected to this repository in
+the Cloudflare dashboard (Worker → Settings → Builds) and watches one branch. No API token is
+stored in GitHub.
 
 | Branch | Site | Worker | Stats database |
 | --- | --- | --- | --- |
 | `beta` | https://artworkstudio-beta.lannahirave.com | `steam-artwork-studio-beta` (`[env.beta]`) | `steam-artwork-stats-beta` |
 | `main` | https://artworkstudio.lannahirave.com | `steam-artwork-studio` | `steam-artwork-stats` |
 
-Work on `beta` (or a feature branch merged into it), check the beta site, then merge `beta` into
-`main` to release. The beta build (`npm run build:beta`, Vite mode `beta`) points the profile
-preview at https://previewartwork-beta.lannahirave.com (`.env.beta`), and the beta Worker sends
-`X-Robots-Tag: noindex`.
+Build settings (root directory `web`):
 
-The workflow needs two repository secrets: `CLOUDFLARE_ACCOUNT_ID` and `CLOUDFLARE_API_TOKEN`, a
-Cloudflare API token with Account: Workers Scripts Edit, D1 Edit, Account Settings Read, and Zone
-(`lannahirave.com`): Workers Routes Edit, DNS Edit, Zone Read.
+| Worker | Build command | Deploy command |
+| --- | --- | --- |
+| `steam-artwork-studio` | `npm run build` | `npx wrangler d1 migrations apply DB --remote && npx wrangler deploy` |
+| `steam-artwork-studio-beta` | `npm run build:beta` | `npx wrangler d1 migrations apply DB --remote --env beta && npx wrangler deploy --env beta` |
+
+Turn off non-production branch builds, so each Worker only builds its own branch.
+
+Work on `beta` (or a feature branch merged into it), check the beta site, then merge `beta` into
+`main` to release. Cloudflare deploys a push even if lint or tests fail, so run
+`npm run lint && npm test` before pushing. The beta build (`npm run build:beta`, Vite mode `beta`)
+points the profile preview at https://previewartwork-beta.lannahirave.com (`.env.beta`), and the
+beta Worker sends `X-Robots-Tag: noindex`.
 
 Manual deploys still work: `npm run deploy` (production) and `npm run deploy:beta`. The beta
 `STATS_TOKEN` is a separate secret: `npx wrangler secret put STATS_TOKEN --env beta`.
 
 ## Deployment Notes
 
-- Production runs on a Cloudflare Worker: `npm run deploy` (Wrangler), or automatically from `main`.
+- Production runs on a Cloudflare Worker: `npm run deploy` (Wrangler), or automatically from `main` through Workers Builds.
 - `/api/track` and `/api/stats` are served by `cloudflare/stats.ts` with D1 storage; setup is in
   `../docs/DEPLOYMENT_RUNBOOK.md`.
 - The legacy Netlify deployment builds only from the `netlify` branch.
