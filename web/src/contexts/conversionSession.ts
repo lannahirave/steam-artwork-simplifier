@@ -21,6 +21,14 @@ import type { PresetPlan } from '../lib/presetPlan'
 import { inspectBrowserSupport, type BrowserSupportReport } from '../lib/browserSupport'
 import { distributeEvenly } from '../lib/workshopRows'
 import {
+  buildHandoffRecord,
+  canPreviewOnProfile,
+  createHandoffId,
+  profilePreviewUrl,
+  saveHandoff,
+  type ConversionLayout,
+} from '../lib/profileHandoff'
+import {
   appendBrowserMemorySample,
   appendMemoryDebugEvent,
   createEmptyMemoryDebugSession,
@@ -66,6 +74,8 @@ export interface ConvertState {
   fpsEstimateInfo: string
   memoryDebug: MemoryDebugSession
   feedbackPromptOpen: boolean
+  /** Set when the results could not be saved for the Steam profile preview. */
+  profilePreviewError: string
 }
 
 export interface ConvertActions {
@@ -82,6 +92,8 @@ export interface ConvertActions {
   onUpdateWorkshopParts: (parts: number) => void
   onUpdateWorkshopRows: (rows: ConversionConfig['workshopRows']) => void
   onDismissFeedbackPrompt: () => void
+  /** Saves the results in this browser and opens them on a Steam profile in SteamCanvas. */
+  onOpenProfilePreview: () => void
 }
 
 export interface ConvertMeta {
@@ -101,6 +113,8 @@ export interface ConvertMeta {
   showLongMp4Memo: boolean
   showWorkshopMemoryMemo: boolean
   browserSupport: BrowserSupportReport
+  /** The results fit a Workshop, Artwork or Featured Artwork Showcase on a profile. */
+  profilePreviewAvailable: boolean
 }
 
 export interface ConvertContextValue {
@@ -168,6 +182,8 @@ export function useConversionSession(): ConvertContextValue {
   const [elapsedMs, setElapsedMs] = useState(0)
   const [lastElapsedMs, setLastElapsedMs] = useState<number | null>(null)
   const [lastConversionSourceName, setLastConversionSourceName] = useState('')
+  const [lastConversionLayout, setLastConversionLayout] = useState<ConversionLayout | null>(null)
+  const [profilePreviewError, setProfilePreviewError] = useState('')
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
@@ -267,6 +283,7 @@ export function useConversionSession(): ConvertContextValue {
     setFinishingCurrent(false)
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
+    setProfilePreviewError('')
     setMemoryDebug(createEmptyMemoryDebugSession())
   }
 
@@ -362,6 +379,7 @@ export function useConversionSession(): ConvertContextValue {
     }
     const extraWarnings: string[] = []
     setLastConversionSourceName(sourceFile.name)
+    setLastConversionLayout({ preset: config.preset, workshopParts: config.parts, workshopRows: config.workshopRows })
 
     totalJobsRef.current = plan.jobCount
     workerWeightsRef.current = {}
@@ -507,6 +525,28 @@ export function useConversionSession(): ConvertContextValue {
       archiveName,
     )
     downloadBlob(zip.name, zip.blob)
+  }
+
+  function openProfilePreview(): void {
+    const artifacts = artifactViews.map((item) => item.artifact)
+    if (busy || !lastConversionLayout || !canPreviewOnProfile(lastConversionLayout, artifacts)) {
+      return
+    }
+    const id = createHandoffId()
+    const record = buildHandoffRecord(
+      id,
+      lastConversionLayout,
+      artifacts,
+      lastConversionSourceName || sourceFile?.name || '',
+    )
+    setProfilePreviewError('')
+    // Open the tab inside the click so popup blockers allow it. Saving takes milliseconds, and the
+    // bridge page retries briefly if SteamCanvas asks before the record is written.
+    window.open(profilePreviewUrl(id), '_blank', 'noopener,noreferrer')
+    void saveHandoff(record).catch((saveError: unknown) => {
+      const detail = saveError instanceof Error ? saveError.message : String(saveError)
+      setProfilePreviewError(formatMessage('convert.profilePreview.saveFailed', { detail }))
+    })
   }
 
   function dismissFeedbackPrompt(): void {
@@ -694,6 +734,7 @@ export function useConversionSession(): ConvertContextValue {
       fpsEstimateInfo,
       memoryDebug,
       feedbackPromptOpen,
+      profilePreviewError,
     },
     actions: {
       setConfig,
@@ -709,6 +750,7 @@ export function useConversionSession(): ConvertContextValue {
       onUpdateWorkshopParts: updateWorkshopParts,
       onUpdateWorkshopRows: updateWorkshopRows,
       onDismissFeedbackPrompt: dismissFeedbackPrompt,
+      onOpenProfilePreview: openProfilePreview,
     },
     meta: {
       convertDisabled: busy || !sourceFile,
@@ -727,6 +769,10 @@ export function useConversionSession(): ConvertContextValue {
       showLongMp4Memo,
       showWorkshopMemoryMemo,
       browserSupport,
+      profilePreviewAvailable: !busy && canPreviewOnProfile(
+        lastConversionLayout,
+        artifactViews.map((item) => item.artifact),
+      ),
     },
   }
 }

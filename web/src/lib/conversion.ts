@@ -194,10 +194,12 @@ async function applyPostPatches(
       bytes = eofPatched.bytes
     }
 
+    const patched = headerPatch || config.eofPatchEnabled
     out.push({
       ...artifact,
-      blob: bytesToBlob(bytes, artifact.blob.type),
+      blob: patched ? bytesToBlob(bytes, artifact.blob.type) : artifact.blob,
       sizeKb: bytes.byteLength / 1024,
+      ...(patched ? { previewBlob: artifact.blob } : {}),
     })
   }
 

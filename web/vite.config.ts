@@ -20,6 +20,15 @@ export default defineConfig({
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(configDir, 'index.html'),
+        // Embedded by the SteamCanvas profile preview to receive saved GIFs (src/bridge/main.ts).
+        bridge: resolve(configDir, 'bridge/index.html'),
+      },
+    },
+  },
   optimizeDeps: {
     // ffmpeg packages include worker-entry imports that can break Vite dep pre-bundling.
     exclude: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],

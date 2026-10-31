@@ -39,6 +39,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     artifactViews,
     memoryDebug,
     feedbackPromptOpen,
+    profilePreviewError,
   } = state
   const {
     setConfig,
@@ -54,6 +55,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onUpdateWorkshopParts,
     onUpdateWorkshopRows,
     onDismissFeedbackPrompt,
+    onOpenProfilePreview,
   } = actions
   const {
     convertDisabled,
@@ -72,6 +74,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     showLongMp4Memo,
     showWorkshopMemoryMemo,
     browserSupport,
+    profilePreviewAvailable,
   } = meta
   const progressText = progress.map((entry) => `[${entry.time}] [${entry.stage}] ${entry.message}`).join('\n')
   const diagnosticText = browserSupport.diagnosticLog.join('\n')
@@ -668,7 +671,22 @@ export function ConvertPanel(props: ConvertPanelProps) {
             <button onClick={onDownloadZip}>
               {intl.formatMessage({ id: 'convert.downloadZip' })}
             </button>
+            {profilePreviewAvailable && (
+              <button
+                type="button"
+                title={intl.formatMessage({ id: 'convert.profilePreview.hint' })}
+                onClick={onOpenProfilePreview}
+              >
+                {intl.formatMessage({ id: 'convert.profilePreview.open' })}
+              </button>
+            )}
           </div>
+          {profilePreviewAvailable && (
+            <p className="profile-preview-hint">{intl.formatMessage({ id: 'convert.profilePreview.hint' })}</p>
+          )}
+          {profilePreviewError && (
+            <p className="profile-preview-error" role="alert">{profilePreviewError}</p>
+          )}
           <section className={resultsGridClassName} style={resultsGridStyle}>
             {artifactViews.map((item) => (
               <article

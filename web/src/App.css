@@ -2150,6 +2150,22 @@ button:disabled {
 
 .results-actions-row {
   margin-top: 0.9rem;
+  flex-wrap: wrap;
+  justify-content: flex-start;
+}
+
+.profile-preview-hint,
+.profile-preview-error {
+  margin: 0.45rem 0 0;
+  font-size: 0.85rem;
+}
+
+.profile-preview-hint {
+  color: var(--muted);
+}
+
+.profile-preview-error {
+  color: var(--error);
 }
 
 .result-card {

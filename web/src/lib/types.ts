@@ -61,6 +61,11 @@ export interface ConversionArtifact {
   status: ArtifactStatus
   finalFps: number
   finalQuality: number
+  /**
+   * The output before the header and end-byte patches, kept only when they changed the bytes.
+   * Patched GIFs are for uploading to Steam; previews outside Steam use this copy.
+   */
+  previewBlob?: Blob
 }
 
 export type ConversionCompletionStatus = 'complete' | 'finished-incomplete'
