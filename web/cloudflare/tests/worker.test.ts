@@ -45,6 +45,14 @@ describe('bridge headers', () => {
     expect(response.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
   })
 
+  it('marks the beta deployment noindex, and only that one', async () => {
+    const beta = { ...env, ROBOTS_NOINDEX: 'true' } as unknown as WorkerEnv
+    const betaResponse = await worker.fetch(new Request('https://studio.example.com/'), beta)
+    expect(betaResponse.headers.get('X-Robots-Tag')).toBe('noindex, nofollow')
+    const production = await worker.fetch(new Request('https://studio.example.com/'), env)
+    expect(production.headers.get('X-Robots-Tag')).toBeNull()
+  })
+
   it('names the given preview origin', () => {
     expect(bridgeHeaders('https://previewartwork.lannahirave.com')['Content-Security-Policy']).toContain(
       'frame-ancestors https://previewartwork.lannahirave.com',

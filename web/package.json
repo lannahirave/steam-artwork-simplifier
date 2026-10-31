@@ -1,13 +1,15 @@
 {
   "name": "web",
   "private": true,
-  "version": "1.2.13",
+  "version": "1.2.14",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:beta": "tsc -b && vite build --mode beta",
     "deploy": "npm run build && npx wrangler deploy",
+    "deploy:beta": "npm run build:beta && npx wrangler deploy --env beta",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",

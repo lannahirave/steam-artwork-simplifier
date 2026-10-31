@@ -1,0 +1,69 @@
+# Checks every push and pull request. After the checks pass, pushes to `beta` deploy to
+# https://artworkstudio-beta.lannahirave.com and pushes to `main` deploy to
+# https://artworkstudio.lannahirave.com.
+#
+# Repository secrets: CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID (see web/README.md, "Deploying").
+name: CI
+
+on:
+  push:
+    branches: [main, beta]
+  pull_request:
+    branches: [main, beta]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  # One run per branch at a time. A newer push waits instead of cancelling a deploy halfway.
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+defaults:
+  run:
+    working-directory: web
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - run: npm run lint
+      - run: npm test
+      - run: npm run build
+
+  deploy:
+    needs: check
+    if: github.event_name != 'pull_request' && (github.ref_name == 'main' || github.ref_name == 'beta')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment:
+      name: ${{ github.ref_name == 'main' && 'production' || 'beta' }}
+      url: ${{ github.ref_name == 'main' && 'https://artworkstudio.lannahirave.com' || 'https://artworkstudio-beta.lannahirave.com' }}
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+      # Empty for production; `--env beta` selects [env.beta] in wrangler.toml.
+      WRANGLER_ENV: ${{ github.ref_name == 'beta' && '--env beta' || '' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+      - run: npm ci
+      - name: Build
+        run: npm run ${{ github.ref_name == 'beta' && 'build:beta' || 'build' }}
+      - name: Apply D1 migrations
+        run: npx wrangler d1 migrations apply DB --remote $WRANGLER_ENV
+      - name: Deploy to Cloudflare
+        run: npx wrangler deploy $WRANGLER_ENV --message "$GITHUB_REF_NAME $GITHUB_SHA"

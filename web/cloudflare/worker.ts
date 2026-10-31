@@ -6,6 +6,8 @@ interface Env extends StatsEnv {
   }
   /** Origin of the SteamCanvas profile preview, the only site allowed to embed /bridge/. */
   PROFILE_PREVIEW_ORIGIN?: string
+  /** "true" on the beta deployment, so search engines skip it. */
+  ROBOTS_NOINDEX?: string
 }
 
 const DEFAULT_PROFILE_PREVIEW_ORIGIN = 'https://previewartwork.lannahirave.com'
@@ -81,6 +83,9 @@ export default {
       headers.delete('Cross-Origin-Opener-Policy')
       headers.delete('Cross-Origin-Embedder-Policy')
       headers.delete('X-Frame-Options')
+    }
+    if (env.ROBOTS_NOINDEX === 'true') {
+      headers.set('X-Robots-Tag', 'noindex, nofollow')
     }
 
     return new Response(response.body, {

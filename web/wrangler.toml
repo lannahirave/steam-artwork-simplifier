@@ -43,3 +43,34 @@ STATS_VISITOR_DAILY_LIMIT = "300"
 # Backstop for floods across many IPs: keeps worst-case writes under the D1 free plan's 100k rows/day.
 STATS_DAILY_LIMIT = "20000"
 # STATS_TOKEN is a secret: `npx wrangler secret put STATS_TOKEN`.
+
+# ---------------------------------------------------------------------------------------------
+# Beta: `wrangler deploy --env beta`, deployed by CI from the `beta` branch.
+# Bindings and vars are not inherited from the top level, so each one is repeated here.
+# ---------------------------------------------------------------------------------------------
+[env.beta]
+name = "steam-artwork-studio-beta"
+routes = [{ pattern = "artworkstudio-beta.lannahirave.com", custom_domain = true }]
+workers_dev = false
+
+[[env.beta.d1_databases]]
+binding = "DB"
+database_name = "steam-artwork-stats-beta"
+database_id = "d1b6f77b-da34-4c65-bdf2-68e80e2a372b"
+migrations_dir = "migrations"
+
+[[env.beta.ratelimits]]
+name = "TRACK_LIMITER"
+namespace_id = "1002"
+
+  [env.beta.ratelimits.simple]
+  limit = 10
+  period = 60
+
+[env.beta.vars]
+PROFILE_PREVIEW_ORIGIN = "https://previewartwork-beta.lannahirave.com"
+ALLOWED_ORIGINS = "https://artworkstudio-beta.lannahirave.com"
+STATS_VISITOR_DAILY_LIMIT = "300"
+STATS_DAILY_LIMIT = "20000"
+# Keeps search engines from indexing the beta site.
+ROBOTS_NOINDEX = "true"
