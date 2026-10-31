@@ -5,7 +5,7 @@ import type { ConversionArtifact, ConversionConfig } from './types'
 // posts them to the preview. Nothing is uploaded. Protocol: steamcanvas/docs/ARTWORK_STUDIO_INTEGRATION.md
 
 export const PROFILE_PREVIEW_ORIGIN: string =
-  import.meta.env.VITE_PROFILE_PREVIEW_ORIGIN || 'https://preview.lannahirave.com'
+  import.meta.env.VITE_PROFILE_PREVIEW_ORIGIN || 'https://previewartwork.lannahirave.com'
 
 export const HANDOFF_PROTOCOL_VERSION = 1
 export const HANDOFF_TTL_MS = 24 * 60 * 60 * 1000

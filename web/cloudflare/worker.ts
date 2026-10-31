@@ -8,7 +8,7 @@ interface Env extends StatsEnv {
   PROFILE_PREVIEW_ORIGIN?: string
 }
 
-const DEFAULT_PROFILE_PREVIEW_ORIGIN = 'https://preview.lannahirave.com'
+const DEFAULT_PROFILE_PREVIEW_ORIGIN = 'https://previewartwork.lannahirave.com'
 
 // 'wasm-unsafe-eval' compiles the FFmpeg and gifski WASM; blob: covers the hash-checked
 // FFmpeg core that the conversion worker imports from a blob URL; cdn.jsdelivr.net is

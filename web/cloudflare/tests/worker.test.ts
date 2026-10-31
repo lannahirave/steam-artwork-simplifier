@@ -46,8 +46,8 @@ describe('bridge headers', () => {
   })
 
   it('names the given preview origin', () => {
-    expect(bridgeHeaders('https://preview.lannahirave.com')['Content-Security-Policy']).toContain(
-      'frame-ancestors https://preview.lannahirave.com',
+    expect(bridgeHeaders('https://previewartwork.lannahirave.com')['Content-Security-Policy']).toContain(
+      'frame-ancestors https://previewartwork.lannahirave.com',
     )
   })
 })

@@ -35,7 +35,7 @@ namespace_id = "1001"
 [vars]
 # The SteamCanvas profile preview: the only origin allowed to embed /bridge/ (see src/bridge/main.ts).
 # Must match VITE_PROFILE_PREVIEW_ORIGIN at build time.
-PROFILE_PREVIEW_ORIGIN = "https://preview.lannahirave.com"
+PROFILE_PREVIEW_ORIGIN = "https://previewartwork.lannahirave.com"
 # Comma-separated origins allowed to POST /api/track. Override locally in .dev.vars.
 ALLOWED_ORIGINS = "https://artworkstudio.lannahirave.com"
 # Counted beacons per visitor (daily-salted IP hash) per UTC day.
