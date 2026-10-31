@@ -222,9 +222,34 @@ test('shows steam helper snippets', async ({ page }) => {
   await markOnboardingComplete(page)
   await page.goto('/')
   await page.getByRole('button', { name: 'Steam Helpers', exact: true }).click()
-  await expect(page.getByRole('heading', { name: 'Workshop Snippet' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Artwork or Featured Artwork Snippet' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Screenshot Snippet' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Before you paste: type allow pasting' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Upload many files at once' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Fill in one upload form' })).toBeVisible()
+  await page.getByRole('radio', { name: /Screenshot showcase/ }).check()
+  await page.getByText('View script').first().click()
+  const batchCode = page.locator('.steam-script-code pre').first()
+  await expect(batchCode).toContainText('file_type: 5')
+  await expect(batchCode).toContainText('consumer_app_id: 767')
+
+  await page.getByRole('radio', { name: /Workshop showcase/ }).check()
+  await expect(page.getByLabel('App ID')).toHaveValue('480')
+  await expect(batchCode).toContainText('const DELAY_MS = 3000;')
+  await page.getByLabel('Delay between uploads (seconds)').fill('5')
+  await page.getByLabel('Visibility').selectOption({ label: 'Private' })
+  await expect(batchCode).toContainText('const DELAY_MS = 5000;')
+  await expect(batchCode).toContainText('const VISIBILITY = 2;')
+
+  await page.getByLabel('App ID').fill('abc')
+  await expect(page.getByRole('button', { name: 'Copy batch script' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Reset to defaults' }).click()
+  await expect(page.getByLabel('App ID')).toHaveValue('480')
+  await expect(page.getByRole('button', { name: 'Copy batch script' })).toBeEnabled()
+  await expect(batchCode).toContainText('const DELAY_MS = 3000;')
+
+  await expect(page.getByRole('link', { name: 'create a GitHub issue' })).toHaveAttribute(
+    'href',
+    'https://github.com/lannahirave/steam-artwork-simplifier/issues/new',
+  )
 })
 
 test('runs onboarding once and allows reopening from help', async ({ page }) => {
