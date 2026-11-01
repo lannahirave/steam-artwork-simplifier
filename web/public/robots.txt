@@ -1,6 +1,31 @@
+# Steam Artwork Studio: https://artworkstudio.lannahirave.com
+#
+# Free, browser-only tool that turns videos and images into animated GIFs sized and
+# optimized for Steam profile showcases. Nothing is uploaded: ffmpeg.wasm and
+# gifski.wasm run on your device.
+#
+# What it supports:
+# - Workshop Showcase (5 x 150px parts), Featured Showcase (630px), Artwork Showcase
+#   (506px + 100px split) and Guide (195x195px) presets.
+# - Automatic FPS, size and colour reduction to fit Steam's upload limits
+#   (Workshop and Artwork aim for 4800KB per part).
+# - Video, GIF, PNG, WebP, JPG and BMP input; per-file download or ZIP export;
+#   optional GIF end-of-file and header patching.
+# - A Library that keeps your conversions in this browser (500 MB by default).
+# - "Preview on my Steam profile": see the GIFs on your real Steam profile in SteamCanvas
+#   (https://previewartwork.lannahirave.com) before uploading them.
+# - English, Ukrainian, Czech, Spanish and Simplified Chinese.
+#
+# More for crawlers and AI agents: /llms.txt. Source (AGPL-3.0-or-later):
+# https://github.com/lannahirave/steam-artwork-simplifier
+#
+# /api/ is the stats backend; /bridge/ is the page SteamCanvas embeds to read the Library.
+# Neither has anything to index.
+
 User-agent: *
 Allow: /
 Disallow: /api/
+Disallow: /bridge/
 
 # AI / LLM crawlers are welcome
 User-agent: GPTBot
@@ -15,5 +40,6 @@ User-agent: Applebot-Extended
 User-agent: CCBot
 Allow: /
 Disallow: /api/
+Disallow: /bridge/
 
 Sitemap: https://artworkstudio.lannahirave.com/sitemap.xml

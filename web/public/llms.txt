@@ -1,6 +1,6 @@
 # Steam Artwork Studio
 
-> Free, browser-only tool that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides. Files are processed locally with ffmpeg.wasm and gifski.wasm and are never uploaded.
+> Free, browser-only tool that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides. Files are processed locally with ffmpeg.wasm and gifski.wasm and are never uploaded. Finished conversions are kept in a Library in the browser and can be previewed on the user's own Steam profile with SteamCanvas.
 
 ## Use cases
 
@@ -10,13 +10,20 @@
 - Make a 506px + 100px split Artwork Showcase
 - Make a 195x195px Guide GIF
 - Shrink a GIF under Steam's upload size limits (automatic FPS, size, and color reduction)
+- See how the GIFs look on your real Steam profile before uploading them
 
 ## Presets
 
-- Workshop Showcase: 5 parts, 150px wide each, max 5000KB per part
+- Workshop Showcase: 5 parts, 150px wide each, max 5000KB per part (aims for 4800KB)
 - Featured Showcase: single 630px wide GIF, max 4500KB
-- Artwork Showcase: 506px + 100px split, max 5000KB
+- Artwork Showcase: 506px + 100px split, max 5000KB per part (aims for 4800KB)
 - Guide: 195x195px, max 2000KB
+
+## Library and profile preview
+
+- Every finished conversion is saved to a Library in the browser (IndexedDB). Nothing is uploaded; clearing site data or switching browsers starts an empty Library.
+- The Library has a size limit (500 MB by default, adjustable). When a new conversion goes over it, the oldest ones are deleted.
+- "Preview on my Steam profile" opens SteamCanvas (https://previewartwork.lannahirave.com) with the GIFs placed on the user's public Steam profile. SteamCanvas can also pick any Library conversion from its showcase editor. The GIFs are read from this browser, not sent to a server.
 
 ## Details
 
@@ -30,3 +37,4 @@
 
 - [App](https://artworkstudio.lannahirave.com/): the tool itself
 - [Source code](https://github.com/lannahirave/steam-artwork-simplifier): AGPL-3.0-or-later
+- [SteamCanvas profile preview](https://previewartwork.lannahirave.com/): preview the GIFs on a Steam profile

@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, expect, it } from 'vitest'
-import worker, { bridgeHeaders, isBridgePath } from '../worker'
+import worker, { BETA_ROBOTS_TXT, bridgeHeaders, isBridgePath } from '../worker'
 
 type WorkerEnv = Parameters<typeof worker.fetch>[1]
 
@@ -51,6 +51,15 @@ describe('bridge headers', () => {
     expect(betaResponse.headers.get('X-Robots-Tag')).toBe('noindex, nofollow')
     const production = await worker.fetch(new Request('https://studio.example.com/'), env)
     expect(production.headers.get('X-Robots-Tag')).toBeNull()
+  })
+
+  it('serves a block-everything robots.txt on beta, and the public one elsewhere', async () => {
+    const beta = { ...env, ROBOTS_NOINDEX: 'true' } as unknown as WorkerEnv
+    const betaRobots = await worker.fetch(new Request('https://studio.example.com/robots.txt'), beta)
+    expect(await betaRobots.text()).toBe(BETA_ROBOTS_TXT)
+    expect(BETA_ROBOTS_TXT).toContain('Disallow: /\n')
+    const production = await worker.fetch(new Request('https://studio.example.com/robots.txt'), env)
+    expect(await production.text()).toBe('<!doctype html>')
   })
 
   it('names the given preview origin', () => {

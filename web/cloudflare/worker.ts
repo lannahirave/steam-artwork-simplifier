@@ -12,6 +12,13 @@ interface Env extends StatsEnv {
 
 const DEFAULT_PROFILE_PREVIEW_ORIGIN = 'https://previewartwork.lannahirave.com'
 
+/** Served instead of public/robots.txt on the beta deployment, so crawlers skip all of it. */
+export const BETA_ROBOTS_TXT = `# Steam Artwork Studio beta (pre-release copy). Not for search engines.
+# The public site is https://artworkstudio.lannahirave.com
+User-agent: *
+Disallow: /
+`
+
 // 'wasm-unsafe-eval' compiles the FFmpeg and gifski WASM; blob: covers the hash-checked
 // FFmpeg core that the conversion worker imports from a blob URL; cdn.jsdelivr.net is
 // where that core is downloaded from (see src/workers/ffmpeg.worker.ts).
@@ -66,9 +73,11 @@ export function bridgeHeaders(previewOrigin: string): Record<string, string> {
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const { pathname } = new URL(request.url)
-    const response = isStatsPath(pathname)
-      ? await handleStats(request, env)
-      : await env.ASSETS.fetch(request)
+    const response = pathname === '/robots.txt' && env.ROBOTS_NOINDEX === 'true'
+      ? new Response(BETA_ROBOTS_TXT, { headers: { 'Content-Type': 'text/plain; charset=utf-8' } })
+      : isStatsPath(pathname)
+        ? await handleStats(request, env)
+        : await env.ASSETS.fetch(request)
     const headers = new Headers(response.headers)
     const bridge = isBridgePath(pathname)
     const securityHeaders = bridge
