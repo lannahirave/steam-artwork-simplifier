@@ -48,13 +48,13 @@ Patch tool ZIP names are fixed:
 - Workshop:
   - parts: `5`
   - part width: `150`
-  - max/target: `5000KB / 4500KB`
+  - max/target: `5000KB / 4800KB`
 - Featured:
   - width: `630`
   - max/target: `4500KB / 4500KB`
 - Artwork Showcase:
   - split widths: `506 + 100`
-  - max/target: `5000KB / 4500KB`
+  - max/target: `5000KB / 4800KB`
 - Guide:
   - size: `195x195`
   - max/target: `2000KB / 2000KB`

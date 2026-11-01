@@ -17,7 +17,7 @@ Defaults are in `web/src/lib/defaults.ts`.
 
 - default parts: `5`
 - default part width: `150`
-- max/target: `5000KB / 4500KB`
+- max/target: `5000KB / 4800KB`
 - output names: `<source>_part_01.gif` ... `<source>_part_05.gif`
 
 ### Featured Showcase
@@ -30,7 +30,7 @@ Defaults are in `web/src/lib/defaults.ts`.
 ### Artwork Showcase
 
 - fixed split widths: `506 + 100`
-- max/target: `5000KB / 4500KB`
+- max/target: `5000KB / 4800KB`
 - output names: `<source>_part_01.gif`, `<source>_part_02.gif`
 
 ### Guide
