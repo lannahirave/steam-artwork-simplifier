@@ -175,36 +175,6 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
           </div>
         </section>
 
-        <section className="control-deck">
-          <nav className="tab-rail" aria-label={intl.formatMessage({ id: 'app.tab.sections' })}>
-            {Object.entries(TAB_DETAILS).map(([key, item]) => (
-              <button
-                key={key}
-                type="button"
-                className={tab === key ? 'tab active' : 'tab'}
-                aria-pressed={tab === key}
-                data-open-label={intl.formatMessage({ id: 'app.tab.open' })}
-                onClick={() => setTab(key as TabKey)}
-              >
-                <span className="tab-eyebrow">{intl.formatMessage({ id: item.eyebrow })}</span>
-                <span className="tab-title">{intl.formatMessage({ id: item.label })}</span>
-                <span className="tab-summary">{intl.formatMessage({ id: item.summary })}</span>
-              </button>
-            ))}
-          </nav>
-
-          <aside className="spotlight-panel" aria-live="polite">
-            <p className="hero-spotlight-label">{intl.formatMessage({ id: 'app.overview.currentFocus' })}</p>
-            <h2>{intl.formatMessage({ id: activeTab.label })}</h2>
-            <p>{intl.formatMessage({ id: activeTab.summary })}</p>
-            <ul className="hero-spotlight-list">
-              {activeTab.points.map((point) => (
-                <li key={point}>{intl.formatMessage({ id: point })}</li>
-              ))}
-            </ul>
-          </aside>
-        </section>
-
         <section id="workspace" className="workspace-frame">
           <ConvertProvider>
             <PatchToolsProvider>

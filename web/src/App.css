@@ -293,7 +293,6 @@ textarea {
 
 .hero,
 .overview-band,
-.control-deck,
 .workspace-frame,
 .app-disclaimer {
   position: relative;
@@ -327,8 +326,6 @@ textarea {
 
 .hero-eyebrow,
 .spotlight-eyebrow,
-.hero-spotlight-label,
-.tab-eyebrow,
 .config-group > h3,
 .guide-badge {
   margin: 0;
@@ -338,8 +335,7 @@ textarea {
   font-weight: 600;
 }
 
-.hero-eyebrow,
-.hero-spotlight-label {
+.hero-eyebrow {
   color: rgba(255, 255, 255, 0.7);
 }
 
@@ -359,7 +355,6 @@ textarea {
 
 .hero h1,
 .overview-copy h2,
-.spotlight-panel h2,
 .panel h2,
 .panel-blocking h1 {
   margin: 0;
@@ -662,7 +657,6 @@ textarea {
   background: var(--apple-blue-dark);
 }
 
-.spotlight-panel,
 .config-group,
 .raw-mode-card,
 .warn-box,
@@ -683,20 +677,17 @@ textarea {
   justify-items: start;
 }
 
-.overview-copy,
-.spotlight-panel {
+.overview-copy {
   display: grid;
   gap: 0.8rem;
 }
 
 .spotlight-eyebrow,
-.tab-eyebrow,
 .config-group > h3 {
   color: rgb(var(--ink-rgb) / 0.56);
 }
 
 .overview-copy h2,
-.spotlight-panel h2,
 .panel h2,
 .panel-blocking h1 {
   font-size: clamp(2rem, 3.2vw, 3.5rem);
@@ -731,8 +722,7 @@ textarea {
   letter-spacing: -0.022em;
 }
 
-.spotlight-list,
-.hero-spotlight-list {
+.spotlight-list {
   margin: 0;
   padding: 0;
   list-style: none;
@@ -740,15 +730,13 @@ textarea {
   gap: 0.7rem;
 }
 
-.spotlight-list li,
-.hero-spotlight-list li {
+.spotlight-list li {
   position: relative;
   padding-left: 1rem;
   line-height: 1.47;
 }
 
-.spotlight-list li::before,
-.hero-spotlight-list li::before {
+.spotlight-list li::before {
   content: '';
   position: absolute;
   left: 0;
@@ -771,96 +759,6 @@ textarea {
   font-weight: 600;
   line-height: 1.19;
   letter-spacing: -0.02em;
-}
-
-.control-deck {
-  background: var(--page-dark);
-  color: var(--ink-inverse);
-  padding-top: clamp(2rem, 5vw, 3rem);
-  padding-bottom: clamp(2.5rem, 5vw, 4rem);
-  display: grid;
-  grid-template-columns: minmax(0, 1.3fr) minmax(320px, 0.85fr);
-  gap: 1rem;
-  align-items: start;
-}
-
-.tab-rail {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 0.9rem;
-}
-
-.tab {
-  display: grid;
-  gap: 0.45rem;
-  align-content: start;
-  text-align: left;
-  padding: 1.2rem;
-  border-radius: var(--radius-panel);
-  border: 1px solid var(--line-inverse);
-  background: var(--surface-dark);
-  color: var(--ink-inverse);
-  cursor: pointer;
-  transition:
-    border-color 160ms ease,
-    transform 160ms ease,
-    background 160ms ease;
-}
-
-.tab::after {
-  content: attr(data-open-label);
-  justify-self: start;
-  margin-top: 0.4rem;
-  padding: 0.32rem 0.72rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  color: rgba(255, 255, 255, 0.76);
-  font-size: 0.75rem;
-  line-height: 1;
-}
-
-.tab:hover:not(.active) {
-  transform: translateY(-2px);
-  border-color: rgba(255, 255, 255, 0.28);
-  background: var(--surface-dark-soft);
-}
-
-.tab.active {
-  border-color: rgba(41, 151, 255, 0.45);
-  background: var(--surface-dark-elevated);
-}
-
-.tab.active::after {
-  border-color: transparent;
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.tab-title {
-  font-family: var(--font-display);
-  font-size: 1.55rem;
-  line-height: 1.14;
-  letter-spacing: -0.02em;
-}
-
-.tab-summary {
-  color: rgba(255, 255, 255, 0.72);
-  font-size: 0.95rem;
-  line-height: 1.47;
-}
-
-.spotlight-panel {
-  min-height: 100%;
-  padding: 1.4rem;
-  background: var(--surface-dark);
-  border: 1px solid var(--line-inverse);
-}
-
-.spotlight-panel p,
-.hero-spotlight p {
-  margin: 0;
-  color: rgba(255, 255, 255, 0.8);
-  line-height: 1.47;
 }
 
 .workspace-frame {
@@ -1653,8 +1551,7 @@ button:disabled {
   background: #0077ed;
 }
 
-.hero-primary:hover,
-.tab.active::after:hover {
+.hero-primary:hover {
   background: #0077ed;
 }
 
@@ -2427,19 +2324,34 @@ button:disabled {
 }
 
 @media (max-width: 1180px) {
-  .overview-band,
-  .control-deck {
+  .overview-band {
     grid-template-columns: 1fr;
   }
 }
 
 @media (max-width: 980px) {
-  .global-nav-links {
-    display: none;
+  /* The header links are the only tab navigation, so on narrow screens they move to a scrollable row. */
+  .global-nav {
+    height: auto;
   }
 
-  .tab-rail {
-    grid-template-columns: 1fr;
+  .global-nav-inner {
+    flex-wrap: wrap;
+    row-gap: 0.35rem;
+    padding: 0.6rem 0 0.45rem;
+  }
+
+  .global-nav-links {
+    order: 3;
+    flex: 1 0 100%;
+    justify-content: flex-start;
+    overflow-x: auto;
+    scrollbar-width: none;
+    padding-bottom: 0.15rem;
+  }
+
+  .global-nav-link {
+    white-space: nowrap;
   }
 }
 
