@@ -92,6 +92,35 @@ class FakeConversionPool {
 }
 
 describe('conversion orchestration', () => {
+  it('omits the heap tag when the browser has no performance.memory (Firefox, Safari)', async () => {
+    const pool = new FakeConversionPool()
+    const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
+    expect('memory' in performance).toBe(false)
+
+    const result = await convertVideo({ file }, getDefaultConfig('workshop'), pool as never)
+
+    expect(result.logs.length).toBeGreaterThan(0)
+    expect(result.logs.some((line) => line.includes('[heap'))).toBe(false)
+  })
+
+  it('tags every log line with heap usage when performance.memory exists (Chromium)', async () => {
+    Object.defineProperty(performance, 'memory', {
+      configurable: true,
+      value: { usedJSHeapSize: 64 * 1024 * 1024, jsHeapSizeLimit: 4096 * 1024 * 1024 },
+    })
+    try {
+      const pool = new FakeConversionPool()
+      const file = new File([new Uint8Array([1, 2, 3])], 'clip.mp4', { type: 'video/mp4' })
+
+      const result = await convertVideo({ file }, getDefaultConfig('workshop'), pool as never)
+
+      expect(result.logs.length).toBeGreaterThan(0)
+      expect(result.logs.every((line) => line.endsWith('[heap 64.0MB/4096.0MB]'))).toBe(true)
+    } finally {
+      delete (performance as { memory?: unknown }).memory
+    }
+  })
+
   it('applies balanced row heights to workshop multi-row final passes', async () => {
     const pool = new FakeConversionPool()
     const config = {
@@ -109,7 +138,6 @@ describe('conversion orchestration', () => {
 
     expect(result.artifacts).toHaveLength(6)
     expect(result.logs.length).toBeGreaterThan(0)
-    expect(result.logs.every((line) => line.includes('[heap '))).toBe(true)
     expect(pool.partPayloads.some((payload) => payload.splitRowHeights?.join('/') === '60/30/60')).toBe(true)
     expect(
       pool.partPayloads

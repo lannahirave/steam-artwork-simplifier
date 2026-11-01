@@ -87,14 +87,19 @@ function formatHeapMb(bytes: number): string {
   return `${(bytes / 1024 / 1024).toFixed(1)}MB`
 }
 
-function formatHeapSnapshot(): string {
+/**
+ * Heap usage tag for log lines. performance.memory is a non-standard, Chromium-only API that
+ * returns values the engine already tracks, so reading it per log line is cheap. Other
+ * browsers (Firefox, Safari) have no equivalent; they get no tag at all.
+ */
+function formatHeapSnapshot(): string | null {
   if (typeof performance === 'undefined') {
-    return 'heap unavailable'
+    return null
   }
 
   const memory = (performance as BrowserPerformanceWithMemory).memory
   if (!memory || typeof memory.usedJSHeapSize !== 'number') {
-    return 'heap unavailable'
+    return null
   }
 
   const used = formatHeapMb(memory.usedJSHeapSize)
@@ -233,7 +238,8 @@ export async function convertVideo(
 
   const emit = (stage: string, message: string): void => {
     const time = formatLogTime()
-    const messageWithHeap = `${message} [${formatHeapSnapshot()}]`
+    const heap = formatHeapSnapshot()
+    const messageWithHeap = heap ? `${message} [${heap}]` : message
     const line = `[${time}] [${stage}] ${messageWithHeap}`
     logs.push(line)
     options.onProgress?.({ stage, message: messageWithHeap, time })
