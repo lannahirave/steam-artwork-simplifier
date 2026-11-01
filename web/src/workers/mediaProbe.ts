@@ -1,12 +1,19 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import type { ProbePayload, ProbeResultData } from '../lib/types'
 import { extensionOf, parsePngDimensions, safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
+import { isFfmpegCoreFailure, withCoreWatchdog, type CoreWatch } from './ffmpegCoreHealth'
 
 const INTRO_SAMPLE_FRAMES = 12
 const INTRO_DARK_YAVG_THRESHOLD = 20
 const INTRO_BRIGHT_YAVG_MIN = 24
 const INTRO_BRIGHT_DELTA_MIN = 8
 const INTRO_MAX_OFFSET_SECONDS = 1
+// Each probe command decodes at most a dozen frames. Both commands share one deadline that
+// sits well inside the pool's 45s probe timeout, so a wedged core is normally reset in place
+// instead of the whole worker being replaced (which would download the ffmpeg core again).
+export const PROBE_EXEC_WATCHDOG_MS = 20_000
+// The optional dark-intro step always gets at least this long, even if the first step was slow.
+const MIN_PROBE_STEP_MS = 5_000
 
 function parseDurationFromLogs(logs: string[]): number {
   for (const line of logs) {
@@ -93,14 +100,17 @@ export async function runProbe(
   requestId: string,
   payload: ProbePayload,
   ffmpegLogBuffer: string[],
+  watchCore: CoreWatch = withCoreWatchdog,
 ): Promise<ProbeResultData> {
   const inputName = `${requestId}.${extensionOf(payload.fileName)}`
   const probeFrameName = `${requestId}.probe.png`
   ffmpegLogBuffer.length = 0
   await ffmpeg.writeFile(inputName, payload.fileBytes)
+  const probeDeadline = Date.now() + PROBE_EXEC_WATCHDOG_MS
+  const remainingProbeMs = (): number => Math.max(MIN_PROBE_STEP_MS, probeDeadline - Date.now())
 
   try {
-    const ret = await ffmpeg.exec([
+    const ret = await watchCore(ffmpeg.exec([
       '-hide_banner',
       '-loglevel',
       'info',
@@ -112,7 +122,7 @@ export async function runProbe(
       '-frames:v',
       '1',
       probeFrameName,
-    ])
+    ]), remainingProbeMs())
 
     if (ret !== 0) {
       throw new Error(
@@ -137,7 +147,10 @@ export async function runProbe(
     let startOffsetSec = 0
 
     const introAnalysisStart = ffmpegLogBuffer.length
-    const introRet = await ffmpeg.exec([
+    // Dark-intro detection is optional: if the core fails or stalls here, keep the probe
+    // result already parsed and skip the offset. The core stays flagged, so the worker
+    // resets it before the next request.
+    const introRet = await watchCore(ffmpeg.exec([
       '-hide_banner',
       '-loglevel',
       'info',
@@ -151,7 +164,12 @@ export async function runProbe(
       '-f',
       'null',
       '-',
-    ])
+    ]), remainingProbeMs()).catch((error: unknown) => {
+      if (isFfmpegCoreFailure(error)) {
+        return -1
+      }
+      throw error
+    })
     if (introRet === 0 && fps > 0) {
       const introLogs = ffmpegLogBuffer.slice(introAnalysisStart)
       startOffsetSec = estimateDarkIntroOffsetSeconds(introLogs, fps)

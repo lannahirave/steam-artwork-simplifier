@@ -10,7 +10,7 @@ import type {
 } from '../lib/types'
 import { searchBestEncode } from './encodeSearch'
 import { extensionOf, safeDelete, sourceBaseName } from './ffmpegWorkerFiles'
-import { GIFSKI_RUNTIME_VERSION, ensureGifskiRuntimeLoaded } from './gifskiRuntime'
+import { GIFSKI_RUNTIME_VERSION, ensureGifskiRuntimeLoaded, isGifskiRuntimeBroken } from './gifskiRuntime'
 import {
   buildFeaturedGeometry,
   buildGuideGeometry,
@@ -21,10 +21,14 @@ import { runProbe } from './mediaProbe'
 import { createGifFrameCache } from './gifFrameCache'
 import { withShadowDarkening } from '../lib/shadowDarkening'
 import { encodeStillImage } from './stillImageEncoder'
+import { createFfmpegCoreMonitor } from './ffmpegCoreHealth'
 
 declare const self: DedicatedWorkerGlobalScope
 
-const ffmpeg = new FFmpeg()
+// All ffmpeg calls go through the monitor so a trapped or wedged core is detected at the
+// source, independent of how callers wrap the error message.
+const coreMonitor = createFfmpegCoreMonitor(new FFmpeg())
+const ffmpeg = coreMonitor.ffmpeg
 const ffmpegLogBuffer: string[] = []
 const frameCache = createGifFrameCache()
 let loaded = false
@@ -70,7 +74,29 @@ async function verifiedBlobURL(file: { url: string; type: string; sha256: string
   return URL.createObjectURL(new Blob([bytes], { type: file.type }))
 }
 
+// Verified blob URLs are kept for the worker's lifetime so a core reload after a crash
+// does not download and hash the ~31 MB wasm again. A failed download is not cached.
+let coreURLsPromise: Promise<{ coreURL: string; wasmURL: string }> | null = null
+
+function getCoreURLs(): Promise<{ coreURL: string; wasmURL: string }> {
+  if (!coreURLsPromise) {
+    coreURLsPromise = Promise.all([
+      verifiedBlobURL(FFMPEG_CORE_FILES.js),
+      verifiedBlobURL(FFMPEG_CORE_FILES.wasm),
+    ]).then(([coreURL, wasmURL]) => ({ coreURL, wasmURL }))
+    coreURLsPromise.catch(() => {
+      coreURLsPromise = null
+    })
+  }
+  return coreURLsPromise
+}
+
 async function ensureLoaded(requestId: string): Promise<void> {
+  // A core failure can be flagged without the request failing (e.g. a trap inside cleanup,
+  // whose errors are swallowed). Reset here so the next request never runs on it.
+  if (coreMonitor.failed) {
+    resetFfmpegCore()
+  }
   if (loaded) {
     return
   }
@@ -78,15 +104,23 @@ async function ensureLoaded(requestId: string): Promise<void> {
   postProgress(requestId, 'init', 'Loading FFmpeg WASM core...')
 
   // Use single-thread core in browser workers for higher stability.
-  await ffmpeg.load({
-    coreURL: await verifiedBlobURL(FFMPEG_CORE_FILES.js),
-    wasmURL: await verifiedBlobURL(FFMPEG_CORE_FILES.wasm),
-  })
+  await ffmpeg.load(await getCoreURLs())
 
   postProgress(requestId, 'init', `Loading gifski WASM runtime (${GIFSKI_RUNTIME_VERSION})...`)
   await ensureGifskiRuntimeLoaded()
 
   loaded = true
+}
+
+/**
+ * Drops a crashed or wedged ffmpeg core. Its wasm memory can no longer be trusted, so the
+ * next request reloads a fresh core instead of hanging or failing on the broken one.
+ * Decoded frames are dropped too: they may have been read from memory the fault corrupted.
+ */
+function resetFfmpegCore(): void {
+  coreMonitor.reset()
+  frameCache.clear()
+  loaded = false
 }
 
 function buildSearchOptions(
@@ -140,6 +174,7 @@ async function encodeOutput(
       ffmpeg,
       ffmpegLogBuffer,
       postProgress,
+      watchCore: coreMonitor.watch,
       requestId,
       inputName,
       baseFilter,
@@ -316,7 +351,7 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
     }
 
     if (request.command === 'probe') {
-      const data = await runProbe(ffmpeg, request.id, request.payload, ffmpegLogBuffer)
+      const data = await runProbe(ffmpeg, request.id, request.payload, ffmpegLogBuffer, coreMonitor.watch)
       postResult(request.id, request.command, data)
       return
     }
@@ -338,8 +373,18 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
       postResult(request.id, request.command, data)
     }
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error)
-    postError(request.id, request.command, message)
+    let message = error instanceof Error ? error.message : String(error)
+    if (coreMonitor.failed) {
+      resetFfmpegCore()
+      message += '\n\nThe ffmpeg engine crashed and will be reloaded for the next task.'
+    }
+    // gifski-wasm caches its wasm instance for the worker's lifetime and cannot be reloaded
+    // in place, so a gifski crash asks the pool to replace the whole worker.
+    const fatal = isGifskiRuntimeBroken()
+    if (fatal) {
+      message += '\n\nThe gifski encoder crashed; this worker will be restarted.'
+    }
+    postError(request.id, request.command, message, { fatal })
   } finally {
     currentRequestId = ''
   }

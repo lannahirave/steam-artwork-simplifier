@@ -274,6 +274,8 @@ export type WorkerMemoryDebugData = MemoryDebugEventData
 export interface WorkerErrorData {
   message: string
   command: WorkerCommand
+  /** The worker cannot run further tasks and must be replaced. */
+  fatal?: boolean
 }
 
 export type WorkerRequestPayloadMap = {

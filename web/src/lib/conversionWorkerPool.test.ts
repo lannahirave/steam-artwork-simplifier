@@ -338,4 +338,46 @@ describe('conversion worker pool', () => {
       .toEqual([2, 1])
     pool.dispose()
   })
+
+  it('replaces a worker that reports a fatal error before dispatching more work to it', async () => {
+    class FatalOnceWorker extends FakeWorker {
+      override postMessage(message: AnyWorkerRequest): void {
+        if (message.command !== 'convertPart') {
+          super.postMessage(message)
+          return
+        }
+        this.handledCommands.push(message.command)
+        setTimeout(() => {
+          this.onmessage?.({
+            data: {
+              id: message.id,
+              event: 'error',
+              payload: { command: 'convertPart', message: 'gifski crashed', fatal: true },
+            },
+          } as MessageEvent<WorkerResponseMessage>)
+        }, 0)
+      }
+    }
+
+    const workers: FakeWorker[] = []
+    const pool = new ConversionWorkerPool({
+      workerCount: 1,
+      workerFactory: () => {
+        const worker = workers.length === 0 ? new FatalOnceWorker() : new FakeWorker()
+        workers.push(worker)
+        return worker as unknown as Worker
+      },
+    })
+
+    const failing = pool.runTask('convertPart', convertPartPayload(0))
+    const queued = pool.runTask('convertPart', convertPartPayload(1))
+
+    await expect(failing).rejects.toThrow('gifski crashed')
+    await expect(queued).resolves.toBeTruthy()
+    expect(workers).toHaveLength(2)
+    expect(workers[0].terminated).toBe(true)
+    expect(workers[0].handledCommands.filter((command) => command === 'convertPart')).toHaveLength(1)
+    expect(workers[1].handledCommands.filter((command) => command === 'convertPart')).toHaveLength(1)
+    pool.dispose()
+  })
 })

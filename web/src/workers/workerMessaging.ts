@@ -57,13 +57,19 @@ export function postResult<T extends WorkerCommand>(
   self.postMessage(payload)
 }
 
-export function postError(id: string, command: WorkerCommand, message: string): void {
+export function postError(
+  id: string,
+  command: WorkerCommand,
+  message: string,
+  options: { fatal?: boolean } = {},
+): void {
   const payload: WorkerErrorMessage = {
     id,
     event: 'error',
     payload: {
       command,
       message,
+      ...(options.fatal ? { fatal: true } : {}),
     },
   }
   self.postMessage(payload)

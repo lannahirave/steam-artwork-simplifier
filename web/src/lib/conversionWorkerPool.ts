@@ -291,7 +291,12 @@ export class ConversionWorkerPool {
       }
       task.reject(new Error(data.payload.message))
       this.inFlight.delete(data.id)
-      this.slots[workerIndex].busy = false
+      if (data.payload.fatal) {
+        // Replace before dispatching so no queued task lands on the broken worker.
+        this.replaceWorker(workerIndex)
+      } else {
+        this.slots[workerIndex].busy = false
+      }
       this.resolveFinishWaitersIfIdle()
       this.dispatch()
       return

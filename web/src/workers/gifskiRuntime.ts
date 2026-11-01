@@ -14,6 +14,21 @@ const GIFSKI_BASE = `/vendor/gifski/${GIFSKI_VERSION}`
 const GIFSKI_WASM_PATH = `${GIFSKI_BASE}/gifski_wasm_bg.wasm`
 
 let initPromise: Promise<unknown> | null = null
+// A trap (Rust panic, out-of-bounds access) leaves the wasm instance unusable, and
+// gifski-wasm keeps that instance for the worker's lifetime.
+let runtimeBroken = false
+
+function isWasmTrap(error: unknown): boolean {
+  if (typeof WebAssembly !== 'undefined' && error instanceof WebAssembly.RuntimeError) {
+    return true
+  }
+  return error instanceof Error && error.name === 'RuntimeError'
+}
+
+/** True once gifski trapped; the worker must be replaced before encoding again. */
+export function isGifskiRuntimeBroken(): boolean {
+  return runtimeBroken
+}
 
 async function ensureRuntimeInitialized(): Promise<void> {
   if (!initPromise) {
@@ -36,14 +51,22 @@ export async function encodeWithGifski(options: GifskiEncodeOptions): Promise<Ui
   // gifski-wasm requires 2+ frames; duplicate still frame for static sources.
   const frames = requestedFrames.length === 1 ? [requestedFrames[0], requestedFrames[0]] : requestedFrames
   const clampedQuality = Math.max(1, Math.min(100, Math.round(options.quality)))
-  const encoded = await encode({
-    frames,
-    width: options.width,
-    height: options.height,
-    fps: options.fps,
-    quality: clampedQuality,
-    repeat: options.repeat,
-  })
+  let encoded: Uint8Array
+  try {
+    encoded = await encode({
+      frames,
+      width: options.width,
+      height: options.height,
+      fps: options.fps,
+      quality: clampedQuality,
+      repeat: options.repeat,
+    })
+  } catch (error) {
+    if (isWasmTrap(error)) {
+      runtimeBroken = true
+    }
+    throw error
+  }
 
   const out = new Uint8Array(encoded.byteLength)
   out.set(encoded)
