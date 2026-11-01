@@ -9,6 +9,7 @@ import { TAB_DETAILS } from './appShellCatalog'
 import { OnboardingTour } from './components/OnboardingTour'
 import { ConvertPanel } from './components/panels/ConvertPanel'
 import { GuidesPanel } from './components/panels/GuidesPanel'
+import { LibraryPanel } from './components/panels/LibraryPanel'
 import { PatchToolsPanel } from './components/panels/PatchToolsPanel'
 import { SteamHelpersPanel } from './components/panels/SteamHelpersPanel'
 import { ConvertProvider } from './contexts/convertContext'
@@ -68,6 +69,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
   const tabPanels: Record<TabKey, ReactNode> = {
     convert: <ConvertPanel onboardingTarget="convert" />,
+    library: <LibraryPanel onboardingTarget="library" />,
     patch: <PatchToolsPanel onboardingTarget="patch" />,
     steam: <SteamHelpersPanel onboardingTarget="steam" />,
     guides: <GuidesPanel guides={GUIDE_SECTIONS} onboardingTarget="guides" />,

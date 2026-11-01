@@ -10,7 +10,7 @@ import { useIntl } from 'react-intl'
 import { applyPreset, getDefaultConfig, getDefaultWorkerCount } from '../lib/defaults'
 import { convertVideo, type ConversionProgress } from '../lib/conversion'
 import { estimateFpsForTargetKb, estimateGifKb } from '../lib/precheck'
-import type { ConversionConfig, MemoryDebugSession } from '../lib/types'
+import type { ConversionArtifact, ConversionConfig, MemoryDebugSession } from '../lib/types'
 import { createZip } from '../lib/zip'
 import { ConversionWorkerPool } from '../lib/conversionWorkerPool'
 import { isSupportedConversionSource } from '../lib/validation'
@@ -20,14 +20,13 @@ import { computePresetTargetHeight, resolvePresetPlan } from '../lib/presetPlan'
 import type { PresetPlan } from '../lib/presetPlan'
 import { inspectBrowserSupport, type BrowserSupportReport } from '../lib/browserSupport'
 import { distributeEvenly } from '../lib/workshopRows'
+import { canPreviewOnProfile, profilePreviewUrl } from '../lib/profileHandoff'
 import {
-  buildHandoffRecord,
-  canPreviewOnProfile,
-  createHandoffId,
-  profilePreviewUrl,
-  saveHandoff,
+  buildLibraryEntry,
+  createLibraryId,
+  saveLibraryEntry,
   type ConversionLayout,
-} from '../lib/profileHandoff'
+} from '../lib/artworkLibrary'
 import {
   appendBrowserMemorySample,
   appendMemoryDebugEvent,
@@ -76,7 +75,15 @@ export interface ConvertState {
   feedbackPromptOpen: boolean
   /** Set when the results could not be saved for the Steam profile preview. */
   profilePreviewError: string
+  /** Whether the latest results are saved in the Library. */
+  librarySave: LibrarySaveState
 }
+
+export type LibrarySaveState =
+  | { status: 'idle' }
+  | { status: 'saving' }
+  | { status: 'saved'; id: string }
+  | { status: 'failed'; detail: string }
 
 export interface ConvertActions {
   setConfig: Dispatch<SetStateAction<ConversionConfig>>
@@ -92,7 +99,7 @@ export interface ConvertActions {
   onUpdateWorkshopParts: (parts: number) => void
   onUpdateWorkshopRows: (rows: ConversionConfig['workshopRows']) => void
   onDismissFeedbackPrompt: () => void
-  /** Saves the results in this browser and opens them on a Steam profile in SteamCanvas. */
+  /** Opens the saved results on a Steam profile in SteamCanvas. */
   onOpenProfilePreview: () => void
 }
 
@@ -184,6 +191,8 @@ export function useConversionSession(): ConvertContextValue {
   const [lastConversionSourceName, setLastConversionSourceName] = useState('')
   const [lastConversionLayout, setLastConversionLayout] = useState<ConversionLayout | null>(null)
   const [profilePreviewError, setProfilePreviewError] = useState('')
+  const [librarySave, setLibrarySave] = useState<LibrarySaveState>({ status: 'idle' })
+  const lastLibraryIdRef = useRef<string | null>(null)
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
@@ -284,6 +293,8 @@ export function useConversionSession(): ConvertContextValue {
     cleanupArtifactViews(artifactViews)
     setArtifactViews([])
     setProfilePreviewError('')
+    setLibrarySave({ status: 'idle' })
+    lastLibraryIdRef.current = null
     setMemoryDebug(createEmptyMemoryDebugSession())
   }
 
@@ -362,6 +373,28 @@ export function useConversionSession(): ConvertContextValue {
     setLastElapsedMs(0)
   }
 
+  /** Keeps every finished conversion in the Library (IndexedDB), including ones finished early. */
+  function saveToLibrary(
+    layout: ConversionLayout,
+    artifacts: ConversionArtifact[],
+    sourceName: string,
+    complete: boolean,
+  ): void {
+    const id = createLibraryId()
+    lastLibraryIdRef.current = id
+    setLibrarySave({ status: 'saving' })
+    void saveLibraryEntry(buildLibraryEntry(id, layout, artifacts, sourceName, complete))
+      .then(() => {
+        if (lastLibraryIdRef.current === id) setLibrarySave({ status: 'saved', id })
+      })
+      .catch((saveError: unknown) => {
+        if (lastLibraryIdRef.current !== id) return
+        lastLibraryIdRef.current = null
+        const detail = saveError instanceof Error ? saveError.message : String(saveError)
+        setLibrarySave({ status: 'failed', detail })
+      })
+  }
+
   async function runConversion(): Promise<void> {
     if (!sourceFile) {
       return
@@ -378,8 +411,14 @@ export function useConversionSession(): ConvertContextValue {
       workerCount: plan.effectiveWorkerCount,
     }
     const extraWarnings: string[] = []
-    setLastConversionSourceName(sourceFile.name)
-    setLastConversionLayout({ preset: config.preset, workshopParts: config.parts, workshopRows: config.workshopRows })
+    const conversionSourceName = sourceFile.name
+    const conversionLayout: ConversionLayout = {
+      preset: config.preset,
+      workshopParts: config.parts,
+      workshopRows: config.workshopRows,
+    }
+    setLastConversionSourceName(conversionSourceName)
+    setLastConversionLayout(conversionLayout)
 
     totalJobsRef.current = plan.jobCount
     workerWeightsRef.current = {}
@@ -446,6 +485,12 @@ export function useConversionSession(): ConvertContextValue {
       }
       setArtifactViews(nextArtifactViews)
       if (result.artifacts.length > 0) {
+        saveToLibrary(
+          conversionLayout,
+          result.artifacts,
+          conversionSourceName,
+          result.completionStatus === 'complete',
+        )
         trackConversionComplete()
         // Ask for guide feedback once per browser session, right after the
         // aggregate counter is reported. It never blocks or alters the
@@ -532,21 +577,15 @@ export function useConversionSession(): ConvertContextValue {
     if (busy || !lastConversionLayout || !canPreviewOnProfile(lastConversionLayout, artifacts)) {
       return
     }
-    const id = createHandoffId()
-    const record = buildHandoffRecord(
-      id,
-      lastConversionLayout,
-      artifacts,
-      lastConversionSourceName || sourceFile?.name || '',
-    )
-    setProfilePreviewError('')
-    // Open the tab inside the click so popup blockers allow it. Saving takes milliseconds, and the
-    // bridge page retries briefly if SteamCanvas asks before the record is written.
-    window.open(profilePreviewUrl(id), '_blank', 'noopener,noreferrer')
-    void saveHandoff(record).catch((saveError: unknown) => {
-      const detail = saveError instanceof Error ? saveError.message : String(saveError)
+    const id = lastLibraryIdRef.current
+    if (!id) {
+      const detail = librarySave.status === 'failed' ? librarySave.detail : ''
       setProfilePreviewError(formatMessage('convert.profilePreview.saveFailed', { detail }))
-    })
+      return
+    }
+    setProfilePreviewError('')
+    // The entry may still be being written; the bridge retries briefly if SteamCanvas asks first.
+    window.open(profilePreviewUrl(id), '_blank', 'noopener,noreferrer')
   }
 
   function dismissFeedbackPrompt(): void {
@@ -735,6 +774,7 @@ export function useConversionSession(): ConvertContextValue {
       memoryDebug,
       feedbackPromptOpen,
       profilePreviewError,
+      librarySave,
     },
     actions: {
       setConfig,

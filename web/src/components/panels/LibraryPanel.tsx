@@ -1,0 +1,245 @@
+import { useEffect, useMemo, useState } from 'react'
+import { useIntl } from 'react-intl'
+import { downloadBlob } from '../../agents/appAgents'
+import {
+  clearLibrary,
+  deleteLibraryEntry,
+  estimateStorageUsage,
+  LIBRARY_CHANGED_EVENT,
+  libraryEntryArtifacts,
+  libraryEntryBytes,
+  libraryEntryLayout,
+  listLibraryEntries,
+  type LibraryEntry,
+  type StorageUsage,
+} from '../../lib/artworkLibrary'
+import { canPreviewOnProfile, previewBlobOf, profilePreviewUrl } from '../../lib/profileHandoff'
+import { createZip } from '../../lib/zip'
+import { toArchiveBaseName } from '../../contexts/conversionSession'
+import type { MessageId } from '../../i18n/messages'
+
+interface LibraryPanelProps {
+  onboardingTarget?: string
+}
+
+type LoadState =
+  | { status: 'loading' }
+  | { status: 'ready'; entries: LibraryEntry[] }
+  | { status: 'error'; detail: string }
+
+const PRESET_LABELS: Record<LibraryEntry['preset'], MessageId> = {
+  workshop: 'convert.option.workshop',
+  showcase: 'convert.option.showcase',
+  featured: 'convert.option.featured',
+  guide: 'convert.option.guide',
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
+  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
+  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+}
+
+function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entry: LibraryEntry) => void }) {
+  const intl = useIntl()
+  const [zipping, setZipping] = useState(false)
+  const artifacts = useMemo(() => libraryEntryArtifacts(entry), [entry])
+  const thumbnails = useMemo(
+    () => entry.files.map((file) => ({ name: file.name, url: URL.createObjectURL(previewBlobOf(file)) })),
+    [entry],
+  )
+  useEffect(() => () => thumbnails.forEach((thumb) => URL.revokeObjectURL(thumb.url)), [thumbnails])
+
+  const canPreview = canPreviewOnProfile(libraryEntryLayout(entry), artifacts)
+  const title = entry.sourceName || intl.formatMessage({ id: 'library.untitled' })
+
+  async function downloadZip(): Promise<void> {
+    setZipping(true)
+    try {
+      const zip = await createZip(
+        entry.files.map((file) => ({ name: file.name, blob: file.blob })),
+        `${toArchiveBaseName(entry.sourceName)}.zip`,
+      )
+      downloadBlob(zip.name, zip.blob)
+    } finally {
+      setZipping(false)
+    }
+  }
+
+  return (
+    <article className="subpanel library-card">
+      <div className={entry.preset === 'workshop' ? 'library-thumbs is-workshop' : 'library-thumbs'}>
+        {thumbnails.map((thumb) => (
+          <img key={thumb.name} src={thumb.url} alt="" loading="lazy" />
+        ))}
+      </div>
+      <div className="library-card-body">
+        <h3 title={title}>{title}</h3>
+        <p className="library-meta">
+          {intl.formatMessage({ id: PRESET_LABELS[entry.preset] })}
+          {entry.preset === 'workshop' &&
+            ` · ${intl.formatMessage({ id: `convert.option.rows${entry.workshopRows}` as MessageId })}`}
+          {' · '}
+          {intl.formatMessage({ id: 'library.files' }, { count: entry.files.length })}
+          {' · '}
+          {formatBytes(libraryEntryBytes(entry))}
+        </p>
+        <p className="library-meta">
+          <time dateTime={new Date(entry.createdAt).toISOString()}>
+            {intl.formatDate(entry.createdAt, { dateStyle: 'medium', timeStyle: 'short' })}
+          </time>
+          {!entry.complete && (
+            <span className="library-badge">{intl.formatMessage({ id: 'library.incomplete' })}</span>
+          )}
+        </p>
+        <div className="results-actions-row">
+          <button type="button" onClick={() => void downloadZip()} disabled={zipping}>
+            {intl.formatMessage({ id: 'library.downloadZip' })}
+          </button>
+          {canPreview && (
+            <button
+              type="button"
+              title={intl.formatMessage({ id: 'convert.profilePreview.hint' })}
+              onClick={() => window.open(profilePreviewUrl(entry.id), '_blank', 'noopener,noreferrer')}
+            >
+              {intl.formatMessage({ id: 'convert.profilePreview.open' })}
+            </button>
+          )}
+          <button type="button" className="library-delete" onClick={() => onDelete(entry)}>
+            {intl.formatMessage({ id: 'library.delete' })}
+          </button>
+        </div>
+        <details className="library-files">
+          <summary>{intl.formatMessage({ id: 'library.showFiles' })}</summary>
+          <ul>
+            {entry.files.map((file) => (
+              <li key={file.name}>
+                <span>
+                  {file.name} · {file.width}×{file.height} · {formatBytes(file.blob.size)}
+                </span>
+                <button type="button" onClick={() => downloadBlob(file.name, file.blob)}>
+                  {intl.formatMessage({ id: 'convert.download' })}
+                </button>
+              </li>
+            ))}
+          </ul>
+        </details>
+      </div>
+    </article>
+  )
+}
+
+export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
+  const intl = useIntl()
+  const [state, setState] = useState<LoadState>({ status: 'loading' })
+  const [usage, setUsage] = useState<StorageUsage | null>(null)
+  const [actionError, setActionError] = useState('')
+
+  // Bumped when the library changes here or the tab becomes visible (another tab may have changed it).
+  const [revision, setRevision] = useState(0)
+
+  useEffect(() => {
+    let active = true
+    listLibraryEntries()
+      .then((entries) => {
+        if (active) setState({ status: 'ready', entries })
+      })
+      .catch((error: unknown) => {
+        if (active) setState({ status: 'error', detail: error instanceof Error ? error.message : String(error) })
+      })
+    estimateStorageUsage()
+      .catch(() => null)
+      .then((nextUsage) => {
+        if (active) setUsage(nextUsage)
+      })
+    return () => {
+      active = false
+    }
+  }, [revision])
+
+  useEffect(() => {
+    const bump = () => setRevision((current) => current + 1)
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') bump()
+    }
+    window.addEventListener(LIBRARY_CHANGED_EVENT, bump)
+    document.addEventListener('visibilitychange', onVisible)
+    return () => {
+      window.removeEventListener(LIBRARY_CHANGED_EVENT, bump)
+      document.removeEventListener('visibilitychange', onVisible)
+    }
+  }, [])
+
+  async function run(action: () => Promise<void>): Promise<void> {
+    setActionError('')
+    try {
+      await action()
+    } catch (error) {
+      setActionError(
+        intl.formatMessage(
+          { id: 'library.actionFailed' },
+          { detail: error instanceof Error ? error.message : String(error) },
+        ),
+      )
+    }
+  }
+
+  function remove(entry: LibraryEntry): void {
+    const name = entry.sourceName || intl.formatMessage({ id: 'library.untitled' })
+    if (!window.confirm(intl.formatMessage({ id: 'library.deleteConfirm' }, { name }))) return
+    void run(() => deleteLibraryEntry(entry.id))
+  }
+
+  function purge(): void {
+    if (!window.confirm(intl.formatMessage({ id: 'library.purgeConfirm' }))) return
+    void run(clearLibrary)
+  }
+
+  const entries = state.status === 'ready' ? state.entries : []
+  const totalBytes = entries.reduce((sum, entry) => sum + libraryEntryBytes(entry), 0)
+
+  return (
+    <section className="panel panel-library" data-onboarding-target={onboardingTarget}>
+      <h2>{intl.formatMessage({ id: 'library.title' })}</h2>
+      <p className="panel-intro">{intl.formatMessage({ id: 'library.intro' })}</p>
+
+      <div className="library-toolbar">
+        <p className="library-meta" role="status">
+          {intl.formatMessage(
+            { id: 'library.summary' },
+            { count: entries.length, size: formatBytes(totalBytes) },
+          )}
+          {usage &&
+            ` · ${intl.formatMessage(
+              { id: 'library.storage' },
+              { used: formatBytes(usage.usedBytes), quota: formatBytes(usage.quotaBytes) },
+            )}`}
+        </p>
+        <button type="button" className="library-delete" onClick={purge} disabled={entries.length === 0}>
+          {intl.formatMessage({ id: 'library.purge' })}
+        </button>
+      </div>
+
+      {actionError && (
+        <p className="profile-preview-error" role="alert">
+          {actionError}
+        </p>
+      )}
+      {state.status === 'loading' && <p className="library-meta">{intl.formatMessage({ id: 'library.loading' })}</p>}
+      {state.status === 'error' && (
+        <p className="profile-preview-error" role="alert">
+          {intl.formatMessage({ id: 'library.loadFailed' }, { detail: state.detail })}
+        </p>
+      )}
+      {state.status === 'ready' && entries.length === 0 && (
+        <p className="library-empty">{intl.formatMessage({ id: 'library.empty' })}</p>
+      )}
+      <div className="library-list">
+        {entries.map((entry) => (
+          <LibraryCard key={entry.id} entry={entry} onDelete={remove} />
+        ))}
+      </div>
+    </section>
+  )
+}

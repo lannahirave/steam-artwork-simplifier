@@ -40,6 +40,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     memoryDebug,
     feedbackPromptOpen,
     profilePreviewError,
+    librarySave,
   } = state
   const {
     setConfig,
@@ -683,6 +684,16 @@ export function ConvertPanel(props: ConvertPanelProps) {
           </div>
           {profilePreviewAvailable && (
             <p className="profile-preview-hint">{intl.formatMessage({ id: 'convert.profilePreview.hint' })}</p>
+          )}
+          {librarySave.status !== 'idle' && (
+            <p
+              className={librarySave.status === 'failed' ? 'library-save-status is-failed' : 'library-save-status'}
+              role={librarySave.status === 'failed' ? 'alert' : 'status'}
+            >
+              {librarySave.status === 'failed'
+                ? intl.formatMessage({ id: 'convert.library.saveFailed' }, { detail: librarySave.detail })
+                : intl.formatMessage({ id: librarySave.status === 'saved' ? 'convert.library.saved' : 'convert.library.saving' })}
+            </p>
           )}
           {profilePreviewError && (
             <p className="profile-preview-error" role="alert">{profilePreviewError}</p>

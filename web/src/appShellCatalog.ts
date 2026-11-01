@@ -19,6 +19,16 @@ export const TAB_DETAILS: Record<TabKey, TabDetail> = {
       'app.tabs.convert.point3',
     ],
   },
+  library: {
+    label: 'app.nav.library',
+    eyebrow: 'app.tabs.library.eyebrow',
+    summary: 'app.tabs.library.summary',
+    points: [
+      'app.tabs.library.point1',
+      'app.tabs.library.point2',
+      'app.tabs.library.point3',
+    ],
+  },
   patch: {
     label: 'app.nav.patch',
     eyebrow: 'app.tabs.patch.eyebrow',

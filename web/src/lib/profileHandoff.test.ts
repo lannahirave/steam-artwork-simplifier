@@ -1,16 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import type { ConversionArtifact } from './types'
+import { buildLibraryEntry, type ConversionLayout } from './artworkLibrary'
 import {
-  buildHandoffRecord,
   canPreviewOnProfile,
-  createHandoffId,
-  handoffIdsToPrune,
-  HANDOFF_TTL_MS,
-  isHandoffExpired,
-  isHandoffId,
+  HANDOFF_PROTOCOL_VERSION,
+  parseBridgeRequest,
   previewBlobOf,
   profilePreviewUrl,
-  type ConversionLayout,
+  toBridgeEntry,
 } from './profileHandoff'
 
 function artifact(name: string, width = 150, extra: Partial<ConversionArtifact> = {}): ConversionArtifact {
@@ -65,68 +62,52 @@ describe('canPreviewOnProfile', () => {
   })
 })
 
-describe('buildHandoffRecord', () => {
+describe('toBridgeEntry', () => {
   const id = 'abcdefghijklmnopqrstuvwx'
 
-  it('sends the unpatched copy when there is one', () => {
+  it('sends the unpatched copies, never the patched uploads', () => {
     const original = new Blob(['original'], { type: 'image/gif' })
-    const record = buildHandoffRecord(
-      id,
-      { preset: 'featured', workshopParts: 5, workshopRows: 2 },
-      [artifact('featured.gif', 630, { previewBlob: original })],
-      'clip.mp4',
-      1000,
-    )
-    expect(record).toMatchObject({ id, preset: 'featured', workshopRows: 1, sourceName: 'clip.mp4', createdAt: 1000 })
-    expect(record.files).toEqual([{ name: 'featured.gif', type: 'image/gif', width: 630, height: 300, blob: original }])
+    const entry = buildLibraryEntry(id, single('featured'), [artifact('featured.gif', 630, { previewBlob: original })], 'clip.mp4', true, 1000)
+    const bridged = toBridgeEntry(entry)
+    expect(bridged).toMatchObject({ id, preset: 'featured', sourceName: 'clip.mp4', createdAt: 1000, complete: true })
+    expect(bridged.files).toEqual([{ name: 'featured.gif', type: 'image/gif', width: 630, height: 300, blob: original }])
   })
 
-  it('keeps the Workshop row count and file order', () => {
+  it('keeps the Workshop layout and file order', () => {
     const outputs = parts(10)
-    const record = buildHandoffRecord(id, workshop(2), outputs, '')
-    expect(record.workshopRows).toBe(2)
-    expect(record.files.map((file) => file.name)).toEqual(outputs.map((output) => output.name))
-  })
-
-  it('refuses results that cannot be previewed', () => {
-    expect(() => buildHandoffRecord(id, workshop(1, 4), parts(4), '')).toThrow()
+    const bridged = toBridgeEntry(buildLibraryEntry(id, workshop(2), outputs, '', true))
+    expect(bridged).toMatchObject({ workshopRows: 2, workshopParts: 5 })
+    expect(bridged.files.map((file) => file.name)).toEqual(outputs.map((output) => output.name))
   })
 })
 
-describe('handoff ids and URLs', () => {
-  it('creates URL-safe ids that the bridge and SteamCanvas accept', () => {
-    const ids = new Set(Array.from({ length: 20 }, () => createHandoffId()))
-    expect(ids.size).toBe(20)
-    for (const id of ids) expect(isHandoffId(id)).toBe(true)
+describe('parseBridgeRequest', () => {
+  const base = { source: 'steamcanvas', version: HANDOFF_PROTOCOL_VERSION, requestId: 'r1' }
+
+  it('accepts list and get requests from SteamCanvas', () => {
+    expect(parseBridgeRequest({ ...base, type: 'list' })).toEqual({ type: 'list', requestId: 'r1' })
+    expect(parseBridgeRequest({ ...base, type: 'get', id: 'abcdefghijklmnopqrstuvwx' })).toEqual({
+      type: 'get',
+      requestId: 'r1',
+      id: 'abcdefghijklmnopqrstuvwx',
+    })
   })
 
-  it('rejects malformed ids', () => {
-    expect(isHandoffId(null)).toBe(false)
-    expect(isHandoffId('short')).toBe(false)
-    expect(isHandoffId('abcdefghijklmnop/../x')).toBe(false)
+  it('ignores other senders, versions and malformed ids', () => {
+    expect(parseBridgeRequest(null)).toBeNull()
+    expect(parseBridgeRequest({ ...base, source: 'other', type: 'list' })).toBeNull()
+    expect(parseBridgeRequest({ ...base, version: 1, type: 'list' })).toBeNull()
+    expect(parseBridgeRequest({ ...base, type: 'get', id: '../x' })).toBeNull()
+    expect(parseBridgeRequest({ ...base, type: 'delete', id: 'abcdefghijklmnopqrstuvwx' })).toBeNull()
+    expect(parseBridgeRequest({ source: 'steamcanvas', version: HANDOFF_PROTOCOL_VERSION, type: 'list' })).toBeNull()
   })
+})
 
-  it('points at the preview with the id in the query', () => {
+describe('profilePreviewUrl', () => {
+  it('points at the preview with the library id in the query', () => {
     const url = new URL(profilePreviewUrl('abcdefghijklmnopqrstuvwx'))
     expect(url.pathname).toBe('/')
-    expect(url.searchParams.get('handoff')).toBe('abcdefghijklmnopqrstuvwx')
-  })
-})
-
-describe('expiry and pruning', () => {
-  const now = 10 * HANDOFF_TTL_MS
-
-  it('expires records after 24 hours', () => {
-    expect(isHandoffExpired({ createdAt: now - HANDOFF_TTL_MS }, now)).toBe(false)
-    expect(isHandoffExpired({ createdAt: now - HANDOFF_TTL_MS - 1 }, now)).toBe(true)
-  })
-
-  it('drops expired records and keeps the newest four, leaving room for the new one', () => {
-    const records = [
-      { id: 'expired', createdAt: now - HANDOFF_TTL_MS - 1 },
-      ...Array.from({ length: 5 }, (_, index) => ({ id: `r${index}`, createdAt: now - index * 1000 })),
-    ]
-    expect(handoffIdsToPrune(records, now).sort()).toEqual(['expired', 'r4'])
+    expect(url.searchParams.get('studio')).toBe('abcdefghijklmnopqrstuvwx')
   })
 })
 

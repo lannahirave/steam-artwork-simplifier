@@ -2,7 +2,7 @@ import type { ConversionArtifact } from '../lib/types'
 import type { MessageId } from '../i18n/messages'
 export { getQualityReductionPercent } from '../lib/gifskiQuality'
 
-export type TabKey = 'convert' | 'patch' | 'steam' | 'guides'
+export type TabKey = 'convert' | 'library' | 'patch' | 'steam' | 'guides'
 export type ThemeMode = 'auto' | 'light' | 'dark'
 
 export const THEME_STORAGE_KEY = 'steam-artwork-theme-mode'
