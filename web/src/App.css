@@ -2051,24 +2051,15 @@ button:disabled {
   justify-content: flex-start;
 }
 
-.profile-preview-hint,
 .profile-preview-error,
 .library-save-status {
   margin: 0.45rem 0 0;
   font-size: 0.85rem;
 }
 
-.profile-preview-hint {
-  color: var(--muted);
-}
-
 .profile-preview-error,
 .library-save-status.is-failed {
   color: var(--error);
-}
-
-.library-save-status {
-  color: var(--muted);
 }
 
 .result-card {

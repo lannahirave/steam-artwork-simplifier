@@ -179,8 +179,6 @@
   "convert.profilePreview.open": "在我的 Steam 个人资料上预览",
   "convert.profilePreview.hint": "在新标签页中打开 SteamCanvas，将这些 GIF 放到你的公开个人资料上。文件只保存在此浏览器中，不会上传。",
   "convert.profilePreview.saveFailed": "无法保存用于个人资料预览的 GIF（{detail}）。请下载 ZIP，然后在 SteamCanvas 中手动添加文件。",
-  "convert.library.saving": "正在保存到素材库…",
-  "convert.library.saved": "已保存到此浏览器的素材库。",
   "convert.library.saveFailed": "无法保存到素材库（{detail}）。请下载 ZIP 以保留这些文件。",
   "library.title": "素材库",
   "library.intro": "你的转换结果保存在此浏览器中，不会上传。清除网站数据或换用其他浏览器后，素材库将为空。SteamCanvas 可以读取它，把这些 GIF 放到你的个人资料上。",

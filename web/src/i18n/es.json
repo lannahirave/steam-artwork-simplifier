@@ -179,8 +179,6 @@
   "convert.profilePreview.open": "Ver en mi perfil de Steam",
   "convert.profilePreview.hint": "Abre SteamCanvas en una pestaña nueva con estos GIF en tu perfil público. Se quedan en este navegador y no se suben.",
   "convert.profilePreview.saveFailed": "No se pudieron guardar los GIF para la vista previa del perfil ({detail}). Descarga el ZIP y añade los archivos en SteamCanvas.",
-  "convert.library.saving": "Guardando en la Biblioteca…",
-  "convert.library.saved": "Guardado en la Biblioteca de este navegador.",
   "convert.library.saveFailed": "No se pudo guardar en la Biblioteca ({detail}). Descarga el ZIP para conservar estos archivos.",
   "library.title": "Biblioteca",
   "library.intro": "Tus conversiones, guardadas en este navegador. No se sube nada: si borras los datos del sitio o usas otro navegador, la Biblioteca estará vacía. SteamCanvas puede leerla para mostrar estos GIF en tu perfil.",

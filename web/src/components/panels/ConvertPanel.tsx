@@ -682,17 +682,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </button>
             )}
           </div>
-          {profilePreviewAvailable && (
-            <p className="profile-preview-hint">{intl.formatMessage({ id: 'convert.profilePreview.hint' })}</p>
-          )}
-          {librarySave.status !== 'idle' && (
-            <p
-              className={librarySave.status === 'failed' ? 'library-save-status is-failed' : 'library-save-status'}
-              role={librarySave.status === 'failed' ? 'alert' : 'status'}
-            >
-              {librarySave.status === 'failed'
-                ? intl.formatMessage({ id: 'convert.library.saveFailed' }, { detail: librarySave.detail })
-                : intl.formatMessage({ id: librarySave.status === 'saved' ? 'convert.library.saved' : 'convert.library.saving' })}
+          {librarySave.status === 'failed' && (
+            <p className="library-save-status is-failed" role="alert">
+              {intl.formatMessage({ id: 'convert.library.saveFailed' }, { detail: librarySave.detail })}
             </p>
           )}
           {profilePreviewError && (

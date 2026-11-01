@@ -179,8 +179,6 @@
   "convert.profilePreview.open": "Náhled na mém profilu Steam",
   "convert.profilePreview.hint": "Otevře SteamCanvas na nové kartě s těmito GIFy na vašem veřejném profilu. Zůstanou v tomto prohlížeči a nikam se nenahrávají.",
   "convert.profilePreview.saveFailed": "GIFy pro náhled profilu se nepodařilo uložit ({detail}). Stáhněte ZIP a přidejte soubory v SteamCanvas ručně.",
-  "convert.library.saving": "Ukládání do Knihovny…",
-  "convert.library.saved": "Uloženo do Knihovny v tomto prohlížeči.",
   "convert.library.saveFailed": "Do Knihovny se nepodařilo uložit ({detail}). Stáhněte ZIP, abyste soubory nepřišli.",
   "library.title": "Knihovna",
   "library.intro": "Vaše převody uložené v tomto prohlížeči. Nic se nenahrává: po smazání dat webu nebo v jiném prohlížeči bude Knihovna prázdná. SteamCanvas z ní umí číst a zobrazit GIFy na vašem profilu.",
