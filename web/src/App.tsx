@@ -51,6 +51,14 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
     })
   }
 
+  function openLibrary(): void {
+    setTab('library')
+    document.getElementById('workspace')?.scrollIntoView({
+      behavior: 'smooth',
+      block: 'start',
+    })
+  }
+
   const trademarkDisclaimer = (
     <footer className="app-disclaimer" role="contentinfo">
       <p>{intl.formatMessage({ id: 'app.footer.trademark1' })}</p>
@@ -68,7 +76,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
   )
 
   const tabPanels: Record<TabKey, ReactNode> = {
-    convert: <ConvertPanel onboardingTarget="convert" />,
+    convert: <ConvertPanel onboardingTarget="convert" onOpenLibrary={openLibrary} />,
     library: <LibraryPanel onboardingTarget="library" />,
     patch: <PatchToolsPanel onboardingTarget="patch" />,
     steam: <SteamHelpersPanel onboardingTarget="steam" />,

@@ -498,19 +498,27 @@ textarea {
 
 .feedback-prompt-close {
   appearance: none;
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  min-height: 0;
+  padding: 0;
   border: 0;
   background: transparent;
   color: var(--ink-muted);
   font-size: 1.15rem;
   line-height: 1;
-  padding: 0.15rem 0.35rem;
   border-radius: var(--radius-card);
   cursor: pointer;
 }
 
-.feedback-prompt-close:hover {
+.feedback-prompt-close:not(:disabled):hover {
   color: var(--ink);
   background: rgb(var(--ink-rgb) / 0.06);
+  transform: none;
 }
 
 .feedback-prompt h2 {
@@ -3053,33 +3061,156 @@ button:disabled {
   min-width: 0;
 }
 
+/* Thumbnails keep each GIF's own proportions and are scaled down to fit (never cropped). Parts sit
+   next to each other the way they do on Steam. */
 .library-thumbs {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
   align-items: flex-start;
+  justify-content: center;
+  gap: 2px;
   padding: 4px;
   border-radius: var(--radius-card);
-  background: rgba(var(--ink-rgb), 0.06);
+  background: rgb(var(--ink-rgb) / 0.06);
 }
 
 .library-thumbs img {
   display: block;
-  max-width: 100%;
-  max-height: 140px;
-  object-fit: contain;
+  flex: 0 1 auto;
+  min-width: 0;
+  width: auto;
+  height: auto;
+  max-width: calc((100% - (var(--thumb-columns, 1) - 1) * 2px) / var(--thumb-columns, 1));
+  max-height: 160px;
 }
 
-.library-thumbs.is-workshop {
+.library-thumbs.is-workshop.is-two-rows img {
+  max-height: 80px;
+}
+
+.library-limit {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 0.5rem;
+  margin-top: 1rem;
+  padding: 0.9rem 1rem;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
 }
 
-.library-thumbs.is-workshop img {
+.library-limit-head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem 1rem;
+}
+
+.library-limit-head p {
+  margin: 0;
+  font-size: 0.92rem;
+}
+
+.library-limit-head label {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0;
+  border: 0;
+  background: none;
+  white-space: nowrap;
+  color: var(--ink-muted);
+  font-size: 0.88rem;
+}
+
+.library-limit-head select {
+  min-height: 2.1rem;
+  padding: 0.25rem 0.5rem;
+  border: 1px solid var(--line-strong);
+  border-radius: var(--radius-field);
+  background: var(--surface-muted);
+  color: var(--ink);
+  font: inherit;
+}
+
+.library-limit-bar {
   width: 100%;
-  max-height: 120px;
-  object-fit: cover;
-  object-position: top;
+  height: 0.45rem;
+  overflow: hidden;
+  border-radius: var(--radius-pill);
+  background: rgb(var(--ink-rgb) / 0.1);
+}
+
+.library-limit-bar > span {
+  display: block;
+  height: 100%;
+  border-radius: inherit;
+  background: var(--apple-blue);
+  transition: width 200ms ease;
+}
+
+.library-limit.is-near-full .library-limit-bar > span {
+  background: var(--warning);
+}
+
+.library-limit-note {
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+}
+
+/* "Saved to your Library" block under "Output ready in …" on the Convert tab. */
+.library-saved-callout {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-top: 0.75rem;
+  padding: 0.8rem 1rem;
+  border: 1px solid rgba(48, 209, 88, 0.35);
+  border-radius: var(--radius-panel);
+  background: rgba(48, 209, 88, 0.09);
+}
+
+.library-saved-icon {
+  display: inline-flex;
+  flex: none;
+  align-items: center;
+  justify-content: center;
+  width: 1.6rem;
+  height: 1.6rem;
+  border-radius: 50%;
+  background: var(--success);
+  color: #fff;
+  font-size: 0.9rem;
+  font-weight: 700;
+}
+
+.library-saved-text p {
+  margin: 0.15rem 0 0;
+  color: var(--ink);
+  font-size: 0.95rem;
+}
+
+.library-saved-text p.library-saved-note {
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+}
+
+button.inline-link {
+  min-height: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--link);
+  font-size: inherit;
+  text-decoration: underline;
+  text-underline-offset: 0.14em;
+}
+
+button.inline-link:not(:disabled):hover {
+  background: transparent;
+  color: var(--apple-blue);
+  transform: none;
 }
 
 .library-badge {

@@ -1,10 +1,15 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import { downloadBlob } from '../../agents/appAgents'
 import {
   clearLibrary,
   deleteLibraryEntry,
+  enforceLibraryLimit,
   estimateStorageUsage,
+  getLibraryLimitBytes,
+  LIBRARY_LIMIT_OPTIONS_BYTES,
+  pickEntriesToEvict,
+  setLibraryLimitBytes,
   LIBRARY_CHANGED_EVENT,
   libraryEntryArtifacts,
   libraryEntryBytes,
@@ -37,8 +42,8 @@ const PRESET_LABELS: Record<LibraryEntry['preset'], MessageId> = {
 function formatBytes(bytes: number): string {
   if (bytes < 1024) return `${bytes} B`
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${(bytes / 1024 / 1024).toFixed(1)} MB`
-  return `${(bytes / 1024 / 1024 / 1024).toFixed(2)} GB`
+  if (bytes < 1024 * 1024 * 1024) return `${Number((bytes / 1024 / 1024).toFixed(1))} MB`
+  return `${Number((bytes / 1024 / 1024 / 1024).toFixed(2))} GB`
 }
 
 function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entry: LibraryEntry) => void }) {
@@ -51,6 +56,10 @@ function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entr
   )
   useEffect(() => () => thumbnails.forEach((thumb) => URL.revokeObjectURL(thumb.url)), [thumbnails])
 
+  const thumbColumns =
+    entry.preset === 'workshop'
+      ? Math.max(1, Math.ceil(entry.files.length / entry.workshopRows))
+      : Math.max(1, entry.files.length)
   const canPreview = canPreviewOnProfile(libraryEntryLayout(entry), artifacts)
   const title = entry.sourceName || intl.formatMessage({ id: 'library.untitled' })
 
@@ -69,7 +78,14 @@ function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entr
 
   return (
     <article className="subpanel library-card">
-      <div className={entry.preset === 'workshop' ? 'library-thumbs is-workshop' : 'library-thumbs'}>
+      <div
+        className={
+          entry.preset === 'workshop'
+            ? `library-thumbs is-workshop${entry.workshopRows === 2 ? ' is-two-rows' : ''}`
+            : 'library-thumbs'
+        }
+        style={{ '--thumb-columns': thumbColumns } as CSSProperties}
+      >
         {thumbnails.map((thumb) => (
           <img key={thumb.name} src={thumb.url} alt="" loading="lazy" />
         ))}
@@ -135,6 +151,7 @@ export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
   const [state, setState] = useState<LoadState>({ status: 'loading' })
   const [usage, setUsage] = useState<StorageUsage | null>(null)
   const [actionError, setActionError] = useState('')
+  const [limitBytes, setLimitBytes] = useState(getLibraryLimitBytes)
 
   // Bumped when the library changes here or the tab becomes visible (another tab may have changed it).
   const [revision, setRevision] = useState(0)
@@ -196,8 +213,30 @@ export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
     void run(clearLibrary)
   }
 
+  function changeLimit(nextLimit: number): void {
+    const evicted = pickEntriesToEvict(entries, nextLimit)
+    if (
+      evicted.length > 0 &&
+      !window.confirm(
+        intl.formatMessage(
+          { id: 'library.limit.shrinkConfirm' },
+          { count: evicted.length, limit: formatBytes(nextLimit) },
+        ),
+      )
+    ) {
+      return
+    }
+    setLibraryLimitBytes(nextLimit)
+    setLimitBytes(nextLimit)
+    if (evicted.length > 0) void run(async () => void (await enforceLibraryLimit(nextLimit)))
+  }
+
   const entries = state.status === 'ready' ? state.entries : []
   const totalBytes = entries.reduce((sum, entry) => sum + libraryEntryBytes(entry), 0)
+  const usedShare = Math.min(1, totalBytes / limitBytes)
+  const limitOptions = LIBRARY_LIMIT_OPTIONS_BYTES.includes(limitBytes)
+    ? LIBRARY_LIMIT_OPTIONS_BYTES
+    : [...LIBRARY_LIMIT_OPTIONS_BYTES, limitBytes].sort((a, b) => a - b)
 
   return (
     <section className="panel panel-library" data-onboarding-target={onboardingTarget}>
@@ -219,6 +258,38 @@ export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
         <button type="button" className="library-delete" onClick={purge} disabled={entries.length === 0}>
           {intl.formatMessage({ id: 'library.purge' })}
         </button>
+      </div>
+
+      <div className={usedShare >= 0.9 ? 'library-limit is-near-full' : 'library-limit'}>
+        <div className="library-limit-head">
+          <p>
+            {intl.formatMessage(
+              { id: 'library.limit.usage' },
+              { used: formatBytes(totalBytes), limit: formatBytes(limitBytes) },
+            )}
+          </p>
+          <label>
+            {intl.formatMessage({ id: 'library.limit.label' })}
+            <select value={limitBytes} onChange={(event) => changeLimit(Number(event.target.value))}>
+              {limitOptions.map((bytes) => (
+                <option key={bytes} value={bytes}>
+                  {formatBytes(bytes)}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div
+          className="library-limit-bar"
+          role="progressbar"
+          aria-label={intl.formatMessage({ id: 'library.limit.label' })}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={Math.round(usedShare * 100)}
+        >
+          <span style={{ width: `${usedShare * 100}%` }} />
+        </div>
+        <p className="library-limit-note">{intl.formatMessage({ id: 'library.limit.note' })}</p>
       </div>
 
       {actionError && (

@@ -82,7 +82,7 @@ export interface ConvertState {
 export type LibrarySaveState =
   | { status: 'idle' }
   | { status: 'saving' }
-  | { status: 'saved'; id: string }
+  | { status: 'saved'; id: string; evictedCount: number }
   | { status: 'failed'; detail: string }
 
 export interface ConvertActions {
@@ -384,8 +384,8 @@ export function useConversionSession(): ConvertContextValue {
     lastLibraryIdRef.current = id
     setLibrarySave({ status: 'saving' })
     void saveLibraryEntry(buildLibraryEntry(id, layout, artifacts, sourceName, complete))
-      .then(() => {
-        if (lastLibraryIdRef.current === id) setLibrarySave({ status: 'saved', id })
+      .then(({ evictedCount }) => {
+        if (lastLibraryIdRef.current === id) setLibrarySave({ status: 'saved', id, evictedCount })
       })
       .catch((saveError: unknown) => {
         if (lastLibraryIdRef.current !== id) return

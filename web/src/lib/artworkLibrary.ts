@@ -165,11 +165,75 @@ function notifyChanged(): void {
   if (typeof window !== 'undefined') window.dispatchEvent(new Event(LIBRARY_CHANGED_EVENT))
 }
 
-export async function saveLibraryEntry(entry: LibraryEntry): Promise<void> {
+/** The Library keeps at most this many bytes unless the user raises the limit on the Library tab. */
+export const DEFAULT_LIBRARY_LIMIT_BYTES = 500 * 1024 * 1024
+/** Limits offered on the Library tab. */
+export const LIBRARY_LIMIT_OPTIONS_BYTES = [250, 500, 1024, 2048, 5120].map((mb) => mb * 1024 * 1024)
+const LIBRARY_LIMIT_STORAGE_KEY = 'steam-artwork-library-limit-bytes'
+
+export function getLibraryLimitBytes(): number {
+  try {
+    const stored = Number(globalThis.localStorage?.getItem(LIBRARY_LIMIT_STORAGE_KEY))
+    if (Number.isFinite(stored) && stored > 0) return stored
+  } catch {
+    // Storage blocked: use the default.
+  }
+  return DEFAULT_LIBRARY_LIMIT_BYTES
+}
+
+export function setLibraryLimitBytes(bytes: number): void {
+  try {
+    globalThis.localStorage?.setItem(LIBRARY_LIMIT_STORAGE_KEY, String(bytes))
+  } catch {
+    // Storage blocked: the limit lasts only for this page.
+  }
+}
+
+/**
+ * The oldest entries to delete so the rest fit in `limitBytes`. `keepId` (the conversion just saved)
+ * is never picked, even when it alone is over the limit.
+ */
+export function pickEntriesToEvict(entries: LibraryEntry[], limitBytes: number, keepId?: string): LibraryEntry[] {
+  let total = entries.reduce((sum, entry) => sum + libraryEntryBytes(entry), 0)
+  const oldestFirst = [...entries].sort((a, b) => a.createdAt - b.createdAt)
+  const evicted: LibraryEntry[] = []
+  for (const entry of oldestFirst) {
+    if (total <= limitBytes) break
+    if (entry.id === keepId) continue
+    evicted.push(entry)
+    total -= libraryEntryBytes(entry)
+  }
+  return evicted
+}
+
+/** Deletes the oldest entries until the Library fits in the limit. Returns how many were deleted. */
+export async function enforceLibraryLimit(limitBytes = getLibraryLimitBytes(), keepId?: string): Promise<number> {
+  const evicted = pickEntriesToEvict(await listLibraryEntries(), limitBytes, keepId)
+  if (evicted.length === 0) return 0
+  await withStore('readwrite', (store) => {
+    for (const entry of evicted) store.delete(entry.id)
+  })
+  notifyChanged()
+  return evicted.length
+}
+
+export interface LibrarySaveResult {
+  /** Older conversions deleted to stay under the size limit. */
+  evictedCount: number
+}
+
+export async function saveLibraryEntry(entry: LibraryEntry): Promise<LibrarySaveResult> {
   await withStore('readwrite', (store) => {
     store.put(entry)
   })
+  let evictedCount = 0
+  try {
+    evictedCount = await enforceLibraryLimit(getLibraryLimitBytes(), entry.id)
+  } catch {
+    // The entry is saved; trimming can happen on the next save.
+  }
   notifyChanged()
+  return { evictedCount }
 }
 
 /** All saved conversions, newest first. */

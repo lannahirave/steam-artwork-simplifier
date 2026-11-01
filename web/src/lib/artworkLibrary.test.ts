@@ -7,6 +7,7 @@ import {
   libraryEntryArtifacts,
   libraryEntryBytes,
   libraryEntryLayout,
+  pickEntriesToEvict,
 } from './artworkLibrary'
 
 function artifact(name: string, extra: Partial<ConversionArtifact> = {}): ConversionArtifact {
@@ -72,5 +73,27 @@ describe('library ids', () => {
     expect(isLibraryId(null)).toBe(false)
     expect(isLibraryId('short')).toBe(false)
     expect(isLibraryId('abcdefghijklmnop/../x')).toBe(false)
+  })
+})
+
+describe('pickEntriesToEvict', () => {
+  function sized(id: string, createdAt: number, bytes: number) {
+    const file = artifact(`${id}.gif`, { blob: new Blob([new Uint8Array(bytes)], { type: 'image/gif' }) })
+    return buildLibraryEntry(id.padEnd(16, 'x'), layout, [file], id, true, createdAt)
+  }
+
+  it('picks nothing when the Library fits', () => {
+    expect(pickEntriesToEvict([sized('a', 1, 40), sized('b', 2, 40)], 100)).toEqual([])
+  })
+
+  it('picks the oldest entries until the rest fit', () => {
+    const entries = [sized('new', 3, 40), sized('old', 1, 40), sized('mid', 2, 40)]
+    expect(pickEntriesToEvict(entries, 50).map((entry) => entry.sourceName)).toEqual(['old', 'mid'])
+  })
+
+  it('never picks the entry just saved, even when it alone is over the limit', () => {
+    const big = sized('big', 1, 500)
+    const evicted = pickEntriesToEvict([big, sized('other', 2, 10)], 100, big.id)
+    expect(evicted.map((entry) => entry.sourceName)).toEqual(['other'])
   })
 })

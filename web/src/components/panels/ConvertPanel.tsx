@@ -14,11 +14,13 @@ import { MemoryDebugPanel } from './MemoryDebugPanel'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
+  /** Switches to the Library tab. */
+  onOpenLibrary?: () => void
 }
 
 export function ConvertPanel(props: ConvertPanelProps) {
   const intl = useIntl()
-  const { onboardingTarget } = props
+  const { onboardingTarget, onOpenLibrary } = props
   const { state, actions, meta } = useConvertContext()
   const [copiedSection, setCopiedSection] = useState<'progress' | 'diagnostics' | null>(null)
   const {
@@ -667,6 +669,33 @@ export function ConvertPanel(props: ConvertPanelProps) {
             <p className="result-timing">
               {intl.formatMessage({ id: 'convert.outputReady' }, { time: formatElapsed(lastElapsedMs) })}
             </p>
+          )}
+          {(librarySave.status === 'saving' || librarySave.status === 'saved') && (
+            <div className="library-saved-callout" role="status">
+              <span className="library-saved-icon" aria-hidden="true">
+                {librarySave.status === 'saved' ? '✓' : '…'}
+              </span>
+              <div className="library-saved-text">
+                <p>
+                  {intl.formatMessage({
+                    id: librarySave.status === 'saved' ? 'convert.library.saved' : 'convert.library.saving',
+                  })}{' '}
+                  {librarySave.status === 'saved' && onOpenLibrary && (
+                    <button type="button" className="inline-link" onClick={onOpenLibrary}>
+                      {intl.formatMessage({ id: 'convert.library.open' })}
+                    </button>
+                  )}
+                </p>
+                {librarySave.status === 'saved' && librarySave.evictedCount > 0 && (
+                  <p className="library-saved-note">
+                    {intl.formatMessage(
+                      { id: 'convert.library.evicted' },
+                      { count: librarySave.evictedCount },
+                    )}
+                  </p>
+                )}
+              </div>
+            </div>
           )}
           <div className="results-actions-row">
             <button onClick={onDownloadZip}>
