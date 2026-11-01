@@ -36,7 +36,7 @@ describe('preset defaults', () => {
     expect(resolved.parts).toBe(2)
     expect(resolved.partWidth).toBe(506)
     expect(showcase.maxGifKb).toBe(5000)
-    expect(showcase.targetGifKb).toBe(4500)
+    expect(showcase.targetGifKb).toBe(4800)
   })
 
   it('restores workshop parts and width after visiting showcase', () => {

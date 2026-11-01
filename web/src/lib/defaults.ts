@@ -27,7 +27,7 @@ export const DEFAULTS = {
     rows: 1,
     partWidth: 150,
     maxGifKb: 5000,
-    targetGifKb: 4500,
+    targetGifKb: 4800,
   },
   featured: {
     width: 630,
@@ -42,7 +42,7 @@ export const DEFAULTS = {
   showcase: {
     splitWidths: [506, 100],
     maxGifKb: 5000,
-    targetGifKb: 4500,
+    targetGifKb: 4800,
   },
   disableOptimizations: false,
   optimizationMode: 'hybrid',
