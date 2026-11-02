@@ -686,14 +686,14 @@ textarea {
 .onboarding-skip,
 .onboarding-secondary,
 .onboarding-primary {
-  min-height: 2.25rem;
-  padding: 0.55rem 0.9rem;
+  min-height: 2.75rem;
+  padding: 0.6rem 1rem;
   font-size: 0.9rem;
 }
 
 .onboarding-skip {
   flex: none;
-  margin: -0.35rem -0.5rem 0 0;
+  margin: -0.6rem -0.6rem 0 0;
   color: var(--ink-muted);
   background: transparent;
 }
@@ -703,8 +703,9 @@ textarea {
   color: var(--ink-inverse);
 }
 
-.onboarding-primary:hover {
+.onboarding-primary:not(:disabled):hover {
   background: var(--apple-blue-dark);
+  color: var(--ink-inverse);
 }
 
 .config-group,
@@ -1438,6 +1439,7 @@ button:focus-visible,
 input[type='file'] {
   padding: 0.45rem;
   overflow: hidden;
+  font-size: 0.9rem;
 }
 
 input[type='file']::file-selector-button {
@@ -1447,7 +1449,17 @@ input[type='file']::file-selector-button {
   border-radius: var(--radius-pill);
   padding: 0.45rem 0.9rem;
   margin-right: 0.7rem;
+  font-size: 1rem;
   cursor: pointer;
+}
+
+/* Phones: a tighter picker button leaves room for the "No file chosen" / filename text. */
+@media (max-width: 480px) {
+  input[type='file']::file-selector-button {
+    padding: 0.45rem 0.75rem;
+    margin-right: 0.5rem;
+    font-size: 0.9rem;
+  }
 }
 
 .field-input-row {
@@ -1602,7 +1614,7 @@ button:disabled {
   background: #0077ed;
 }
 
-.hero-primary:hover {
+.hero-primary:not(:disabled):hover {
   background: #0077ed;
 }
 
