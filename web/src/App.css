@@ -679,8 +679,8 @@ textarea {
 .overview-band {
   background: var(--page-muted);
   color: var(--ink);
-  padding-top: clamp(2.5rem, 5vw, 4rem);
-  padding-bottom: clamp(2.5rem, 5vw, 4rem);
+  padding-top: 1rem;
+  padding-bottom: 1rem;
   display: grid;
   justify-items: start;
 }
@@ -771,7 +771,7 @@ textarea {
 
 .workspace-frame {
   background: var(--page-muted);
-  padding-top: clamp(2.5rem, 5vw, 4rem);
+  padding-top: 1rem;
   padding-bottom: clamp(3rem, 6vw, 5rem);
 }
 
