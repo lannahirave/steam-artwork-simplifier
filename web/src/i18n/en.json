@@ -393,5 +393,8 @@
   "convert.status.failed": "Failed: {message}",
   "convert.status.finishingActiveWorkers": "Finishing active worker tasks...",
   "convert.status.cancelled": "Conversion cancelled.",
-  "convert.error.unsupportedSource": "Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp)."
+  "convert.error.unsupportedSource": "Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
+  "app.nav.primary": "Primary",
+  "app.overview.label": "Workbench overview",
+  "onboarding.label": "Onboarding guide"
 }

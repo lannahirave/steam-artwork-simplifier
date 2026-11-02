@@ -38,6 +38,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
   const [onboardingRun, setOnboardingRun] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
   const headerRef = useRef<HTMLElement | null>(null)
+  const menuToggleRef = useRef<HTMLButtonElement | null>(null)
   const activeTab = TAB_DETAILS[tab]
 
   // The narrow-screen menu closes on Escape or on a tap anywhere outside the header.
@@ -48,6 +49,10 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
     const closeOnEscape = (event: KeyboardEvent): void => {
       if (event.key === 'Escape') {
+        // Focus was inside the panel that is about to hide; hand it back to the button.
+        if (document.getElementById('global-nav-menu')?.contains(document.activeElement)) {
+          menuToggleRef.current?.focus()
+        }
         setMenuOpen(false)
       }
     }
@@ -126,6 +131,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
           </button>
           {/* Shown at 980px and below, where the tabs and settings fold into one menu. */}
           <button
+            ref={menuToggleRef}
             type="button"
             className="nav-menu-toggle"
             aria-expanded={menuOpen}
@@ -144,7 +150,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
             </svg>
           </button>
           <div id="global-nav-menu" className={menuOpen ? 'global-nav-menu open' : 'global-nav-menu'}>
-            <nav className="global-nav-links" aria-label="Primary">
+            <nav className="global-nav-links" aria-label={intl.formatMessage({ id: 'app.nav.primary' })}>
               {Object.entries(TAB_DETAILS).map(([key, item]) => (
                 <button
                   key={key}
@@ -197,6 +203,14 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
       </header>
 
       <main className="shell">
+        {/* First in <main> so the tour card is the next Tab stop after the header. */}
+        <OnboardingTour
+          key={onboardingRun}
+          open={showOnboarding}
+          onOpenChange={setShowOnboarding}
+          onSelectTab={setTab}
+        />
+
         <section className="hero">
           <div className="hero-copy">
             <div className="hero-meta-row">
@@ -226,7 +240,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
           </div>
         </section>
 
-        <section className="overview-band" aria-label="Workbench overview">
+        <section className="overview-band" aria-label={intl.formatMessage({ id: 'app.overview.label' })}>
           <div className="overview-copy">
             <p className="spotlight-eyebrow">{intl.formatMessage({ id: activeTab.eyebrow })}</p>
             <h2>{intl.formatMessage({ id: activeTab.label })}</h2>
@@ -246,13 +260,6 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
             </PatchToolsProvider>
           </ConvertProvider>
         </section>
-
-        <OnboardingTour
-          key={onboardingRun}
-          open={showOnboarding}
-          onOpenChange={setShowOnboarding}
-          onSelectTab={setTab}
-        />
 
         {trademarkDisclaimer}
       </main>

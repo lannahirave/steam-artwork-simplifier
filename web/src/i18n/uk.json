@@ -393,5 +393,8 @@
   "convert.status.failed": "Помилка: {message}",
   "convert.status.finishingActiveWorkers": "Завершення активних worker tasks...",
   "convert.status.cancelled": "Конвертацію скасовано.",
-  "convert.error.unsupportedSource": "Непідтримуваний вихідний файл. Використайте відео або зображення (.gif, .png, .webp, .jpg, .jpeg, .bmp)."
+  "convert.error.unsupportedSource": "Непідтримуваний вихідний файл. Використайте відео або зображення (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
+  "app.nav.primary": "Основна навігація",
+  "app.overview.label": "Огляд робочого простору",
+  "onboarding.label": "Посібник для початку"
 }

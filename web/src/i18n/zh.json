@@ -393,5 +393,8 @@
   "convert.status.failed": "失败：{message}",
   "convert.status.finishingActiveWorkers": "正在完成活动工作进程的任务...",
   "convert.status.cancelled": "转换已取消。",
-  "convert.error.unsupportedSource": "不支持的源文件。请使用视频文件或图片（.gif、.png、.webp、.jpg、.jpeg、.bmp）。"
+  "convert.error.unsupportedSource": "不支持的源文件。请使用视频文件或图片（.gif、.png、.webp、.jpg、.jpeg、.bmp）。",
+  "app.nav.primary": "主导航",
+  "app.overview.label": "工作台概览",
+  "onboarding.label": "入门指南"
 }

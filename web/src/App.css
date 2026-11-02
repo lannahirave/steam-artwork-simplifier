@@ -449,6 +449,23 @@ textarea {
   backdrop-filter: saturate(180%) blur(20px);
 }
 
+/* The card takes focus when it opens so screen readers read it; the step text is the cue, not a ring. */
+.onboarding-card:focus {
+  outline: none;
+}
+
+.visually-hidden {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 /* Post-conversion feedback nudge. Dismissible, out of the way of the results
    area, and stacked below the onboarding overlay so the tour stays on top. */
 .feedback-prompt {

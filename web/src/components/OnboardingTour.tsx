@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import { useIntl } from 'react-intl'
 import type { TabKey } from '../agents/appAgents'
 import type { MessageId } from '../i18n/messages'
@@ -74,8 +74,15 @@ export function OnboardingTour(props: OnboardingTourProps) {
   const intl = useIntl()
   const { open, onOpenChange, onSelectTab } = props
   const [stepIndex, setStepIndex] = useState(0)
+  /** Read out by the live region when the step changes; empty on open, where focus does the job. */
+  const [announcement, setAnnouncement] = useState('')
   const cardRef = useRef<HTMLElement | null>(null)
   const spotlightRef = useRef<HTMLDivElement | null>(null)
+  const primaryRef = useRef<HTMLButtonElement | null>(null)
+  /** Whatever had focus when the tour opened (usually Help), so Skip and Escape can hand it back. */
+  const openerRef = useRef<HTMLElement | null>(null)
+  const titleId = useId()
+  const bodyId = useId()
   const step = ONBOARDING_STEPS[stepIndex]
   const isFirst = stepIndex === 0
   const isLast = stepIndex === ONBOARDING_STEPS.length - 1
@@ -87,9 +94,30 @@ export function OnboardingTour(props: OnboardingTourProps) {
     }
   }, [open, onSelectTab])
 
+  // Opening moves focus into the card, which reads its title and text to screen readers.
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const active = document.activeElement
+    // Effects can run twice (StrictMode); never record the card itself as the opener.
+    if (active instanceof HTMLElement && active !== document.body && !cardRef.current?.contains(active)) {
+      openerRef.current = active
+    }
+    cardRef.current?.focus({ preventScroll: true })
+  }, [open])
+
+  function restoreFocus(): void {
+    const opener = openerRef.current
+    if (opener?.isConnected && opener.getClientRects().length > 0) {
+      opener.focus({ preventScroll: true })
+    }
+  }
+
   function close(): void {
     storeOnboardingComplete()
     onOpenChange(false)
+    restoreFocus()
   }
 
   /** Done hands the user straight to the first real action: picking a source file. */
@@ -108,9 +136,11 @@ export function OnboardingTour(props: OnboardingTourProps) {
     }
 
     const closeOnEscape = (event: KeyboardEvent): void => {
-      if (event.key === 'Escape') {
+      // The phone menu handles its own Escape first.
+      if (event.key === 'Escape' && !document.querySelector('.global-nav-menu.open')) {
         storeOnboardingComplete()
         onOpenChange(false)
+        restoreFocus()
       }
     }
 
@@ -172,7 +202,21 @@ export function OnboardingTour(props: OnboardingTourProps) {
   }, [open, onOpenChange, step.target, stepIndex])
 
   function goToStep(next: number): void {
-    setStepIndex(Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, next)))
+    const bounded = Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, next))
+    const backHadFocus = document.activeElement?.classList.contains('onboarding-secondary') ?? false
+    setStepIndex(bounded)
+    setAnnouncement(
+      `${intl.formatMessage(
+        { id: 'onboarding.step' },
+        { current: bounded + 1, total: ONBOARDING_STEPS.length },
+      )}. ${intl.formatMessage({ id: ONBOARDING_STEPS[bounded].title })}. ${intl.formatMessage({
+        id: ONBOARDING_STEPS[bounded].body,
+      })}`,
+    )
+    // Back disappears on the first step; keep keyboard focus in the card instead of losing it.
+    if (bounded === 0 && backHadFocus) {
+      window.requestAnimationFrame(() => primaryRef.current?.focus())
+    }
   }
 
   if (!open) {
@@ -182,14 +226,23 @@ export function OnboardingTour(props: OnboardingTourProps) {
   return (
     <>
       <div ref={spotlightRef} className="onboarding-spotlight" aria-hidden="true" />
-      <aside ref={cardRef} className="onboarding-card" aria-live="polite" aria-label="Onboarding guide">
+      <aside
+        ref={cardRef}
+        className="onboarding-card"
+        tabIndex={-1}
+        aria-label={intl.formatMessage({ id: 'onboarding.label' })}
+        aria-describedby={`${titleId} ${bodyId}`}
+      >
+        <span className="visually-hidden" aria-live="polite">
+          {announcement}
+        </span>
         <div className="onboarding-card-head">
-          <h2>{intl.formatMessage({ id: step.title })}</h2>
+          <h2 id={titleId}>{intl.formatMessage({ id: step.title })}</h2>
           <button type="button" className="onboarding-skip" onClick={close}>
             {intl.formatMessage({ id: 'onboarding.skip' })}
           </button>
         </div>
-        <p>{intl.formatMessage({ id: step.body })}</p>
+        <p id={bodyId}>{intl.formatMessage({ id: step.body })}</p>
         <div className="onboarding-progress" aria-hidden="true">
           {ONBOARDING_STEPS.map((item, index) => (
             <span key={item.target} className={index <= stepIndex ? 'active' : ''} />
@@ -209,6 +262,7 @@ export function OnboardingTour(props: OnboardingTourProps) {
               </button>
             )}
             <button
+              ref={primaryRef}
               type="button"
               className="onboarding-primary"
               onClick={isLast ? finish : () => goToStep(stepIndex + 1)}

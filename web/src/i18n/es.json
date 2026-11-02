@@ -393,5 +393,8 @@
   "convert.status.failed": "Error: {message}",
   "convert.status.finishingActiveWorkers": "Terminando tareas de workers activos...",
   "convert.status.cancelled": "Conversión cancelada.",
-  "convert.error.unsupportedSource": "Archivo de origen no compatible. Usa un archivo de video o imagen (.gif, .png, .webp, .jpg, .jpeg, .bmp)."
+  "convert.error.unsupportedSource": "Archivo de origen no compatible. Usa un archivo de video o imagen (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
+  "app.nav.primary": "Navegación principal",
+  "app.overview.label": "Resumen del área de trabajo",
+  "onboarding.label": "Guía de inicio"
 }

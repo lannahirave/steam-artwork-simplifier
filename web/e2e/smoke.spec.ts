@@ -232,30 +232,34 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   const convertTab = page.getByRole('button', { name: 'Convert', exact: true })
 
   await expect(guide).toBeVisible()
-  await expect(page.getByText('Step 1 of 4')).toBeVisible()
+  await expect(page.getByText('Step 1 of 4', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'Choose where it goes' })).toBeVisible()
   await expect(guide.getByRole('button', { name: 'Back' })).toHaveCount(0)
   await expectSpotlightOn(page, 'preset')
+  // Focus starts in the card, so keyboard and screen reader users land on the tour.
+  await expect(guide).toBeFocused()
 
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 2 of 4')).toBeVisible()
+  await expect(page.getByText('Step 2 of 4', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'Add your clip' })).toBeVisible()
   await expectSpotlightOn(page, 'source')
 
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 3 of 4')).toBeVisible()
+  await expect(page.getByText('Step 3 of 4', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'See it on your profile' })).toBeVisible()
   await expectSpotlightOn(page, 'nav-library')
 
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 4 of 4')).toBeVisible()
+  await expect(page.getByText('Step 4 of 4', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'Upload to Steam' })).toBeVisible()
   await expectSpotlightOn(page, 'nav-steam')
   // The tour points at other tabs but never leaves Convert.
   await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
 
   await guide.getByRole('button', { name: 'Back' }).click()
-  await expect(page.getByText('Step 3 of 4')).toBeVisible()
+  await expect(page.getByText('Step 3 of 4', { exact: true })).toBeVisible()
+  // Each step is announced, not just redrawn.
+  await expect(guide.locator('[aria-live="polite"]')).toContainText('Step 3 of 4. See it on your profile.')
   await guide.getByRole('button', { name: 'Next' }).click()
 
   // Done lands on the first real action: the source file picker.
@@ -270,10 +274,12 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: 'Help', exact: true }).click()
   await expect(guide).toBeVisible()
-  await expect(page.getByText('Step 1 of 4')).toBeVisible()
+  await expect(page.getByText('Step 1 of 4', { exact: true })).toBeVisible()
   await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
   await guide.getByRole('button', { name: 'Skip' }).click()
   await expect(guide).toBeHidden()
+  // Skip hands focus back to the Help button that opened the tour.
+  await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeFocused()
 
   await page.reload()
   await expect(guide).toBeHidden()
@@ -282,6 +288,7 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await expect(guide).toBeVisible()
   await page.keyboard.press('Escape')
   await expect(guide).toBeHidden()
+  await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeFocused()
 })
 
 test('folds the tabs and settings into a menu on narrow screens', async ({ page }) => {
@@ -307,6 +314,12 @@ test('folds the tabs and settings into a menu on narrow screens', async ({ page 
   await toggle.click()
   await page.keyboard.press('Escape')
   await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+  // Escape from inside the panel returns focus to the menu button instead of dropping it.
+  await toggle.click()
+  await page.getByRole('button', { name: 'Help', exact: true }).focus()
+  await page.keyboard.press('Escape')
+  await expect(toggle).toBeFocused()
 
   await toggle.click()
   await page.mouse.click(195, 700)

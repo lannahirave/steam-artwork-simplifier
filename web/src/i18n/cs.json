@@ -393,5 +393,8 @@
   "convert.status.failed": "Selhalo: {message}",
   "convert.status.finishingActiveWorkers": "Dokončuji aktivní worker tasks...",
   "convert.status.cancelled": "Převod zrušen.",
-  "convert.error.unsupportedSource": "Nepodporovaný zdrojový soubor. Použijte video nebo obrázek (.gif, .png, .webp, .jpg, .jpeg, .bmp)."
+  "convert.error.unsupportedSource": "Nepodporovaný zdrojový soubor. Použijte video nebo obrázek (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
+  "app.nav.primary": "Hlavní navigace",
+  "app.overview.label": "Přehled pracovní plochy",
+  "onboarding.label": "Úvodní průvodce"
 }
