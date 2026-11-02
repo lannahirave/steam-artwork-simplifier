@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { useIntl } from 'react-intl'
 import './App.css'
 import {
@@ -36,14 +36,48 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
     () => !getStoredOnboardingComplete(),
   )
   const [onboardingRun, setOnboardingRun] = useState(0)
+  const [menuOpen, setMenuOpen] = useState(false)
+  const headerRef = useRef<HTMLElement | null>(null)
   const activeTab = TAB_DETAILS[tab]
 
+  // The narrow-screen menu closes on Escape or on a tap anywhere outside the header.
+  useEffect(() => {
+    if (!menuOpen) {
+      return
+    }
+
+    const closeOnEscape = (event: KeyboardEvent): void => {
+      if (event.key === 'Escape') {
+        setMenuOpen(false)
+      }
+    }
+    const closeOnOutsidePointer = (event: PointerEvent): void => {
+      if (!headerRef.current?.contains(event.target as Node)) {
+        setMenuOpen(false)
+      }
+    }
+
+    window.addEventListener('keydown', closeOnEscape)
+    document.addEventListener('pointerdown', closeOnOutsidePointer)
+    return () => {
+      window.removeEventListener('keydown', closeOnEscape)
+      document.removeEventListener('pointerdown', closeOnOutsidePointer)
+    }
+  }, [menuOpen])
+
+  function selectTab(next: TabKey): void {
+    setTab(next)
+    setMenuOpen(false)
+  }
+
   function reopenOnboarding(): void {
+    setMenuOpen(false)
     setOnboardingRun((current) => current + 1)
     setShowOnboarding(true)
   }
 
   function openConvertWorkspace(): void {
+    setMenuOpen(false)
     setTab('convert')
     document.getElementById('workspace')?.scrollIntoView({
       behavior: 'smooth',
@@ -85,57 +119,79 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
   return (
     <div className="apple-app">
-      <header className="global-nav">
+      <header ref={headerRef} className="global-nav">
         <div className="global-nav-inner">
           <button type="button" className="global-nav-brand" onClick={openConvertWorkspace}>
             {intl.formatMessage({ id: 'app.brand' })}
           </button>
-          <nav className="global-nav-links" aria-label="Primary">
-            {Object.entries(TAB_DETAILS).map(([key, item]) => (
-              <button
-                key={key}
-                type="button"
-                className={tab === key ? 'global-nav-link active' : 'global-nav-link'}
-                aria-pressed={tab === key}
-                onClick={() => setTab(key as TabKey)}
-              >
-                {intl.formatMessage({ id: item.label })}
-              </button>
-            ))}
-          </nav>
-          <div className="global-nav-actions">
-            <span className="nav-version">V{APP_VERSION}</span>
-            <select
-              className="nav-language"
-              aria-label={intl.formatMessage({ id: 'app.nav.language' })}
-              value={locale}
-              onChange={(event) => onLocaleChange(event.target.value as AppLocale)}
-            >
-              {SUPPORTED_LOCALES.map((item) => (
-                <option key={item} value={item}>
-                  {localeLabels[item]}
-                </option>
+          {/* Shown at 980px and below, where the tabs and settings fold into one menu. */}
+          <button
+            type="button"
+            className="nav-menu-toggle"
+            aria-expanded={menuOpen}
+            aria-controls="global-nav-menu"
+            aria-label={intl.formatMessage({ id: menuOpen ? 'app.nav.menuClose' : 'app.nav.menu' })}
+            data-onboarding-target="nav-menu"
+            onClick={() => setMenuOpen((open) => !open)}
+          >
+            <span className="nav-menu-current">{intl.formatMessage({ id: activeTab.label })}</span>
+            <svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true" focusable="false">
+              {menuOpen ? (
+                <path d="M5 5l10 10M15 5L5 15" />
+              ) : (
+                <path d="M3 6h14M3 10h14M3 14h14" />
+              )}
+            </svg>
+          </button>
+          <div id="global-nav-menu" className={menuOpen ? 'global-nav-menu open' : 'global-nav-menu'}>
+            <nav className="global-nav-links" aria-label="Primary">
+              {Object.entries(TAB_DETAILS).map(([key, item]) => (
+                <button
+                  key={key}
+                  type="button"
+                  className={tab === key ? 'global-nav-link active' : 'global-nav-link'}
+                  aria-pressed={tab === key}
+                  data-onboarding-target={`nav-${key}`}
+                  onClick={() => selectTab(key as TabKey)}
+                >
+                  {intl.formatMessage({ id: item.label })}
+                </button>
               ))}
-            </select>
-            <button
-              type="button"
-              className="nav-theme"
-              aria-label={intl.formatMessage({
-                id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
-              })}
-              title={intl.formatMessage({
-                id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
-              })}
-              onClick={onThemeToggle}
-            >
-              <ThemeIcon theme={theme} />
-            </button>
-            <button type="button" className="nav-help" onClick={reopenOnboarding}>
-              {intl.formatMessage({ id: 'app.nav.help' })}
-            </button>
-            <a className="nav-source" href="https://github.com/lannahirave/steam-artwork-simplifier">
-              {intl.formatMessage({ id: 'app.nav.github' })}
-            </a>
+            </nav>
+            <div className="global-nav-actions">
+              <span className="nav-version">V{APP_VERSION}</span>
+              <select
+                className="nav-language"
+                aria-label={intl.formatMessage({ id: 'app.nav.language' })}
+                value={locale}
+                onChange={(event) => onLocaleChange(event.target.value as AppLocale)}
+              >
+                {SUPPORTED_LOCALES.map((item) => (
+                  <option key={item} value={item}>
+                    {localeLabels[item]}
+                  </option>
+                ))}
+              </select>
+              <button
+                type="button"
+                className="nav-theme"
+                aria-label={intl.formatMessage({
+                  id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
+                })}
+                title={intl.formatMessage({
+                  id: theme === 'dark' ? 'app.nav.theme.toLight' : 'app.nav.theme.toDark',
+                })}
+                onClick={onThemeToggle}
+              >
+                <ThemeIcon theme={theme} />
+              </button>
+              <button type="button" className="nav-help" onClick={reopenOnboarding}>
+                {intl.formatMessage({ id: 'app.nav.help' })}
+              </button>
+              <a className="nav-source" href="https://github.com/lannahirave/steam-artwork-simplifier">
+                {intl.formatMessage({ id: 'app.nav.github' })}
+              </a>
+            </div>
           </div>
         </div>
       </header>

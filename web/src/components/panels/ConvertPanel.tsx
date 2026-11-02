@@ -22,7 +22,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
   const intl = useIntl()
   const { onboardingTarget, onOpenLibrary } = props
   const { state, actions, meta } = useConvertContext()
-  const [copiedSection, setCopiedSection] = useState<'progress' | 'diagnostics' | null>(null)
+  const [copiedSection, setCopiedSection] = useState<'progress' | null>(null)
   const {
     config,
     sourceFile,
@@ -87,7 +87,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     : undefined
   const advancedOverrideCount = countAdvancedConfigOverrides(config)
 
-  async function copyText(section: 'progress' | 'diagnostics', text: string): Promise<void> {
+  async function copyText(section: 'progress', text: string): Promise<void> {
     if (!text) {
       return
     }
@@ -128,15 +128,6 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </p>
               <h3>{intl.formatMessage({ id: 'convert.browserSupport.title' })}</h3>
             </div>
-            <button
-              type="button"
-              className="inline-action"
-              onClick={() => void copyText('diagnostics', diagnosticText)}
-            >
-              {intl.formatMessage({
-                id: copiedSection === 'diagnostics' ? 'convert.copied' : 'convert.browserSupport.copy',
-              })}
-            </button>
           </div>
           <p>{browserSupport.summary}</p>
           <ul>
@@ -160,6 +151,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
           <div className="form-grid form-grid-source">
             <label
               className="field-preset"
+              data-onboarding-target="preset"
               title="Select output mode: workshop splits into 5 equal slices, showcase splits into 506px + 100px, featured creates one wide GIF."
             >
               {intl.formatMessage({ id: 'convert.preset' })}
@@ -256,7 +248,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
               </>
             )}
 
-            <label className="field-source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
+            <label className="field-source" data-onboarding-target="source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
               {intl.formatMessage({ id: 'convert.sourceFile' })}
               <input
                 type="file"

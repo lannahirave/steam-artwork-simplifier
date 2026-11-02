@@ -221,6 +221,15 @@ textarea {
   white-space: nowrap;
 }
 
+/* Wide screens lay the tabs and settings out inline; the wrapper only exists for the narrow menu. */
+.global-nav-menu {
+  display: contents;
+}
+
+.nav-menu-toggle {
+  display: none;
+}
+
 .nav-version {
   color: rgba(255, 255, 255, 0.58);
 }
@@ -595,24 +604,37 @@ textarea {
     height 260ms ease;
 }
 
+/* The tour layers are direct children of .shell; keep its page gutters off the highlight box. */
+.shell > .onboarding-spotlight {
+  padding: 0;
+}
+
 .onboarding-card-head,
-.onboarding-actions {
+.onboarding-actions,
+.onboarding-buttons {
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 0.75rem;
 }
 
-.onboarding-kicker {
+.onboarding-card-head {
+  align-items: flex-start;
+}
+
+.onboarding-buttons {
+  gap: 0.5rem;
+}
+
+.onboarding-count {
   color: var(--ink-muted);
-  font-size: 0.75rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
 }
 
 .onboarding-card h2 {
-  margin: 0.65rem 0 0;
+  margin: 0.2rem 0 0;
+  text-wrap: balance;
   font-family: var(--font-display);
   font-size: 1.45rem;
   line-height: 1.1;
@@ -628,9 +650,10 @@ textarea {
 
 .onboarding-progress {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(0, 1fr);
   gap: 0.35rem;
-  margin: 1rem 0;
+  margin: 1rem 0 0.85rem;
 }
 
 .onboarding-progress span {
@@ -652,6 +675,8 @@ textarea {
 }
 
 .onboarding-skip {
+  flex: none;
+  margin: -0.35rem -0.5rem 0 0;
   color: var(--ink-muted);
   background: transparent;
 }
@@ -1379,6 +1404,7 @@ button:focus-visible,
 }
 
 .global-nav-brand:focus-visible,
+.nav-menu-toggle:focus-visible,
 .global-nav-link:focus-visible,
 .nav-help:focus-visible,
 .nav-source:focus-visible {
@@ -1667,12 +1693,17 @@ button:disabled {
 }
 
 .browser-support-warning {
+  /* This card's accent is orange in both themes; the app-wide --warning stays as it is. */
+  --warning: #ff9800;
+  --warning-rgb: 255 152 0;
+  /* #ff9800 is too light for small text on the light card (about 2:1), so text uses a darker orange. */
+  --warning-text: #a85600;
   margin: 1rem 0 1.2rem;
   padding: 1rem;
   border: 1px solid rgb(var(--warning-rgb) / 0.34);
   border-radius: var(--radius-card);
   background:
-    linear-gradient(180deg, rgba(255, 190, 92, 0.16), rgb(var(--surface-rgb) / 0.86));
+    linear-gradient(180deg, rgb(var(--warning-rgb) / 0.14), rgb(var(--surface-rgb) / 0.86));
   color: var(--ink);
 }
 
@@ -1690,7 +1721,7 @@ button:disabled {
 }
 
 .browser-support-kicker {
-  color: var(--warning);
+  color: var(--warning-text);
   font-size: 0.72rem;
   font-weight: 700;
   letter-spacing: 0;
@@ -1718,8 +1749,6 @@ button:disabled {
 .browser-support-warning li {
   display: grid;
   gap: 0.12rem;
-  padding-left: 0.85rem;
-  border-left: 3px solid rgb(var(--warning-rgb) / 0.38);
 }
 
 .browser-support-warning li strong {
@@ -1731,13 +1760,17 @@ button:disabled {
   font-size: 0.9rem;
 }
 
+:root[data-theme='dark'] .browser-support-warning {
+  --warning-text: #ff9800;
+}
+
 .browser-support-details {
   margin-top: 0.9rem;
 }
 
 .browser-support-details summary {
   cursor: pointer;
-  color: var(--warning);
+  color: var(--warning-text);
   font-weight: 700;
 }
 
@@ -2329,28 +2362,111 @@ button:disabled {
 }
 
 @media (max-width: 980px) {
-  /* The header links are the only tab navigation, so on narrow screens they move to a scrollable row. */
+  /* Narrow screens: one header row (brand + menu button). The tabs and settings fold into a panel
+     that drops down under the header. */
   .global-nav {
-    height: auto;
+    height: 52px;
   }
 
-  .global-nav-inner {
-    flex-wrap: wrap;
-    row-gap: 0.35rem;
-    padding: 0.6rem 0 0.45rem;
+  .global-nav-brand {
+    min-width: 0;
+    min-height: 44px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .nav-menu-toggle {
+    appearance: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex: none;
+    min-height: 44px;
+    margin-right: -0.35rem;
+    padding: 0 0.35rem 0 0.75rem;
+    border: 0;
+    border-radius: var(--radius-pill);
+    background: transparent;
+    color: rgba(255, 255, 255, 0.88);
+    font-size: 1rem;
+    cursor: pointer;
+  }
+
+  .nav-menu-current {
+    color: rgba(255, 255, 255, 0.6);
+  }
+
+  .nav-menu-toggle svg {
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 1.7;
+    stroke-linecap: round;
+  }
+
+  .global-nav-menu {
+    display: none;
+  }
+
+  /* Anchored to the sticky header, full width, scrolls on its own if the screen is short. */
+  .global-nav-menu.open {
+    position: absolute;
+    top: 100%;
+    right: 0;
+    left: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-height: calc(100dvh - 52px);
+    overflow-y: auto;
+    padding: 0.25rem max(var(--shell-inline), calc((100vw - var(--content-width)) / 2)) 1.25rem;
+    border-top: 1px solid rgba(255, 255, 255, 0.08);
+    background: #0b0b0c;
+    box-shadow: 0 18px 40px rgba(0, 0, 0, 0.28);
   }
 
   .global-nav-links {
-    order: 3;
-    flex: 1 0 100%;
-    justify-content: flex-start;
-    overflow-x: auto;
-    scrollbar-width: none;
-    padding-bottom: 0.15rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0;
   }
 
   .global-nav-link {
-    white-space: nowrap;
+    min-height: 48px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 0;
+    font-size: 1.06rem;
+    text-align: left;
+  }
+
+  .global-nav-link::after {
+    display: none;
+  }
+
+  .global-nav-link.active {
+    font-weight: 600;
+  }
+
+  /* Language gets its own full-width row; theme, Help and GitHub share the next, version at the end. */
+  .global-nav-actions {
+    flex-wrap: wrap;
+    gap: 0.5rem 1.25rem;
+  }
+
+  .global-nav-actions .nav-language {
+    flex: 1 1 100%;
+    min-height: 44px;
+  }
+
+  .global-nav-actions .nav-version {
+    order: 1;
+    margin-left: auto;
+  }
+
+  .nav-help,
+  .nav-source {
+    display: inline-flex;
+    align-items: center;
+    min-height: 44px;
   }
 }
 
@@ -2397,20 +2513,9 @@ button:disabled {
   .download-row,
   .results-actions-row,
   .output-list li,
-  .field-input-row,
-  .global-nav-inner {
+  .field-input-row {
     flex-direction: column;
     align-items: stretch;
-  }
-
-  .global-nav {
-    height: auto;
-    padding: 0.75rem 0;
-  }
-
-  .global-nav-actions {
-    justify-content: space-between;
-    flex-wrap: wrap;
   }
 
   .nav-language {

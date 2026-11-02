@@ -43,60 +43,34 @@ async function markOnboardingComplete(page: Page): Promise<void> {
   }, ONBOARDING_STORAGE_KEY)
 }
 
-async function expectSpotlightFitsPanel(page: Page, targetName: string): Promise<void> {
-  await expect(page.locator(`[data-onboarding-target="${targetName}"]`)).toBeInViewport()
+/** The spotlight hugs the step's control (8px padding), and the tour card never covers it. */
+async function expectSpotlightOn(page: Page, targetName: string): Promise<void> {
+  const target = page.locator(`[data-onboarding-target="${targetName}"]`)
+  await expect(target).toBeInViewport()
   await expect(page.locator('.onboarding-spotlight')).toHaveCSS('opacity', '1')
 
   await expect.poll(async () => {
-    const metrics = await page.evaluate((name) => {
-      const target = document.querySelector(`[data-onboarding-target="${name}"]`)
-      const spotlight = document.querySelector('.onboarding-spotlight')
-      if (!target || !spotlight) {
-        return null
+    return page.evaluate((name) => {
+      const targetRect = document.querySelector(`[data-onboarding-target="${name}"]`)?.getBoundingClientRect()
+      const spotlightRect = document.querySelector('.onboarding-spotlight')?.getBoundingClientRect()
+      const cardRect = document.querySelector('.onboarding-card')?.getBoundingClientRect()
+      if (!targetRect || !spotlightRect || !cardRect) {
+        return false
       }
 
-      const targetRect = target.getBoundingClientRect()
-      const spotlightRect = spotlight.getBoundingClientRect()
-      const visibleTargetTop = Math.max(56, targetRect.top - 10)
-      const visibleTargetBottom = Math.min(window.innerHeight - 16, targetRect.bottom + 10)
-      return {
-        topDelta: Math.abs(spotlightRect.top - visibleTargetTop),
-        bottomDelta: Math.abs(spotlightRect.bottom - visibleTargetBottom),
-        spotlightHeight: spotlightRect.height,
-      }
+      const hugs =
+        Math.abs(spotlightRect.left - (targetRect.left - 8)) <= 1 &&
+        Math.abs(spotlightRect.top - (targetRect.top - 8)) <= 1 &&
+        Math.abs(spotlightRect.right - (targetRect.right + 8)) <= 1 &&
+        Math.abs(spotlightRect.bottom - (targetRect.bottom + 8)) <= 1
+      const overlaps =
+        cardRect.left < targetRect.right &&
+        cardRect.right > targetRect.left &&
+        cardRect.top < targetRect.bottom &&
+        cardRect.bottom > targetRect.top
+      return hugs && !overlaps
     }, targetName)
-
-    if (!metrics) {
-      return false
-    }
-    return metrics.topDelta <= 1 && metrics.bottomDelta <= 1 && metrics.spotlightHeight >= 96
   }).toBe(true)
-
-  const metrics = await page.evaluate((name) => {
-    const target = document.querySelector(`[data-onboarding-target="${name}"]`)
-    const spotlight = document.querySelector('.onboarding-spotlight')
-    if (!target || !spotlight) {
-      return null
-    }
-
-    const targetRect = target.getBoundingClientRect()
-    const spotlightRect = spotlight.getBoundingClientRect()
-    return {
-      targetHeight: targetRect.height,
-      targetTop: targetRect.top,
-      targetBottom: targetRect.bottom,
-      spotlightHeight: spotlightRect.height,
-      spotlightTop: spotlightRect.top,
-      spotlightBottom: spotlightRect.bottom,
-    }
-  }, targetName)
-
-  expect(metrics).not.toBeNull()
-  const visibleTargetTop = Math.max(56, metrics!.targetTop - 10)
-  const visibleTargetBottom = Math.min(await page.evaluate(() => window.innerHeight - 16), metrics!.targetBottom + 10)
-  expect(metrics!.spotlightTop).toBeCloseTo(visibleTargetTop, 0)
-  expect(metrics!.spotlightBottom).toBeCloseTo(visibleTargetBottom, 0)
-  expect(metrics!.spotlightHeight).toBeGreaterThanOrEqual(96)
 }
 
 test('renders convert tab by default', async ({ page }) => {
@@ -254,70 +228,87 @@ test('shows steam helper snippets', async ({ page }) => {
 
 test('runs onboarding once and allows reopening from help', async ({ page }) => {
   await page.goto('/')
+  const guide = page.getByLabel('Onboarding guide')
+  const convertTab = page.getByRole('button', { name: 'Convert', exact: true })
 
-  await expect(page.getByLabel('Onboarding guide')).toBeVisible()
-  await expect(page.getByText('Step 1 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Take a quick tour' })).toBeVisible()
-  await expect(page.locator('.onboarding-spotlight')).toHaveCSS('opacity', '0')
+  await expect(guide).toBeVisible()
+  await expect(page.getByText('Step 1 of 4')).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Choose where it goes' })).toBeVisible()
+  await expect(guide.getByRole('button', { name: 'Back' })).toHaveCount(0)
+  await expectSpotlightOn(page, 'preset')
 
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 2 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Convert' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Convert', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
-  await expectSpotlightFitsPanel(page, 'convert')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText('Step 2 of 4')).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Add your clip' })).toBeVisible()
+  await expectSpotlightOn(page, 'source')
 
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 3 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Patch Tools' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Patch Tools', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
-  await expectSpotlightFitsPanel(page, 'patch')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText('Step 3 of 4')).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'See it on your profile' })).toBeVisible()
+  await expectSpotlightOn(page, 'nav-library')
 
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 4 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Steam Helpers' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Steam Helpers', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
-  await expectSpotlightFitsPanel(page, 'steam')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText('Step 4 of 4')).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Upload to Steam' })).toBeVisible()
+  await expectSpotlightOn(page, 'nav-steam')
+  // The tour points at other tabs but never leaves Convert.
+  await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
 
-  await page.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 5 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Guides' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Guides', exact: true })).toHaveAttribute(
-    'aria-pressed',
-    'true',
-  )
-  await expectSpotlightFitsPanel(page, 'guides')
+  await guide.getByRole('button', { name: 'Back' }).click()
+  await expect(page.getByText('Step 3 of 4')).toBeVisible()
+  await guide.getByRole('button', { name: 'Next' }).click()
 
-  await page.getByRole('button', { name: 'Skip' }).click()
-  await expect(page.getByLabel('Onboarding guide')).toBeHidden()
+  // Done lands on the first real action: the source file picker.
+  await guide.getByRole('button', { name: 'Done' }).click()
+  await expect(guide).toBeHidden()
+  await expect(page.locator('[data-onboarding-target="source"] input[type="file"]')).toBeFocused()
   await expect(page.evaluate((storageKey) => localStorage.getItem(storageKey), ONBOARDING_STORAGE_KEY)).resolves.toBe(
     'true',
   )
 
+  // Help reopens it from the start, on Convert, even from another tab.
+  await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: 'Help', exact: true }).click()
-  await expect(page.getByLabel('Onboarding guide')).toBeVisible()
-  await expect(page.getByText('Step 1 of 5')).toBeVisible()
-  await expect(page.getByLabel('Onboarding guide').getByRole('heading', { name: 'Take a quick tour' })).toBeVisible()
-  await page.keyboard.press('Escape')
-  await expect(page.getByLabel('Onboarding guide')).toBeHidden()
+  await expect(guide).toBeVisible()
+  await expect(page.getByText('Step 1 of 4')).toBeVisible()
+  await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
+  await guide.getByRole('button', { name: 'Skip' }).click()
+  await expect(guide).toBeHidden()
 
   await page.reload()
-  await expect(page.getByLabel('Onboarding guide')).toBeHidden()
+  await expect(guide).toBeHidden()
 
   await page.getByRole('button', { name: 'Help', exact: true }).click()
-  await expect(page.getByLabel('Onboarding guide')).toBeVisible()
-  await expect(page.getByText('Step 1 of 5')).toBeVisible()
+  await expect(guide).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.getByLabel('Onboarding guide')).toBeHidden()
-  await expect(page.evaluate((storageKey) => localStorage.getItem(storageKey), ONBOARDING_STORAGE_KEY)).resolves.toBe(
-    'true',
-  )
+  await expect(guide).toBeHidden()
+})
+
+test('folds the tabs and settings into a menu on narrow screens', async ({ page }) => {
+  await markOnboardingComplete(page)
+  await page.setViewportSize({ width: 390, height: 844 })
+  await page.goto('/')
+
+  const toggle = page.getByRole('button', { name: 'Menu' })
+  const libraryTab = page.getByRole('button', { name: 'Library', exact: true })
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+  await expect(toggle).toContainText('Convert')
+  await expect(libraryTab).toBeHidden()
+  // The header fits: nothing pushes the page wider than the screen.
+  await expect.poll(() => page.evaluate(() => document.documentElement.scrollWidth)).toBe(390)
+
+  await toggle.click()
+  await expect(page.getByRole('button', { name: 'Close menu' })).toHaveAttribute('aria-expanded', 'true')
+  await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeVisible()
+  await libraryTab.click()
+  await expect(libraryTab).toBeHidden()
+  await expect(toggle).toContainText('Library')
+
+  await toggle.click()
+  await page.keyboard.press('Escape')
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
+
+  await toggle.click()
+  await page.mouse.click(195, 700)
+  await expect(toggle).toHaveAttribute('aria-expanded', 'false')
 })
