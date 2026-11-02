@@ -325,16 +325,6 @@ textarea {
   justify-items: center;
 }
 
-.hero-meta-row {
-  display: flex;
-  align-items: center;
-  gap: 0.65rem;
-  flex-wrap: wrap;
-  justify-content: center;
-}
-
-.hero-eyebrow,
-.spotlight-eyebrow,
 .config-group > h3,
 .guide-badge {
   margin: 0;
@@ -342,24 +332,6 @@ textarea {
   letter-spacing: 0.12em;
   font-size: 0.75rem;
   font-weight: 600;
-}
-
-.hero-eyebrow {
-  color: rgba(255, 255, 255, 0.7);
-}
-
-.hero-chip {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  min-height: 1.75rem;
-  padding: 0.2rem 0.8rem;
-  border-radius: var(--radius-pill);
-  border: 1px solid var(--line-inverse);
-  color: rgba(255, 255, 255, 0.82);
-  font-size: 0.75rem;
-  font-weight: 600;
-  letter-spacing: 0.02em;
 }
 
 .hero h1,
@@ -430,8 +402,8 @@ textarea {
 }
 
 .hero-link-star {
-  color: #ffc83d;
-  font-size: 1.1em;
+  flex: none;
+  fill: #ffc83d;
 }
 
 .onboarding-card {
@@ -621,6 +593,13 @@ textarea {
     height 260ms ease;
 }
 
+/* A 34% dim barely registers on a near-black page; the dark theme needs a deeper one. */
+:root[data-theme='dark'] .onboarding-spotlight {
+  box-shadow:
+    0 0 0 9999px rgba(0, 0, 0, 0.62),
+    0 0 0 6px rgba(41, 151, 255, 0.22);
+}
+
 /* The tour layers are direct children of .shell; keep its page gutters off the highlight box. */
 .shell > .onboarding-spotlight {
   padding: 0;
@@ -733,7 +712,6 @@ textarea {
   gap: 0.8rem;
 }
 
-.spotlight-eyebrow,
 .config-group > h3 {
   color: rgb(var(--ink-rgb) / 0.56);
 }

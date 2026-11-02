@@ -213,9 +213,6 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
         <section className="hero">
           <div className="hero-copy">
-            <div className="hero-meta-row">
-              <span className="hero-chip">V{APP_VERSION}</span>
-            </div>
             <h1>{intl.formatMessage({ id: 'app.brand' })}</h1>
             <p className="hero-summary">{intl.formatMessage({ id: 'app.hero.summary' })}</p>
             <div className="hero-actions">
@@ -228,9 +225,9 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                <span className="hero-link-star" aria-hidden="true">
-                  ★
-                </span>
+                <svg className="hero-link-star" viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" focusable="false">
+                  <path d="M10 1.8l2.47 5.2 5.7.68-4.2 3.92 1.1 5.63L10 14.42l-5.07 2.81 1.1-5.63-4.2-3.92 5.7-.68z" />
+                </svg>
                 {intl.formatMessage({ id: 'app.hero.openGuide' })}
               </a>
               <a className="hero-link" href="https://github.com/lannahirave/steam-artwork-simplifier">
@@ -242,7 +239,6 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
         <section className="overview-band" aria-label={intl.formatMessage({ id: 'app.overview.label' })}>
           <div className="overview-copy">
-            <p className="spotlight-eyebrow">{intl.formatMessage({ id: activeTab.eyebrow })}</p>
             <h2>{intl.formatMessage({ id: activeTab.label })}</h2>
             <p className="spotlight-copy">{intl.formatMessage({ id: activeTab.summary })}</p>
             <ul className="spotlight-list">
