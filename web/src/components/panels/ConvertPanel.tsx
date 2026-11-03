@@ -16,6 +16,7 @@ const SAMPLE_SOURCE_URL = '/samples/sample-clip.mp4'
 const SAMPLE_SOURCE_NAME = 'sample-clip.mp4'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
 import { Button } from '../ui/Button'
+import { MAX_OUTPUT_HEIGHT, clampOutputHeight } from '../../lib/frameFit'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
@@ -288,6 +289,45 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   <input value={intl.formatMessage({ id: 'convert.fixed.showcaseWidth' })} disabled />
                 </label>
               </>
+            )}
+
+            {presetPlan.preset !== 'guide' && (
+              <div className="height-fields">
+                <label className="field-layout" title="Output height in pixels. Leave empty to follow the source's shape.">
+                  {intl.formatMessage({ id: 'convert.outputHeight' })}
+                  <input
+                    type="number"
+                    min={1}
+                    max={MAX_OUTPUT_HEIGHT}
+                    inputMode="numeric"
+                    placeholder={intl.formatMessage({ id: 'convert.outputHeight.auto' })}
+                    value={config.outputHeight > 0 ? config.outputHeight : ''}
+                    aria-describedby="output-height-note"
+                    onChange={(event) =>
+                      setConfig((prev) => ({
+                        ...prev,
+                        outputHeight: clampOutputHeight(Number.parseInt(event.target.value, 10)),
+                      }))
+                    }
+                  />
+                </label>
+                <label className="field-layout" title="How the source fills a custom height: crop the overflow, or keep everything and add black bars.">
+                  {intl.formatMessage({ id: 'convert.heightFit' })}
+                  <select
+                    value={config.heightFit}
+                    disabled={config.outputHeight <= 0}
+                    onChange={(event) =>
+                      setConfig((prev) => ({ ...prev, heightFit: event.target.value as ConversionConfig['heightFit'] }))
+                    }
+                  >
+                    <option value="crop">{intl.formatMessage({ id: 'convert.option.fitCrop' })}</option>
+                    <option value="letterbox">{intl.formatMessage({ id: 'convert.option.fitLetterbox' })}</option>
+                  </select>
+                </label>
+                <p id="output-height-note" className="field-note height-fields-note">
+                  {intl.formatMessage({ id: 'convert.outputHeight.note' })}
+                </p>
+              </div>
             )}
 
             <label className="field-source" data-onboarding-target="source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">

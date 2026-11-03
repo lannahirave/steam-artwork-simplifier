@@ -1,4 +1,5 @@
-import { DEFAULTS, computeTargetHeight } from './defaults'
+import { DEFAULTS } from './defaults'
+import { resolveFrameHeight } from './frameFit'
 import type { ConversionConfig, Preset } from './types'
 
 export const GUIDE_SIZE = DEFAULTS.guide.size
@@ -103,5 +104,5 @@ export function computePresetTargetHeight(
   if (config.preset === 'guide') {
     return GUIDE_SIZE
   }
-  return computeTargetHeight(srcWidth, srcHeight, plan.totalTargetWidth)
+  return resolveFrameHeight(config, srcWidth, srcHeight, plan.totalTargetWidth)
 }

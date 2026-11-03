@@ -873,14 +873,21 @@ textarea {
 }
 
 .form-grid-source > .field-preset,
-.form-grid-source > .workshop-fields {
+.form-grid-source > .workshop-fields,
+.form-grid-source > .height-fields {
   grid-column: 1 / -1;
 }
 
-.form-grid-source > .workshop-fields {
+.form-grid-source > .workshop-fields,
+.form-grid-source > .height-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
+}
+
+.height-fields-note {
+  align-self: center;
+  margin: 0;
 }
 
 .form-grid-source > .field-source,
@@ -923,6 +930,12 @@ textarea {
   overflow: hidden;
   border-radius: 10px;
   background: #000;
+}
+
+.cut-preview-media-box {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
 }
 
 .cut-preview-media {
@@ -2388,7 +2401,8 @@ input[type='file']::file-selector-button {
     grid-column: auto;
   }
 
-  .form-grid-source > .workshop-fields {
+  .form-grid-source > .workshop-fields,
+  .form-grid-source > .height-fields {
     grid-template-columns: 1fr;
   }
 

@@ -9,6 +9,8 @@ export interface PrecheckInput {
   totalTargetWidth?: number
   sampleGifWidth?: number
   sampleGifHeight?: number
+  /** Full frame height when it is not derived from the source (custom height). */
+  targetHeight?: number
   minGifFps: number
   maxGifKb: number
   precheckBppf: number
@@ -55,7 +57,7 @@ export function estimateFpsForTargetKb(
 export function runPrecheck(input: PrecheckInput): PrecheckResult {
   const totalTargetWidth = input.totalTargetWidth ?? input.parts * input.partWidth
   const sampleGifWidth = input.sampleGifWidth ?? input.partWidth
-  const targetHeight = computeTargetHeight(input.srcWidth, input.srcHeight, totalTargetWidth)
+  const targetHeight = input.targetHeight ?? computeTargetHeight(input.srcWidth, input.srcHeight, totalTargetWidth)
   const sampleGifHeight = input.sampleGifHeight ?? targetHeight
   const estimatedKb = estimateGifKb(
     sampleGifWidth,

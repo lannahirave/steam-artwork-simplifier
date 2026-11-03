@@ -72,6 +72,15 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
     ? ({ width: `${layout.frameWidth}px`, height: `${layout.frameHeight}px` } as CSSProperties)
     : undefined
 
+  const mediaBoxStyle: CSSProperties | undefined = layout
+    ? {
+        left: percent(layout.media.x, layout.frameWidth),
+        top: percent(layout.media.y, layout.frameHeight),
+        width: percent(layout.media.scaledWidth, layout.frameWidth),
+        height: percent(layout.media.scaledHeight, layout.frameHeight),
+      }
+    : undefined
+
   // Same math as ffmpeg's colorlevels black point: out = (in - b) / (1 - b), clipped.
   const shadowSlope = 1 / (1 - blackPoint)
   const shadowIntercept = -blackPoint / (1 - blackPoint)
@@ -213,7 +222,10 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
             }}
           >
             {shadowFilter}
-            {media}
+            {/* A custom height crops the source (box larger than the frame) or letterboxes it (smaller). */}
+            <div className="cut-preview-media-box" style={mediaBoxStyle}>
+              {media}
+            </div>
             {layout?.pieces.map((piece) => (
               <div
                 key={piece.index}

@@ -1,6 +1,6 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
-import { computeTargetHeight } from './defaults'
+import { resolveCustomHeight, resolveFrameHeight } from './frameFit'
 import {
   analyzeSplitPartWeights,
   estimateFpsForKbTarget,
@@ -320,10 +320,16 @@ export async function convertVideo(
   }
 
   const presetPlan = resolvePresetPlan(config)
+  const customHeight = resolveCustomHeight(config)
+  // Sent to the workers only when the user set a height; otherwise they derive it from the source.
+  const heightPayload = customHeight !== null ? { outputHeight: customHeight, heightFit: config.heightFit } : {}
+  if (customHeight !== null) {
+    emit('probe', `Using custom height ${customHeight}px (${config.heightFit === 'crop' ? 'crop to fill' : 'letterbox'}).`)
+  }
   const defaultSplitRowHeights =
     presetPlan.splitRows > 1
       ? distributeEvenly(
-          computeTargetHeight(probe.width, probe.height, presetPlan.totalTargetWidth),
+          resolveFrameHeight(config, probe.width, probe.height, presetPlan.totalTargetWidth),
           presetPlan.splitRows,
         )
       : undefined
@@ -345,6 +351,7 @@ export async function convertVideo(
       sampleGifHeight: defaultSplitRowHeights
         ? Math.max(...defaultSplitRowHeights)
         : undefined,
+      targetHeight: customHeight ?? undefined,
       minGifFps: config.minGifFps,
       maxGifKb: config.maxGifKb,
       precheckBppf: config.precheckBppf,
@@ -417,6 +424,7 @@ export async function convertVideo(
       sourceFilter,
       srcWidth: probe.width,
       srcHeight: probe.height,
+      ...heightPayload,
       duration: probe.duration,
       gifFps: overrides.gifFps ?? config.gifFps,
       minGifFps: overrides.minGifFps ?? config.minGifFps,
@@ -631,6 +639,7 @@ export async function convertVideo(
           startOffsetSec: probe.startOffsetSec,
           memoryDebugEnabled,
           featuredWidth: config.featuredWidth,
+          ...heightPayload,
         },
         {
           onProgress: workerProgress('featured output'),

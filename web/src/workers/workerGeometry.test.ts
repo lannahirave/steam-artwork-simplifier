@@ -61,6 +61,32 @@ describe('worker geometry', () => {
     })
   })
 
+  it('crops a custom height to fill before cutting parts', () => {
+    expect(
+      buildPartGeometry({
+        ...basePayload,
+        outputHeight: 500,
+        heightFit: 'crop',
+        partIndex: 2,
+        parts: 5,
+        partWidth: 150,
+        splitWidths: [150, 150, 150, 150, 150],
+      }),
+    ).toEqual({
+      baseFilter: 'scale=1000:500:flags=bicubic,crop=750:500:125:0,crop=150:500:300:0',
+      outputWidth: 150,
+      targetHeight: 500,
+    })
+  })
+
+  it('letterboxes a custom featured height with black bars', () => {
+    expect(buildFeaturedGeometry({ ...basePayload, featuredWidth: 630, outputHeight: 500, heightFit: 'letterbox' })).toEqual({
+      baseFilter: 'scale=630:315:flags=bicubic,pad=630:500:0:92:color=black',
+      width: 630,
+      height: 500,
+    })
+  })
+
   it('builds single-output featured and guide filters', () => {
     expect(buildFeaturedGeometry({ ...basePayload, featuredWidth: 630 })).toEqual({
       baseFilter: 'scale=630:315:flags=bicubic',

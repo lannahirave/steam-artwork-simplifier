@@ -8,6 +8,8 @@ export type OptimizationMode = 'hybrid' | 'quality-first' | 'fast-fit'
 export type WorkshopRows = 1 | 2 | 3
 export type ShadowDarkening = 'off' | 'low' | 'medium' | 'high'
 
+export type HeightFit = 'crop' | 'letterbox'
+
 export interface ConversionConfig {
   preset: Preset
   gifFps: number
@@ -16,6 +18,10 @@ export interface ConversionConfig {
   workshopRows: WorkshopRows
   partWidth: number
   featuredWidth: number
+  /** Custom output height in pixels; 0 follows the source aspect ratio. Ignored by the Guide preset. */
+  outputHeight: number
+  /** How the source fills a custom height: crop the overflow, or letterbox with black bars. */
+  heightFit: HeightFit
   disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
@@ -205,6 +211,9 @@ export interface ConvertPayloadBase {
   sourceFilter?: string
   srcWidth: number
   srcHeight: number
+  /** Custom frame height; when unset the height follows the source aspect ratio. */
+  outputHeight?: number
+  heightFit?: HeightFit
   duration: number
   gifFps: number
   minGifFps: number

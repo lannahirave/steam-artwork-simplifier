@@ -122,6 +122,8 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     workshopRows: DEFAULTS.workshop.rows,
     partWidth: preset === 'showcase' ? DEFAULTS.showcase.splitWidths[0] : DEFAULTS.workshop.partWidth,
     featuredWidth: DEFAULTS.featured.width,
+    outputHeight: 0,
+    heightFit: 'crop',
     disableOptimizations: DEFAULTS.disableOptimizations,
     maxGifKb:
       preset === 'featured'

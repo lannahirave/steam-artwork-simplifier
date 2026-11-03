@@ -1,4 +1,5 @@
 import { computeTargetHeight } from '../lib/defaults'
+import { buildFrameFilter } from '../lib/frameFit'
 import type { ConvertFeaturedPayload, ConvertGuidePayload, ConvertPartPayload } from '../lib/types'
 import { distributeEvenly } from '../lib/workshopRows'
 
@@ -16,6 +17,16 @@ export interface SingleGeometry {
   height: number
 }
 
+/** Scale to the frame; a custom height also crops or letterboxes so the aspect ratio is kept. */
+function frameFilter(
+  payload: ConvertPartPayload | ConvertFeaturedPayload,
+  frameWidth: number,
+  frameHeight: number,
+): string {
+  const fit = payload.outputHeight ? (payload.heightFit ?? 'crop') : undefined
+  return buildFrameFilter(payload.srcWidth, payload.srcHeight, frameWidth, frameHeight, fit, SCALE_FLAGS)
+}
+
 export function buildPartGeometry(payload: ConvertPartPayload): PartGeometry {
   const requestedSplitWidths = payload.splitWidths
   const splitWidths =
@@ -25,7 +36,8 @@ export function buildPartGeometry(payload: ConvertPartPayload): PartGeometry {
   const columns = Math.max(1, Math.floor(payload.splitColumns ?? splitWidths.length))
   const rows = Math.max(1, Math.floor(payload.splitRows ?? 1))
   const totalTargetWidth = splitWidths.reduce((sum, width) => sum + width, 0)
-  const totalTargetHeight = computeTargetHeight(payload.srcWidth, payload.srcHeight, totalTargetWidth)
+  const totalTargetHeight =
+    payload.outputHeight ?? computeTargetHeight(payload.srcWidth, payload.srcHeight, totalTargetWidth)
   const requestedRowHeights = payload.splitRowHeights
   const rowHeights =
     requestedRowHeights && requestedRowHeights.length === rows
@@ -42,7 +54,7 @@ export function buildPartGeometry(payload: ConvertPartPayload): PartGeometry {
     .slice(0, rowIndex)
     .reduce((sum, height) => sum + height, 0)
   const baseFilter =
-    `scale=${totalTargetWidth}:${totalTargetHeight}:flags=${SCALE_FLAGS},` +
+    `${frameFilter(payload, totalTargetWidth, totalTargetHeight)},` +
     `crop=${outputWidth}:${outputHeight}:${cropX}:${cropY}`
 
   return {
@@ -53,9 +65,10 @@ export function buildPartGeometry(payload: ConvertPartPayload): PartGeometry {
 }
 
 export function buildFeaturedGeometry(payload: ConvertFeaturedPayload): SingleGeometry {
-  const targetHeight = computeTargetHeight(payload.srcWidth, payload.srcHeight, payload.featuredWidth)
+  const targetHeight =
+    payload.outputHeight ?? computeTargetHeight(payload.srcWidth, payload.srcHeight, payload.featuredWidth)
   return {
-    baseFilter: `scale=${payload.featuredWidth}:${targetHeight}:flags=${SCALE_FLAGS}`,
+    baseFilter: frameFilter(payload, payload.featuredWidth, targetHeight),
     width: payload.featuredWidth,
     height: targetHeight,
   }

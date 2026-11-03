@@ -71,6 +71,7 @@ describe('computeCutLayout', () => {
     expect(computeCutLayout(config, 1260, 500)).toEqual({
       frameWidth: 630,
       frameHeight: 250,
+      media: { scaledWidth: 630, scaledHeight: 250, x: 0, y: 0 },
       pieces: [{ index: 0, x: 0, y: 0, width: 630, height: 250 }],
     })
   })
@@ -81,6 +82,7 @@ describe('computeCutLayout', () => {
     expect(layout).toEqual({
       frameWidth: 347,
       frameHeight: 195,
+      media: { scaledWidth: 347, scaledHeight: 195, x: 0, y: 0 },
       pieces: [{ index: 0, x: 76, y: 0, width: 195, height: 195 }],
     })
   })

@@ -1,4 +1,4 @@
-import { computeTargetHeight } from './defaults'
+import { computeFrameFit, resolveCustomHeight, resolveFrameHeight, type FrameFit } from './frameFit'
 import { GUIDE_SIZE, getPresetSplitWidths } from './presetPlan'
 import type { ConversionConfig } from './types'
 import { distributeEvenly } from './workshopRows'
@@ -19,6 +19,8 @@ export interface CutLayout {
   /** Size the whole source is scaled to before cutting. */
   frameWidth: number
   frameHeight: number
+  /** Where the source sits in the frame: larger than the frame when cropped, smaller when letterboxed. */
+  media: FrameFit
   pieces: CutPiece[]
 }
 
@@ -35,6 +37,7 @@ export function computeCutLayout(config: ConversionConfig, srcWidth: number, src
     return {
       frameWidth,
       frameHeight,
+      media: { scaledWidth: frameWidth, scaledHeight: frameHeight, x: 0, y: 0 },
       pieces: [
         {
           index: 0,
@@ -49,7 +52,11 @@ export function computeCutLayout(config: ConversionConfig, srcWidth: number, src
 
   const splitWidths = getPresetSplitWidths(config)
   const frameWidth = splitWidths.reduce((sum, width) => sum + width, 0)
-  const frameHeight = computeTargetHeight(srcWidth, srcHeight, frameWidth)
+  const frameHeight = resolveFrameHeight(config, srcWidth, srcHeight, frameWidth)
+  const media =
+    resolveCustomHeight(config) !== null
+      ? computeFrameFit(srcWidth, srcHeight, frameWidth, frameHeight, config.heightFit)
+      : { scaledWidth: frameWidth, scaledHeight: frameHeight, x: 0, y: 0 }
   const rows = config.preset === 'workshop' ? config.workshopRows : 1
   const rowHeights = distributeEvenly(frameHeight, rows)
   const pieces: CutPiece[] = []
@@ -64,5 +71,5 @@ export function computeCutLayout(config: ConversionConfig, srcWidth: number, src
     y += height
   })
 
-  return { frameWidth, frameHeight, pieces }
+  return { frameWidth, frameHeight, media, pieces }
 }
