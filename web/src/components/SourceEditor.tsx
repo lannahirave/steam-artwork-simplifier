@@ -12,6 +12,7 @@ import {
   type SourceEdit,
 } from '../lib/sourceEdit'
 import type { ConversionConfig } from '../lib/types'
+import { Button } from './ui/Button'
 
 interface SourceEditorProps {
   sourceUrl: string
@@ -331,9 +332,9 @@ export function SourceEditor({
           <fieldset className="source-editor-group source-editor-trim">
             <legend>{intl.formatMessage({ id: 'convert.editor.trim' })}</legend>
             <div className="source-editor-playback">
-              <button type="button" className="source-editor-secondary" onClick={togglePlay}>
+              <Button variant="outline" size="small" onClick={togglePlay}>
                 {intl.formatMessage({ id: playing ? 'convert.editor.pause' : 'convert.editor.play' })}
-              </button>
+              </Button>
               <input
                 type="range"
                 aria-label={intl.formatMessage({ id: 'convert.editor.position' })}
@@ -368,12 +369,12 @@ export function SourceEditor({
               />
             </label>
             <div className="source-editor-playback">
-              <button type="button" className="source-editor-secondary" onClick={() => changeTrimStart(currentTime)}>
+              <Button variant="outline" size="small" onClick={() => changeTrimStart(currentTime)}>
                 {intl.formatMessage({ id: 'convert.editor.setStart' })}
-              </button>
-              <button type="button" className="source-editor-secondary" onClick={() => changeTrimEnd(currentTime)}>
+              </Button>
+              <Button variant="outline" size="small" onClick={() => changeTrimEnd(currentTime)}>
                 {intl.formatMessage({ id: 'convert.editor.setEnd' })}
-              </button>
+              </Button>
             </div>
           </fieldset>
         )}
@@ -394,15 +395,15 @@ export function SourceEditor({
             : null}
         </span>
         <div className="source-editor-actions">
-          <button type="button" className="source-editor-secondary" onClick={reset}>
+          <Button variant="outline" size="small" onClick={reset}>
             {intl.formatMessage({ id: 'convert.editor.reset' })}
-          </button>
-          <button type="button" className="source-editor-secondary" onClick={onClose}>
+          </Button>
+          <Button variant="outline" size="small" onClick={onClose}>
             {intl.formatMessage({ id: 'convert.editor.cancel' })}
-          </button>
-          <button type="button" className="source-editor-primary" onClick={apply}>
+          </Button>
+          <Button variant="primary" size="small" onClick={apply}>
             {intl.formatMessage({ id: 'convert.editor.apply' })}
-          </button>
+          </Button>
         </div>
       </div>
     </dialog>

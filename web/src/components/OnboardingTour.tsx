@@ -3,6 +3,7 @@ import { useIntl } from 'react-intl'
 import type { TabKey } from '../agents/appAgents'
 import type { MessageId } from '../i18n/messages'
 import { storeOnboardingComplete } from '../onboardingStorage'
+import { Button } from './ui/Button'
 
 /**
  * The tour follows the job, not the tabs: choose a layout, add a source, preview it on a Steam
@@ -286,9 +287,9 @@ export function OnboardingTour(props: OnboardingTourProps) {
         </span>
         <div className="onboarding-card-head">
           <h2 id={titleId}>{intl.formatMessage({ id: step.title })}</h2>
-          <button type="button" className="onboarding-skip" onClick={close}>
+          <Button variant="quiet" size="medium" className="onboarding-skip" onClick={close}>
             {intl.formatMessage({ id: 'onboarding.skip' })}
-          </button>
+          </Button>
         </div>
         <p id={bodyId}>{intl.formatMessage({ id: step.body })}</p>
         <div className="onboarding-progress" aria-hidden="true">
@@ -305,18 +306,18 @@ export function OnboardingTour(props: OnboardingTourProps) {
           </span>
           <div className="onboarding-buttons">
             {!isFirst && (
-              <button type="button" className="onboarding-secondary" onClick={() => goToStep(stepIndex - 1)}>
+              <Button size="medium" className="onboarding-secondary" onClick={() => goToStep(stepIndex - 1)}>
                 {intl.formatMessage({ id: 'onboarding.back' })}
-              </button>
+              </Button>
             )}
-            <button
+            <Button
               ref={primaryRef}
-              type="button"
-              className="onboarding-primary"
+              variant="primary"
+              size="medium"
               onClick={isLast ? finish : () => goToStep(stepIndex + 1)}
             >
               {intl.formatMessage({ id: isLast ? 'onboarding.done' : 'onboarding.next' })}
-            </button>
+            </Button>
           </div>
         </div>
       </aside>

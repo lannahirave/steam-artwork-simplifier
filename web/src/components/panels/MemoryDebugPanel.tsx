@@ -7,6 +7,7 @@ import {
   summarizeMemoryDebugWorkers,
 } from '../../lib/memoryDebug'
 import type { BrowserMemorySample, MemoryDebugEvent, MemoryDebugSession } from '../../lib/types'
+import { Button } from '../ui/Button'
 
 interface MemoryDebugPanelProps {
   memoryDebug: MemoryDebugSession
@@ -101,9 +102,9 @@ export function MemoryDebugPanel({ memoryDebug, busy }: MemoryDebugPanelProps) {
         >
           <div className="memory-debug-head">
             <h3>{intl.formatMessage({ id: 'memoryDebug.estimatedPipelineBuckets' })}</h3>
-            <button type="button" className="inline-action" onClick={() => void copyDebugJson()}>
+            <Button size="small" onClick={() => void copyDebugJson()}>
               {intl.formatMessage({ id: copied ? 'convert.copied' : 'memoryDebug.copyJson' })}
-            </button>
+            </Button>
           </div>
           <div className="memory-debug-table-wrap">
             <table className="memory-debug-table">

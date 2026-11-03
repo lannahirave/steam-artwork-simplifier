@@ -22,6 +22,7 @@ import { canPreviewOnProfile, previewBlobOf, profilePreviewUrl } from '../../lib
 import { createZip } from '../../lib/zip'
 import { toArchiveBaseName } from '../../contexts/conversionSession'
 import type { MessageId } from '../../i18n/messages'
+import { Button } from '../ui/Button'
 
 interface LibraryPanelProps {
   onboardingTarget?: string
@@ -122,9 +123,9 @@ function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entr
               {intl.formatMessage({ id: 'convert.profilePreview.open' })}
             </button>
           )}
-          <button type="button" className="library-delete" onClick={() => onDelete(entry)}>
+          <Button variant="danger" onClick={() => onDelete(entry)}>
             {intl.formatMessage({ id: 'library.delete' })}
-          </button>
+          </Button>
         </div>
         <details className="library-files">
           <summary>{intl.formatMessage({ id: 'library.showFiles' })}</summary>
@@ -255,9 +256,9 @@ export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
               { used: formatBytes(usage.usedBytes), quota: formatBytes(usage.quotaBytes) },
             )}`}
         </p>
-        <button type="button" className="library-delete" onClick={purge} disabled={entries.length === 0}>
+        <Button variant="danger" onClick={purge} disabled={entries.length === 0}>
           {intl.formatMessage({ id: 'library.purge' })}
-        </button>
+        </Button>
       </div>
 
       <div className={usedShare >= 0.9 ? 'library-limit is-near-full' : 'library-limit'}>

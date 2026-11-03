@@ -1,6 +1,8 @@
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
+// Before App.css (imported by the app), so feature styles there can adjust shared buttons.
+import './components/ui/button.css'
 import { AppRoot } from './AppRoot'
 import { deleteLegacyHandoffDb } from './lib/artworkLibrary'
 

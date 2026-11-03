@@ -1,5 +1,7 @@
 import { useEffect, useRef } from 'react'
 import { useIntl } from 'react-intl'
+import { Button } from './ui/Button'
+import { buttonClassName } from './ui/buttonStyles'
 
 // Steam guide where users can leave feedback about this tool.
 export const FEEDBACK_GUIDE_URL =
@@ -68,7 +70,7 @@ export function FeedbackPrompt(props: FeedbackPromptProps) {
       <p>{intl.formatMessage({ id: 'feedback.body' })}</p>
       <div className="feedback-prompt-actions">
         <a
-          className="feedback-prompt-primary"
+          className={buttonClassName({ variant: 'primary', size: 'small' })}
           href={FEEDBACK_GUIDE_URL}
           target="_blank"
           rel="noreferrer"
@@ -76,9 +78,9 @@ export function FeedbackPrompt(props: FeedbackPromptProps) {
         >
           {intl.formatMessage({ id: 'feedback.openGuide' })}
         </a>
-        <button type="button" className="feedback-prompt-secondary" onClick={onDismiss}>
+        <Button variant="outline" size="small" onClick={onDismiss}>
           {intl.formatMessage({ id: 'feedback.later' })}
-        </button>
+        </Button>
       </div>
     </aside>
   )

@@ -16,6 +16,7 @@ import {
 } from '../../lib/steamSnippets'
 import { useSteamHelpersContext, type SteamScriptKind } from '../../contexts/steamHelpersContext'
 import type { MessageId } from '../../i18n/messages'
+import { Button } from '../ui/Button'
 
 const UPLOAD_TYPES: SteamUploadType[] = ['workshop', 'featured', 'screenshot']
 
@@ -104,14 +105,13 @@ function ScriptCard(props: ScriptCardProps) {
       </ul>
       {settings}
       <div className="steam-script-actions">
-        <button
-          type="button"
-          className={primary ? 'action-primary' : undefined}
+        <Button
+          variant={primary ? 'primary' : 'secondary'}
           disabled={Boolean(copyBlockedReason)}
           onClick={() => actions.onCopyScript(kind, script)}
         >
           {copyLabel}
-        </button>
+        </Button>
         <p
           className={`steam-copy-status${status?.type === 'error' || copyBlockedReason ? ' is-error' : ''}`}
           role="status"
@@ -235,14 +235,14 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
           </span>
         </label>
       </div>
-      <button
-        type="button"
+      <Button
+        size="medium"
         className="steam-settings-reset"
         disabled={batchInputsAreDefault}
         onClick={actions.onResetBatchInputs}
       >
         {intl.formatMessage({ id: 'steam.settings.reset' })}
-      </button>
+      </Button>
     </fieldset>
   )
 

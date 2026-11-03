@@ -63,7 +63,6 @@
   --shadow-soft: 0 10px 30px rgba(0, 0, 0, 0.4);
 }
 
-
 * {
   box-sizing: border-box;
 }
@@ -87,7 +86,6 @@ a {
   color: inherit;
 }
 
-button,
 input,
 select,
 textarea {
@@ -541,39 +539,6 @@ textarea {
   margin-top: 0.85rem;
 }
 
-.feedback-prompt-primary,
-.feedback-prompt-secondary {
-  appearance: none;
-  min-height: 2.1rem;
-  padding: 0.45rem 0.8rem;
-  border-radius: var(--radius-pill);
-  font-size: 0.85rem;
-  cursor: pointer;
-}
-
-.feedback-prompt-primary {
-  border: 0;
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-  text-decoration: none;
-}
-
-.feedback-prompt-primary:hover {
-  background: var(--apple-blue-dark);
-  text-decoration: none;
-}
-
-.feedback-prompt-secondary {
-  border: 1px solid var(--line-strong);
-  background: transparent;
-  color: var(--ink-soft);
-}
-
-.feedback-prompt-secondary:hover {
-  color: var(--ink);
-  border-color: var(--ink-muted);
-}
-
 .onboarding-spotlight {
   position: fixed;
   top: 0;
@@ -662,29 +627,9 @@ textarea {
   background: var(--apple-blue);
 }
 
-.onboarding-skip,
-.onboarding-secondary,
-.onboarding-primary {
-  min-height: 2.75rem;
-  padding: 0.6rem 1rem;
-  font-size: 0.9rem;
-}
-
 .onboarding-skip {
   flex: none;
   margin: -0.6rem -0.6rem 0 0;
-  color: var(--ink-muted);
-  background: transparent;
-}
-
-.onboarding-primary {
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.onboarding-primary:not(:disabled):hover {
-  background: var(--apple-blue-dark);
-  color: var(--ink-inverse);
 }
 
 .config-group,
@@ -904,7 +849,6 @@ textarea {
   box-shadow: 0 0 0 4px rgba(0, 113, 227, 0.16);
 }
 
-
 .config-group {
   padding: 1.1rem;
   background: var(--surface-muted);
@@ -1043,34 +987,6 @@ textarea {
   flex-wrap: wrap;
   gap: 0.4rem;
   margin-left: auto;
-}
-
-.cut-preview-button,
-.source-editor-primary,
-.source-editor-secondary {
-  min-height: 2.1rem;
-  padding: 0.45rem 0.85rem;
-  font-size: 0.85rem;
-}
-
-.cut-preview-button,
-.source-editor-secondary {
-  border: 1px solid var(--line-strong);
-  background: transparent;
-  color: var(--ink-soft);
-}
-
-/* Edit source is the next step once a clip is loaded, so it gets the primary blue. */
-.source-editor-primary,
-.cut-preview-button.cut-preview-edit {
-  border-color: transparent;
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.source-editor-primary:not(:disabled):hover,
-.cut-preview-button.cut-preview-edit:not(:disabled):hover {
-  background: var(--apple-blue-dark);
 }
 
 .cut-preview-edited {
@@ -1464,7 +1380,7 @@ input[type='file']::file-selector-button {
   min-width: 0;
 }
 
-.source-input-row .inline-action {
+.source-input-row .btn {
   flex: none;
   min-height: 2.75rem;
 }
@@ -1569,52 +1485,6 @@ input[type='file']::file-selector-button {
   background: rgba(255, 255, 255, 0.72);
 }
 
-button {
-  min-height: 2.75rem;
-  padding: 0.72rem 1.3rem;
-  border: 1px solid transparent;
-  border-radius: var(--radius-pill);
-  background: var(--surface-muted);
-  color: var(--link);
-  cursor: pointer;
-  font-size: 1rem;
-  line-height: 1;
-  letter-spacing: -0.022em;
-  transition:
-    background 140ms ease,
-    color 140ms ease,
-    border-color 140ms ease,
-    transform 140ms ease;
-}
-
-button:not(:disabled):hover {
-  background: var(--control-hover);
-  transform: translateY(-1px);
-}
-
-button:disabled {
-  opacity: 0.42;
-  cursor: not-allowed;
-}
-
-.hero-primary {
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.actions > .action-primary {
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.actions > .action-primary:hover {
-  background: #0077ed;
-}
-
-.hero-primary:not(:disabled):hover {
-  background: #0077ed;
-}
-
 .actions {
   display: flex;
   flex-wrap: wrap;
@@ -1622,7 +1492,6 @@ button:disabled {
   margin-top: 1.4rem;
 }
 
-.inline-action,
 .compact-download {
   min-height: 2.3rem;
   padding-inline: 1rem;
@@ -2928,15 +2797,6 @@ button:disabled {
   padding-top: 0.5rem;
 }
 
-.steam-script-actions > .action-primary {
-  background: var(--apple-blue);
-  color: var(--ink-inverse);
-}
-
-.steam-script-actions > .action-primary:not(:disabled):hover {
-  background: #0077ed;
-}
-
 .steam-copy-status {
   margin: 0;
   color: var(--ink-soft);
@@ -3130,9 +2990,6 @@ button:disabled {
 
 .steam-settings-reset {
   justify-self: start;
-  min-height: 2.25rem;
-  padding: 0.45rem 1rem;
-  font-size: 0.9rem;
 }
 
 .steam-footnote a {
@@ -3350,10 +3207,6 @@ button.inline-link:not(:disabled):hover {
   background: rgba(var(--warning-rgb), 0.16);
   color: var(--warning);
   font-size: 0.78rem;
-}
-
-button.library-delete {
-  color: var(--error);
 }
 
 .library-files {

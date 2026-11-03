@@ -1,0 +1,107 @@
+/*
+ * Shared button styles. Loaded before App.css (see main.tsx), so feature classes there can still
+ * adjust layout (width, margins, placement) without fighting these rules.
+ *
+ * Every <button> gets the base look; `.btn` adds the same look to links styled as buttons.
+ * Variants and sizes come from <Button> / buttonClassName() in Button.tsx.
+ */
+
+button,
+.btn {
+  min-height: 2.75rem;
+  padding: 0.72rem 1.3rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius-pill);
+  background: var(--surface-muted);
+  color: var(--link);
+  cursor: pointer;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1;
+  letter-spacing: -0.022em;
+  transition:
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease,
+    transform 140ms ease;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  text-decoration: none;
+}
+
+button:not(:disabled):hover,
+a.btn:hover {
+  background: var(--control-hover);
+  transform: translateY(-1px);
+  text-decoration: none;
+}
+
+button:disabled {
+  opacity: 0.42;
+  cursor: not-allowed;
+}
+
+/* Variants. Hover rules carry :not(:disabled) so they outrank the base hover above. */
+
+.btn-primary {
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+}
+
+.btn-primary:not(:disabled):hover,
+a.btn-primary:hover {
+  background: var(--apple-blue-dark);
+  color: var(--ink-inverse);
+}
+
+.btn-outline {
+  border-color: var(--line-strong);
+  background: transparent;
+  color: var(--ink-soft);
+}
+
+.btn-outline:not(:disabled):hover,
+a.btn-outline:hover {
+  border-color: var(--ink-muted);
+  background: transparent;
+  color: var(--ink);
+}
+
+.btn-quiet {
+  background: transparent;
+  color: var(--ink-muted);
+}
+
+.btn-quiet:not(:disabled):hover {
+  background: var(--control-hover);
+  color: var(--ink);
+}
+
+.btn-danger {
+  color: var(--error);
+}
+
+/* Sizes */
+
+.btn-medium {
+  padding: 0.6rem 1rem;
+  font-size: 0.9rem;
+}
+
+.btn-small {
+  min-height: 2.1rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+/* Fingers need the full 44px even in dense toolbars. */
+@media (pointer: coarse) {
+  .btn-small {
+    min-height: 2.75rem;
+  }
+}

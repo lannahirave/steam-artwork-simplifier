@@ -15,6 +15,7 @@ import { FeedbackPrompt } from '../FeedbackPrompt'
 const SAMPLE_SOURCE_URL = '/samples/sample-clip.mp4'
 const SAMPLE_SOURCE_NAME = 'sample-clip.mp4'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
+import { Button } from '../ui/Button'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
@@ -90,6 +91,15 @@ export function ConvertPanel(props: ConvertPanelProps) {
     ? ({ '--workshop-columns': config.parts } as CSSProperties)
     : undefined
   const advancedOverrideCount = countAdvancedConfigOverrides(config)
+  // Reset Results clears the last run's output, log, warnings and errors (not the source or settings).
+  const hasResults =
+    artifactViews.length > 0 ||
+    progress.length > 0 ||
+    warnings.length > 0 ||
+    error !== '' ||
+    profilePreviewError !== '' ||
+    fpsEstimateInfo !== '' ||
+    lastElapsedMs !== null
   const sourceInputRef = useRef<HTMLInputElement | null>(null)
   const [sampleState, setSampleState] = useState<'idle' | 'loading' | 'error'>('idle')
 
@@ -295,16 +305,15 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   }}
                 />
                 {!sourceFile && (
-                  <button
-                    type="button"
-                    className="inline-action"
+                  <Button
+                    size="small"
                     disabled={busy || sampleState === 'loading'}
                     onClick={() => void loadSampleSource()}
                   >
                     {intl.formatMessage({
                       id: sampleState === 'loading' ? 'convert.sample.loading' : 'convert.sample.use',
                     })}
-                  </button>
+                  </Button>
                 )}
               </div>
               {sampleState === 'error' && (
@@ -369,15 +378,14 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   value={config.gifFps}
                   onChange={(event) => setConfig((prev) => ({ ...prev, gifFps: Number.parseInt(event.target.value, 10) || 1 }))}
                 />
-                <button
-                  type="button"
-                  className="inline-action"
+                <Button
+                  size="small"
                   title="Estimate and apply a practical GIF FPS from source resolution, duration, and current size target."
                   disabled={!sourceFile || busy || estimatingFps}
                   onClick={onEstimateAndApplyFps}
                 >
                   {intl.formatMessage({ id: estimatingFps ? 'convert.estimating' : 'convert.estimate' })}
-                </button>
+                </Button>
               </div>
               {fpsEstimateInfo && <small className="field-note">{fpsEstimateInfo}</small>}
             </label>
@@ -410,16 +418,22 @@ export function ConvertPanel(props: ConvertPanelProps) {
       </div>
 
         <div className="actions">
-          <button className="action-primary" disabled={convertDisabled} onClick={onRunConversion}>
+          <Button variant="primary" disabled={convertDisabled} onClick={onRunConversion}>
             {intl.formatMessage({ id: 'convert.run' })}
-          </button>
-          <button disabled={!busy} onClick={onCancelConversion}>
+          </Button>
+          <Button disabled={!busy} onClick={onCancelConversion}>
             {intl.formatMessage({ id: 'convert.cancel' })}
-          </button>
-          <button disabled={!busy || finishingCurrent} onClick={onFinishCurrentConversion}>
+          </Button>
+          <Button disabled={!busy || finishingCurrent} onClick={onFinishCurrentConversion}>
             {intl.formatMessage({ id: finishingCurrent ? 'convert.finishingCurrent' : 'convert.finishCurrent' })}
-          </button>
-          <button onClick={onResetConvertState}>{intl.formatMessage({ id: 'convert.reset' })}</button>
+          </Button>
+          <Button
+            title="Clear the last run's GIFs, progress log, warnings and errors. Your source and settings stay."
+            disabled={busy || !hasResults}
+            onClick={onResetConvertState}
+          >
+            {intl.formatMessage({ id: 'convert.reset' })}
+          </Button>
         </div>
 
         <details className="advanced-options" data-testid="advanced-options">
@@ -704,9 +718,9 @@ export function ConvertPanel(props: ConvertPanelProps) {
         <div className="log-box">
           <div className="log-head">
             <h3>{intl.formatMessage({ id: 'convert.liveProgress' })}</h3>
-            <button type="button" className="inline-action" onClick={() => void copyText('progress', progressText)}>
+            <Button size="small" onClick={() => void copyText('progress', progressText)}>
               {intl.formatMessage({ id: copiedSection === 'progress' ? 'convert.copied' : 'convert.copyLogs' })}
-            </button>
+            </Button>
           </div>
           <pre>{progressText}</pre>
         </div>

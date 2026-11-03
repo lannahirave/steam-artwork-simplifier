@@ -19,6 +19,7 @@ import { SUPPORTED_LOCALES, localeLabels, type AppLocale } from './i18n/messages
 import { getStoredOnboardingComplete } from './onboardingStorage'
 import { ThemeIcon } from './components/ThemeIcon'
 import type { AppTheme } from './theme'
+import { Button } from './components/ui/Button'
 
 const APP_VERSION = __APP_VERSION__
 
@@ -216,9 +217,9 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
             <h1>{intl.formatMessage({ id: 'app.brand' })}</h1>
             <p className="hero-summary">{intl.formatMessage({ id: 'app.hero.summary' })}</p>
             <div className="hero-actions">
-              <button type="button" className="hero-primary" onClick={openConvertWorkspace}>
+              <Button variant="primary" className="hero-primary" onClick={openConvertWorkspace}>
                 {intl.formatMessage({ id: 'app.hero.openConvert' })}
-              </button>
+              </Button>
               <a
                 className="hero-link hero-link-pill hero-link-guide"
                 href="https://steamcommunity.com/sharedfiles/filedetails/?id=3813335509"

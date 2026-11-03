@@ -5,6 +5,7 @@ import { SHADOW_BLACK_POINTS } from '../lib/shadowDarkening'
 import type { SourceEdit } from '../lib/sourceEdit'
 import type { ConversionConfig } from '../lib/types'
 import { SourceEditor } from './SourceEditor'
+import { Button } from './ui/Button'
 
 interface CutPreviewProps {
   file: File
@@ -179,23 +180,14 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
           </span>
         )}
         <div className="cut-preview-actions">
-          <button
-            type="button"
-            className="cut-preview-button cut-preview-edit"
-            disabled={!canEdit}
-            onClick={() => setEditorOpen(true)}
-          >
+          {/* Edit source is the next step once a clip is loaded, so it is the primary action here. */}
+          <Button variant="primary" size="small" disabled={!canEdit} onClick={() => setEditorOpen(true)}>
             {intl.formatMessage({ id: 'convert.cutPreview.edit' })}
-          </button>
+          </Button>
           {edit && (
-            <button
-              type="button"
-              className="cut-preview-button"
-              disabled={disabled}
-              onClick={() => onEditChange(null)}
-            >
+            <Button variant="outline" size="small" disabled={disabled} onClick={() => onEditChange(null)}>
               {intl.formatMessage({ id: 'convert.cutPreview.clearEdit' })}
-            </button>
+            </Button>
           )}
         </div>
       </div>
