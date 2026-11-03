@@ -50,7 +50,7 @@
   "onboarding.preset.title": "Elige dónde irá",
   "onboarding.preset.body": "Elige el escaparate que estás creando. Cada preset ya conoce las medidas de Steam: Workshop corta tu clip en 5 piezas lado a lado, Artwork Showcase en una pieza principal de 506 px y una tira de 100 px.",
   "onboarding.source.title": "Añade tu clip",
-  "onboarding.source.body": "Usa un video, GIF o imagen. La vista previa muestra exactamente cómo se cortará; haz clic para recortar o acortar. Luego pulsa Ejecutar conversión.",
+  "onboarding.source.body": "Elige un video, GIF o imagen, o pulsa Usar clip de ejemplo para practicar con el nuestro. Verás exactamente cómo se cortará antes de convertir nada.",
   "onboarding.preview.title": "Míralo en tu perfil",
   "onboarding.preview.body": "Los GIF terminados se guardan en la Biblioteca, solo en este navegador. Desde ahí, ábrelos en SteamCanvas para verlos en la página de tu perfil de Steam antes de subirlos. No se publica nada.",
   "onboarding.upload.title": "Súbelo a Steam",
@@ -391,5 +391,10 @@
   "convert.error.unsupportedSource": "Archivo de origen no compatible. Usa un archivo de video o imagen (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
   "app.nav.primary": "Navegación principal",
   "app.overview.label": "Resumen del área de trabajo",
-  "onboarding.label": "Guía de inicio"
+  "onboarding.label": "Guía de inicio",
+  "convert.sample.use": "Usar clip de ejemplo",
+  "convert.sample.loading": "Cargando…",
+  "convert.sample.error": "No se pudo cargar el clip de ejemplo. Elige un archivo propio.",
+  "onboarding.sourceReady.title": "Ajusta el encuadre",
+  "onboarding.sourceReady.body": "Así se cortará tu clip en las piezas de Steam. Pulsa Editar origen para recortar el encuadre o acortar el inicio y el final, y luego Ejecutar conversión cuando te guste."
 }

@@ -291,6 +291,47 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeFocused()
 })
 
+test('the source step follows the sample clip into the cut preview', async ({ page }) => {
+  await page.goto('/')
+  const guide = page.getByLabel('Onboarding guide')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(guide.getByRole('heading', { name: 'Add your clip' })).toBeVisible()
+
+  // The page stays usable under the tour: the sample button sits inside the highlight.
+  await page.getByRole('button', { name: 'Use sample clip' }).click()
+  await expect(guide.getByRole('heading', { name: 'Make it fit' })).toBeVisible()
+  await expect(page.getByText('Step 2 of 4', { exact: true })).toBeVisible()
+  await expectSpotlightOn(page, 'source-preview')
+
+  // Escape inside the editor closes the editor, not the tour.
+  await page.getByRole('button', { name: 'Edit source' }).first().click()
+  await expect(page.locator('dialog[open]')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.locator('dialog[open]')).toHaveCount(0)
+  await expect(guide).toBeVisible()
+})
+
+test('loads the sample clip so a first-timer can try the editor', async ({ page }) => {
+  await markOnboardingComplete(page)
+  await page.goto('/')
+
+  const sampleButton = page.getByRole('button', { name: 'Use sample clip' })
+  await sampleButton.click()
+
+  // It goes through the real file input, so the input carries the file and the preview opens.
+  await expect
+    .poll(() =>
+      page.locator('[data-onboarding-target="source"] input[type="file"]').evaluate(
+        (input: HTMLInputElement) => input.files?.[0]?.name ?? '',
+      ),
+    )
+    .toBe('sample-clip.mp4')
+  await expect(page.getByRole('region', { name: 'Cut Preview' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Edit source' }).first()).toBeVisible()
+  await expect(sampleButton).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'Run Conversion' })).toBeEnabled()
+})
+
 test('folds the tabs and settings into a menu on narrow screens', async ({ page }) => {
   await markOnboardingComplete(page)
   await page.setViewportSize({ width: 390, height: 844 })

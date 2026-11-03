@@ -50,7 +50,7 @@
   "onboarding.preset.title": "Choose where it goes",
   "onboarding.preset.body": "Pick the showcase you are making. Each preset already knows Steam’s sizes: Workshop cuts your clip into 5 side-by-side slices, Artwork Showcase into a 506 px main piece and a 100 px strip.",
   "onboarding.source.title": "Add your clip",
-  "onboarding.source.body": "Use a video, GIF or image. The preview shows exactly how it will be cut; click it to crop or trim. Then press Run Conversion.",
+  "onboarding.source.body": "Choose a video, GIF or image, or press Use sample clip to practise with ours. You'll see exactly how it will be cut before anything is converted.",
   "onboarding.preview.title": "See it on your profile",
   "onboarding.preview.body": "Finished GIFs are saved in the Library, in this browser only. From there, open them in SteamCanvas to see them on your Steam profile page before you upload. Nothing is posted.",
   "onboarding.upload.title": "Upload to Steam",
@@ -391,5 +391,10 @@
   "convert.error.unsupportedSource": "Unsupported source file. Use a video file or image (.gif, .png, .webp, .jpg, .jpeg, .bmp).",
   "app.nav.primary": "Primary",
   "app.overview.label": "Workbench overview",
-  "onboarding.label": "Onboarding guide"
+  "onboarding.label": "Onboarding guide",
+  "convert.sample.use": "Use sample clip",
+  "convert.sample.loading": "Loading…",
+  "convert.sample.error": "Couldn't load the sample clip. Choose a file of your own instead.",
+  "onboarding.sourceReady.title": "Make it fit",
+  "onboarding.sourceReady.body": "This is how your clip will be cut into Steam's slices. Press Edit source to crop the frame or trim the start and end, then Run Conversion when it looks right."
 }

@@ -20,6 +20,16 @@ const ONBOARDING_STEPS: Array<{
   { target: 'nav-steam', title: 'onboarding.upload.title', body: 'onboarding.upload.body' },
 ]
 
+/**
+ * Once a clip is loaded, the source step follows it: the highlight moves to the cut preview (with its
+ * Edit source button) and the card sits above it, so the preview itself stays uncovered.
+ */
+const SOURCE_READY_STEP = {
+  target: 'source-preview',
+  title: 'onboarding.sourceReady.title',
+  body: 'onboarding.sourceReady.body',
+} as const satisfies { target: string; title: MessageId; body: MessageId }
+
 /** Space kept between the highlighted control and the card, and around the highlight. */
 const CARD_GAP = 12
 const SPOTLIGHT_PADDING = 8
@@ -49,7 +59,7 @@ function headerBottom(): number {
 }
 
 /** Brings a step's control into view. Header buttons stay put vertically; form fields scroll. */
-function revealTarget(target: HTMLElement): void {
+function revealTarget(target: HTMLElement, roomAbove = 0): void {
   const behavior: ScrollBehavior = prefersReducedMotion() ? 'auto' : 'smooth'
   if (target.closest('.global-nav')) {
     // The header is sticky; on narrow screens its tab row scrolls sideways.
@@ -60,7 +70,10 @@ function revealTarget(target: HTMLElement): void {
   const rect = target.getBoundingClientRect()
   const top = headerBottom()
   // On phones the card covers the bottom of the screen, so place the control just below the header.
-  const lead = window.innerWidth <= MOBILE_BREAKPOINT ? 16 : Math.max(24, (window.innerHeight - top) * 0.2)
+  const lead =
+    window.innerWidth <= MOBILE_BREAKPOINT
+      ? 16
+      : Math.max(24, roomAbove, (window.innerHeight - top) * 0.2)
   window.scrollTo({ top: Math.max(0, rect.top + window.scrollY - top - lead), behavior })
 }
 
@@ -83,7 +96,11 @@ export function OnboardingTour(props: OnboardingTourProps) {
   const openerRef = useRef<HTMLElement | null>(null)
   const titleId = useId()
   const bodyId = useId()
-  const step = ONBOARDING_STEPS[stepIndex]
+  /** True while the Convert form shows a cut preview, i.e. the user has added a clip. */
+  const [sourceReady, setSourceReady] = useState(false)
+  const baseStep = ONBOARDING_STEPS[stepIndex]
+  const step = baseStep.target === 'source' && sourceReady ? SOURCE_READY_STEP : baseStep
+  const cardAbove = step === SOURCE_READY_STEP
   const isFirst = stepIndex === 0
   const isLast = stepIndex === ONBOARDING_STEPS.length - 1
 
@@ -106,6 +123,30 @@ export function OnboardingTour(props: OnboardingTourProps) {
     }
     cardRef.current?.focus({ preventScroll: true })
   }, [open])
+
+  // Watch for the cut preview appearing or going away (a clip added, swapped or cleared).
+  useEffect(() => {
+    if (!open) {
+      return
+    }
+    const sync = (): void => setSourceReady(queryTarget(SOURCE_READY_STEP.target) !== null)
+    sync()
+    const observer = new MutationObserver(sync)
+    observer.observe(document.querySelector('main') ?? document.body, { childList: true, subtree: true })
+    return () => observer.disconnect()
+  }, [open])
+
+  // Say so when the step changes under the user because they added a clip.
+  const announcedReady = useRef(false)
+  useEffect(() => {
+    if (!open || baseStep.target !== 'source' || !sourceReady || announcedReady.current) {
+      return
+    }
+    announcedReady.current = true
+    setAnnouncement(
+      `${intl.formatMessage({ id: SOURCE_READY_STEP.title })}. ${intl.formatMessage({ id: SOURCE_READY_STEP.body })}`,
+    )
+  }, [open, baseStep.target, sourceReady, intl])
 
   function restoreFocus(): void {
     const opener = openerRef.current
@@ -136,8 +177,12 @@ export function OnboardingTour(props: OnboardingTourProps) {
     }
 
     const closeOnEscape = (event: KeyboardEvent): void => {
-      // The phone menu handles its own Escape first.
-      if (event.key === 'Escape' && !document.querySelector('.global-nav-menu.open')) {
+      // The phone menu and the source editor dialog handle their own Escape first.
+      if (
+        event.key === 'Escape' &&
+        !document.querySelector('.global-nav-menu.open') &&
+        !document.querySelector('dialog[open]')
+      ) {
         storeOnboardingComplete()
         onOpenChange(false)
         restoreFocus()
@@ -147,7 +192,7 @@ export function OnboardingTour(props: OnboardingTourProps) {
     const position = (): void => {
       const spotlight = spotlightRef.current
       const card = cardRef.current
-      const target = findTarget(ONBOARDING_STEPS[stepIndex].target)
+      const target = findTarget(step.target)
       if (!spotlight || !card || !target) {
         if (spotlight) spotlight.style.opacity = '0'
         return
@@ -172,10 +217,9 @@ export function OnboardingTour(props: OnboardingTourProps) {
       const highlightTop = rect.top - SPOTLIGHT_PADDING
       const below = highlightBottom + CARD_GAP
       const above = highlightTop - CARD_GAP - cardRect.height
-      const top =
-        below + cardRect.height <= window.innerHeight - 16 || above < headerBottom() + 8
-          ? below
-          : above
+      const fitsAbove = above >= headerBottom() + 8
+      const fitsBelow = below + cardRect.height <= window.innerHeight - 16
+      const top = cardAbove ? (fitsAbove || !fitsBelow ? above : below) : fitsBelow || !fitsAbove ? below : above
       const left = Math.min(window.innerWidth - cardRect.width - 16, Math.max(16, rect.left - SPOTLIGHT_PADDING))
       card.style.top = `${top}px`
       card.style.left = `${left}px`
@@ -184,7 +228,11 @@ export function OnboardingTour(props: OnboardingTourProps) {
 
     const target = findTarget(step.target)
     if (target) {
-      revealTarget(target)
+      // A card placed above the control needs that much clear space under the header.
+      const roomAbove = cardAbove
+        ? (cardRef.current?.getBoundingClientRect().height ?? 0) + CARD_GAP + SPOTLIGHT_PADDING + 24
+        : 0
+      revealTarget(target, roomAbove)
     }
 
     position()
@@ -199,7 +247,7 @@ export function OnboardingTour(props: OnboardingTourProps) {
       window.removeEventListener('resize', position)
       window.removeEventListener('scroll', position, { capture: true })
     }
-  }, [open, onOpenChange, step.target, stepIndex])
+  }, [open, onOpenChange, step.target, cardAbove])
 
   function goToStep(next: number): void {
     const bounded = Math.max(0, Math.min(ONBOARDING_STEPS.length - 1, next))

@@ -1060,12 +1060,16 @@ textarea {
   color: var(--ink-soft);
 }
 
-.source-editor-primary {
+/* Edit source is the next step once a clip is loaded, so it gets the primary blue. */
+.source-editor-primary,
+.cut-preview-button.cut-preview-edit {
+  border-color: transparent;
   background: var(--apple-blue);
   color: var(--ink-inverse);
 }
 
-.source-editor-primary:not(:disabled):hover {
+.source-editor-primary:not(:disabled):hover,
+.cut-preview-button.cut-preview-edit:not(:disabled):hover {
   background: var(--apple-blue-dark);
 }
 
@@ -1448,6 +1452,21 @@ input[type='file']::file-selector-button {
 
 .field-input-row input {
   flex: 1 1 auto;
+}
+
+/* The sample button drops under the picker when the field is too narrow for both. */
+.source-input-row {
+  flex-wrap: wrap;
+}
+
+.source-input-row input[type='file'] {
+  flex: 1 1 15rem;
+  min-width: 0;
+}
+
+.source-input-row .inline-action {
+  flex: none;
+  min-height: 2.75rem;
 }
 
 .field-note,

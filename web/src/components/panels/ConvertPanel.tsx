@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useRef, useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import type { ConversionConfig, OptimizationMode, ShadowDarkening } from '../../lib/types'
 import { countAdvancedConfigOverrides } from '../../lib/defaults'
@@ -10,6 +10,10 @@ import { useConvertContext } from '../../contexts/convertContext'
 import { SwitchCard } from '../SwitchCard'
 import { CutPreview } from '../CutPreview'
 import { FeedbackPrompt } from '../FeedbackPrompt'
+
+/** A 6-second clip made for this app (a disc crossing a dusk sky, with a running clock to trim against). */
+const SAMPLE_SOURCE_URL = '/samples/sample-clip.mp4'
+const SAMPLE_SOURCE_NAME = 'sample-clip.mp4'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
 
 interface ConvertPanelProps {
@@ -86,6 +90,34 @@ export function ConvertPanel(props: ConvertPanelProps) {
     ? ({ '--workshop-columns': config.parts } as CSSProperties)
     : undefined
   const advancedOverrideCount = countAdvancedConfigOverrides(config)
+  const sourceInputRef = useRef<HTMLInputElement | null>(null)
+  const [sampleState, setSampleState] = useState<'idle' | 'loading' | 'error'>('idle')
+
+  /**
+   * Puts the bundled sample into the real file input and fires its change event, so it takes exactly
+   * the path a picked file does and the input shows its name.
+   */
+  async function loadSampleSource(): Promise<void> {
+    const input = sourceInputRef.current
+    if (!input) {
+      return
+    }
+    setSampleState('loading')
+    try {
+      const response = await fetch(SAMPLE_SOURCE_URL)
+      if (!response.ok) {
+        throw new Error(`Sample request failed with ${response.status}`)
+      }
+      const blob = await response.blob()
+      const transfer = new DataTransfer()
+      transfer.items.add(new File([blob], SAMPLE_SOURCE_NAME, { type: 'video/mp4' }))
+      input.files = transfer.files
+      input.dispatchEvent(new Event('change', { bubbles: true }))
+      setSampleState('idle')
+    } catch {
+      setSampleState('error')
+    }
+  }
 
   async function copyText(section: 'progress', text: string): Promise<void> {
     if (!text) {
@@ -250,11 +282,36 @@ export function ConvertPanel(props: ConvertPanelProps) {
 
             <label className="field-source" data-onboarding-target="source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
               {intl.formatMessage({ id: 'convert.sourceFile' })}
-              <input
-                type="file"
-                accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
-                onChange={onSourceFileChange}
-              />
+              <div className="field-input-row source-input-row">
+                <input
+                  ref={sourceInputRef}
+                  type="file"
+                  // The label also wraps the sample button; keep its text out of the input's name.
+                  aria-label={intl.formatMessage({ id: 'convert.sourceFile' })}
+                  accept="video/*,.gif,image/gif,.png,image/png,.webp,image/webp,.jpg,.jpeg,image/jpeg,.bmp,image/bmp"
+                  onChange={(event) => {
+                    setSampleState('idle')
+                    onSourceFileChange(event)
+                  }}
+                />
+                {!sourceFile && (
+                  <button
+                    type="button"
+                    className="inline-action"
+                    disabled={busy || sampleState === 'loading'}
+                    onClick={() => void loadSampleSource()}
+                  >
+                    {intl.formatMessage({
+                      id: sampleState === 'loading' ? 'convert.sample.loading' : 'convert.sample.use',
+                    })}
+                  </button>
+                )}
+              </div>
+              {sampleState === 'error' && (
+                <small className="field-note" role="alert">
+                  {intl.formatMessage({ id: 'convert.sample.error' })}
+                </small>
+              )}
             </label>
 
             {sourceFile && (

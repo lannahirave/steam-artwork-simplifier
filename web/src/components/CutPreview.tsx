@@ -157,7 +157,12 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
   }
 
   return (
-    <section className="cut-preview" aria-label={intl.formatMessage({ id: 'convert.cutPreview.title' })}>
+    // data-onboarding-target: the tour's source step moves here once a clip is loaded.
+    <section
+      className="cut-preview"
+      aria-label={intl.formatMessage({ id: 'convert.cutPreview.title' })}
+      data-onboarding-target="source-preview"
+    >
       <div className="cut-preview-head">
         <strong>{intl.formatMessage({ id: 'convert.cutPreview.title' })}</strong>
         {layout && firstPiece && (
@@ -176,7 +181,7 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
         <div className="cut-preview-actions">
           <button
             type="button"
-            className="cut-preview-button"
+            className="cut-preview-button cut-preview-edit"
             disabled={!canEdit}
             onClick={() => setEditorOpen(true)}
           >

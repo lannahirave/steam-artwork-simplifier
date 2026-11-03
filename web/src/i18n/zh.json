@@ -50,7 +50,7 @@
   "onboarding.preset.title": "选择放在哪里",
   "onboarding.preset.body": "选择你要制作的展柜。每个预设都已内置 Steam 的尺寸：创意工坊会把视频切成 5 个并排的片段，艺术作品展柜则切成 506 px 主图和 100 px 窄条。",
   "onboarding.source.title": "添加你的素材",
-  "onboarding.source.body": "可以使用视频、GIF 或图片。预览会准确显示切割方式；点击预览即可裁剪画面或截取时长。然后点击“运行转换”。",
+  "onboarding.source.body": "选择视频、GIF 或图片，或点击“使用示例片段”用我们的素材练习。转换之前，你就能看到它会被如何切割。",
   "onboarding.preview.title": "在个人资料上查看",
   "onboarding.preview.body": "完成的 GIF 会保存在素材库中，仅限当前浏览器。在那里用 SteamCanvas 打开，即可在上传前看到它们在你的 Steam 个人资料页面上的效果。不会发布任何内容。",
   "onboarding.upload.title": "上传到 Steam",
@@ -391,5 +391,10 @@
   "convert.error.unsupportedSource": "不支持的源文件。请使用视频文件或图片（.gif、.png、.webp、.jpg、.jpeg、.bmp）。",
   "app.nav.primary": "主导航",
   "app.overview.label": "工作台概览",
-  "onboarding.label": "入门指南"
+  "onboarding.label": "入门指南",
+  "convert.sample.use": "使用示例片段",
+  "convert.sample.loading": "加载中…",
+  "convert.sample.error": "无法加载示例片段，请选择你自己的文件。",
+  "onboarding.sourceReady.title": "调整画面",
+  "onboarding.sourceReady.body": "这就是你的片段被切成 Steam 各个部分的方式。点击“编辑源文件”可裁剪画面或截取开头和结尾，满意后点击“运行转换”。"
 }
