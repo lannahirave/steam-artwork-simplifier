@@ -45,7 +45,7 @@ STATS_DAILY_LIMIT = "20000"
 # STATS_TOKEN is a secret: `npx wrangler secret put STATS_TOKEN`.
 
 # ---------------------------------------------------------------------------------------------
-# Beta: `wrangler deploy --env beta`, deployed by CI from the `beta` branch.
+# Beta: `npm run deploy:beta` (wrangler deploy --env beta).
 # Bindings and vars are not inherited from the top level, so each one is repeated here.
 # ---------------------------------------------------------------------------------------------
 [env.beta]

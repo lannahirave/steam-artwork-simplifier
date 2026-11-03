@@ -29,8 +29,9 @@ Both repos in the workspace use the same two-branch flow:
 | Steam Artwork Studio, `lannahirave/steam-artwork-simplifier` | `app/` | https://artworkstudio.lannahirave.com | https://artworkstudio-beta.lannahirave.com |
 | SteamCanvas fork, `lannahirave/steamcanvas` | `steamcanvas/` | https://previewartwork.lannahirave.com | https://previewartwork-beta.lannahirave.com |
 
-- **Work on `beta`.** Commit new work to `beta` in both repos. CI deploys `beta` with
-  `wrangler deploy --env beta` (see `web/wrangler.toml` and `steamcanvas/wrangler.jsonc`).
+- **Work on `beta`.** Commit new work to `beta` in both repos. Deploy only when the user asks:
+  `npm run deploy:beta` in `web/` (Studio) or `steamcanvas/` (see `web/wrangler.toml` and
+  `steamcanvas/wrangler.jsonc`). Production is `npm run deploy` in either folder.
 - **`main` is production.** Promote `beta` to `main` only when the user asks, after both beta sites
   have been tested together.
 - **The beta sites talk to each other.** Beta Studio opens the beta SteamCanvas preview
