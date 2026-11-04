@@ -3275,3 +3275,28 @@ button.inline-link:not(:disabled):hover {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* SteamCanvas's saved demo examples, at the end of the Library tab. */
+.steam-canvas-saved {
+  display: grid;
+  gap: 0.85rem;
+  margin-top: 2.5rem;
+  padding-top: 2rem;
+  border-top: 1px solid var(--line);
+}
+
+.steam-canvas-saved h3 {
+  margin: 0;
+  font-size: 1.35rem;
+}
+
+.steam-canvas-saved .panel-intro {
+  margin: 0;
+}
+
+.steam-canvas-saved-error {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}

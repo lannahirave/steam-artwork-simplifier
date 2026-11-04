@@ -22,25 +22,28 @@ Disallow: /
 // 'wasm-unsafe-eval' compiles the FFmpeg and gifski WASM; blob: covers the hash-checked
 // FFmpeg core that the conversion worker imports from a blob URL; cdn.jsdelivr.net is
 // where that core is downloaded from (see src/workers/ffmpeg.worker.ts).
-const CONTENT_SECURITY_POLICY = [
-  "default-src 'self'",
-  "script-src 'self' 'wasm-unsafe-eval' blob:",
-  "worker-src 'self' blob:",
-  "connect-src 'self' blob: https://cdn.jsdelivr.net",
-  "img-src 'self' blob: data:",
-  "media-src 'self' blob:",
-  "style-src 'self' 'unsafe-inline'",
-  "font-src 'self' data:",
-  "object-src 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "frame-ancestors 'none'",
-].join('; ')
+export function contentSecurityPolicy(previewOrigin: string): string {
+  return [
+    "default-src 'self'",
+    "script-src 'self' 'wasm-unsafe-eval' blob:",
+    "worker-src 'self' blob:",
+    "connect-src 'self' blob: https://cdn.jsdelivr.net",
+    "img-src 'self' blob: data:",
+    "media-src 'self' blob:",
+    "style-src 'self' 'unsafe-inline'",
+    "font-src 'self' data:",
+    "object-src 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    // The Library tab embeds SteamCanvas's /bridge/ page to manage the artwork saved there.
+    `frame-src ${previewOrigin}`,
+    "frame-ancestors 'none'",
+  ].join('; ')
+}
 
 const SECURITY_HEADERS: Record<string, string> = {
   'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Content-Security-Policy': CONTENT_SECURITY_POLICY,
   'X-Content-Type-Options': 'nosniff',
   'X-Frame-Options': 'DENY',
   'Referrer-Policy': 'strict-origin-when-cross-origin',
@@ -80,9 +83,10 @@ export default {
         : await env.ASSETS.fetch(request)
     const headers = new Headers(response.headers)
     const bridge = isBridgePath(pathname)
+    const previewOrigin = env.PROFILE_PREVIEW_ORIGIN || DEFAULT_PROFILE_PREVIEW_ORIGIN
     const securityHeaders = bridge
-      ? bridgeHeaders(env.PROFILE_PREVIEW_ORIGIN || DEFAULT_PROFILE_PREVIEW_ORIGIN)
-      : SECURITY_HEADERS
+      ? bridgeHeaders(previewOrigin)
+      : { ...SECURITY_HEADERS, 'Content-Security-Policy': contentSecurityPolicy(previewOrigin) }
 
     for (const [name, value] of Object.entries(securityHeaders)) {
       headers.set(name, value)

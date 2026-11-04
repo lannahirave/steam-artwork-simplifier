@@ -45,6 +45,11 @@ describe('bridge headers', () => {
     expect(response.headers.get('Content-Security-Policy')).toContain("frame-ancestors 'none'")
   })
 
+  it('lets the app frame only the preview origin, for the SteamCanvas saved-artwork bridge', async () => {
+    const response = await worker.fetch(new Request('https://studio.example.com/'), env)
+    expect(response.headers.get('Content-Security-Policy')).toContain('frame-src https://preview.example.com')
+  })
+
   it('marks the beta deployment noindex, and only that one', async () => {
     const beta = { ...env, ROBOTS_NOINDEX: 'true' } as unknown as WorkerEnv
     const betaResponse = await worker.fetch(new Request('https://studio.example.com/'), beta)

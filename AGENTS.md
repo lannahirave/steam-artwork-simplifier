@@ -28,10 +28,16 @@ Both repos in the workspace use the same two-branch flow:
 |---|---|---|---|
 | Steam Artwork Studio, `lannahirave/steam-artwork-simplifier` | `app/` | https://artworkstudio.lannahirave.com | https://artworkstudio-beta.lannahirave.com |
 | SteamCanvas fork, `lannahirave/steamcanvas` | `steamcanvas/` | https://previewartwork.lannahirave.com | https://previewartwork-beta.lannahirave.com |
+| Demo page (not a git repo) | `demo-site/` serves `deploy/` | https://demoartwork.lannahirave.com | https://demoartwork-beta.lannahirave.com |
 
 - **Work on `beta`.** Commit new work to `beta` in both repos. Deploy only when the user asks:
   `npm run deploy:beta` in `web/` (Studio) or `steamcanvas/` (see `web/wrangler.toml` and
   `steamcanvas/wrangler.jsonc`). Production is `npm run deploy` in either folder.
+- **The demo page has no branches.** `deploy/` (built by `bench/chatexport/run-chatexport.mjs`) is
+  served by both demo sites. `npm run deploy:beta` in `demo-site/` runs `beta-worker.js`, which points
+  the page's links at the beta Studio and beta SteamCanvas and blocks search engines; `npm run deploy`
+  serves it as is. So a change to `deploy/` reaches production on the next production deploy: test it on
+  beta first. Beta SteamCanvas reads the beta demo (`DEMO_ARTWORK_ORIGIN`).
 - **`main` is production.** Promote `beta` to `main` only when the user asks, after both beta sites
   have been tested together.
 - **The beta sites talk to each other.** Beta Studio opens the beta SteamCanvas preview

@@ -23,6 +23,8 @@ import { createZip } from '../../lib/zip'
 import { toArchiveBaseName } from '../../contexts/conversionSession'
 import type { MessageId } from '../../i18n/messages'
 import { Button } from '../ui/Button'
+import { formatBytes } from './libraryFormat'
+import { SteamCanvasSavedSection } from './SteamCanvasSavedSection'
 
 interface LibraryPanelProps {
   onboardingTarget?: string
@@ -38,13 +40,6 @@ const PRESET_LABELS: Record<LibraryEntry['preset'], MessageId> = {
   showcase: 'convert.option.showcase',
   featured: 'convert.option.featured',
   guide: 'convert.option.guide',
-}
-
-function formatBytes(bytes: number): string {
-  if (bytes < 1024) return `${bytes} B`
-  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`
-  if (bytes < 1024 * 1024 * 1024) return `${Number((bytes / 1024 / 1024).toFixed(1))} MB`
-  return `${Number((bytes / 1024 / 1024 / 1024).toFixed(2))} GB`
 }
 
 function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entry: LibraryEntry) => void }) {
@@ -312,6 +307,8 @@ export function LibraryPanel({ onboardingTarget }: LibraryPanelProps) {
           <LibraryCard key={entry.id} entry={entry} onDelete={remove} />
         ))}
       </div>
+
+      <SteamCanvasSavedSection revision={revision} />
     </section>
   )
 }
