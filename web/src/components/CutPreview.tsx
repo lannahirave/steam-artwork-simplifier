@@ -190,7 +190,13 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
         )}
         <div className="cut-preview-actions">
           {/* Edit source is the next step once a clip is loaded, so it is the primary action here. */}
-          <Button variant="primary" size="small" disabled={!canEdit} onClick={() => setEditorOpen(true)}>
+          <Button
+            variant="primary"
+            size="small"
+            disabled={!canEdit}
+            data-onboarding-target="edit-source"
+            onClick={() => setEditorOpen(true)}
+          >
             {intl.formatMessage({ id: 'convert.cutPreview.edit' })}
           </Button>
           {edit && (

@@ -20,13 +20,15 @@ import { MAX_OUTPUT_HEIGHT, clampOutputHeight } from '../../lib/frameFit'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
+  /** True while the onboarding tour runs; Use sample clip is only offered then. */
+  sampleAvailable?: boolean
   /** Switches to the Library tab. */
   onOpenLibrary?: () => void
 }
 
 export function ConvertPanel(props: ConvertPanelProps) {
   const intl = useIntl()
-  const { onboardingTarget, onOpenLibrary } = props
+  const { onboardingTarget, onOpenLibrary, sampleAvailable = false } = props
   const { state, actions, meta } = useConvertContext()
   const [copiedSection, setCopiedSection] = useState<'progress' | null>(null)
   const {
@@ -344,7 +346,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                     onSourceFileChange(event)
                   }}
                 />
-                {!sourceFile && (
+                {sampleAvailable && !sourceFile && (
                   <Button
                     size="small"
                     disabled={busy || sampleState === 'loading'}
@@ -356,7 +358,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                   </Button>
                 )}
               </div>
-              {sampleState === 'error' && (
+              {sampleAvailable && sampleState === 'error' && (
                 <small className="field-note" role="alert">
                   {intl.formatMessage({ id: 'convert.sample.error' })}
                 </small>
@@ -458,7 +460,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
       </div>
 
         <div className="actions">
-          <Button variant="primary" disabled={convertDisabled} onClick={onRunConversion}>
+          <Button variant="primary" disabled={convertDisabled} data-onboarding-target="run" onClick={onRunConversion}>
             {intl.formatMessage({ id: 'convert.run' })}
           </Button>
           <Button disabled={!busy} onClick={onCancelConversion}>

@@ -249,7 +249,8 @@ export function SourceEditor({
         </button>
       </div>
 
-      <div className="source-editor-canvas" ref={canvasRef} style={canvasStyle}>
+      {/* data-onboarding-target: the tour explains the crop box, the trim and the actions in turn. */}
+      <div className="source-editor-canvas" ref={canvasRef} style={canvasStyle} data-onboarding-target="editor-crop">
         {isVideo ? (
           <video
             ref={videoRef}
@@ -329,7 +330,7 @@ export function SourceEditor({
         </fieldset>
 
         {isVideo && duration > 0 && (
-          <fieldset className="source-editor-group source-editor-trim">
+          <fieldset className="source-editor-group source-editor-trim" data-onboarding-target="editor-trim">
             <legend>{intl.formatMessage({ id: 'convert.editor.trim' })}</legend>
             <div className="source-editor-playback">
               <Button variant="outline" size="small" onClick={togglePlay}>
@@ -394,14 +395,14 @@ export function SourceEditor({
                 )
             : null}
         </span>
-        <div className="source-editor-actions">
+        <div className="source-editor-actions" data-onboarding-target="editor-actions">
           <Button variant="outline" size="small" onClick={reset}>
             {intl.formatMessage({ id: 'convert.editor.reset' })}
           </Button>
-          <Button variant="outline" size="small" onClick={onClose}>
+          <Button variant="outline" size="small" data-onboarding-action="editor-cancel" onClick={onClose}>
             {intl.formatMessage({ id: 'convert.editor.cancel' })}
           </Button>
-          <Button variant="primary" size="small" onClick={apply}>
+          <Button variant="primary" size="small" data-onboarding-action="editor-apply" onClick={apply}>
             {intl.formatMessage({ id: 'convert.editor.apply' })}
           </Button>
         </div>

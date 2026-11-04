@@ -116,7 +116,7 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
   )
 
   const tabPanels: Record<TabKey, ReactNode> = {
-    convert: <ConvertPanel onboardingTarget="convert" onOpenLibrary={openLibrary} />,
+    convert: <ConvertPanel onboardingTarget="convert" onOpenLibrary={openLibrary} sampleAvailable={showOnboarding} />,
     library: <LibraryPanel onboardingTarget="library" />,
     patch: <PatchToolsPanel onboardingTarget="patch" />,
     steam: <SteamHelpersPanel onboardingTarget="steam" />,

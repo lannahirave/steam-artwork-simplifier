@@ -424,6 +424,24 @@ textarea {
   outline: none;
 }
 
+/* Inside Edit source the card is the last thing in the dialog and sticks to its bottom edge, so it
+   never covers the crop box or the controls the tour scrolls up into view. */
+.onboarding-card.is-docked {
+  position: sticky;
+  top: auto;
+  right: auto;
+  bottom: 0;
+  left: auto;
+  width: auto;
+  max-height: none;
+  overflow: visible;
+  box-shadow: 0 -12px 32px rgba(0, 0, 0, 0.18);
+}
+
+.onboarding-card.is-docked p {
+  max-width: 68ch;
+}
+
 .visually-hidden {
   position: absolute;
   width: 1px;
@@ -1020,8 +1038,11 @@ textarea {
   box-shadow: var(--shadow-card);
 }
 
+/* Rows keep their content height and the dialog scrolls; on short screens shrinking rows made the
+   video overlap the Crop and Trim controls. */
 .source-editor[open] {
   display: grid;
+  grid-auto-rows: max-content;
   gap: 0.85rem;
 }
 

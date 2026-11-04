@@ -230,42 +230,73 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await page.goto('/')
   const guide = page.getByLabel('Onboarding guide')
   const convertTab = page.getByRole('button', { name: 'Convert', exact: true })
+  const editor = page.locator('dialog.source-editor')
 
   await expect(guide).toBeVisible()
-  await expect(page.getByText('Step 1 of 4', { exact: true })).toBeVisible()
+  await expect(page.getByText('Step 1 of 10', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'Choose where it goes' })).toBeVisible()
   await expect(guide.getByRole('button', { name: 'Back' })).toHaveCount(0)
   await expectSpotlightOn(page, 'preset')
   // Focus starts in the card, so keyboard and screen reader users land on the tour.
   await expect(guide).toBeFocused()
 
+  // Add your clip waits for a clip; Use sample clip is offered while the tour runs.
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 2 of 4', { exact: true })).toBeVisible()
+  await expect(page.getByText('Step 2 of 10', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'Add your clip' })).toBeVisible()
   await expectSpotlightOn(page, 'source')
+  await expect(guide.getByRole('button', { name: 'Add a clip to continue' })).toBeDisabled()
+  await page.getByRole('button', { name: 'Use sample clip' }).click()
 
+  // The loaded clip moves the tour on to Edit source.
+  await expect(guide.getByRole('heading', { name: 'Make it fit' })).toBeVisible()
+  await expect(page.getByText('Step 3 of 10', { exact: true })).toBeVisible()
+  await expectSpotlightOn(page, 'source-preview')
+  await guide.getByRole('button', { name: 'Open Edit source' }).click()
+
+  // Inside the editor the card moves into the dialog, the only part of the page that stays usable.
+  await expect(editor).toBeVisible()
+  await expect(editor.getByLabel('Onboarding guide')).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Crop the frame' })).toBeVisible()
+  await expect(page.getByText('Step 4 of 10', { exact: true })).toBeVisible()
+  await expectSpotlightOn(page, 'editor-crop')
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 3 of 4', { exact: true })).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Trim the clip' })).toBeVisible()
+  await expectSpotlightOn(page, 'editor-trim')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(guide.getByRole('heading', { name: 'Keep your edits' })).toBeVisible()
+  await expectSpotlightOn(page, 'editor-actions')
+
+  // Apply and continue closes the editor and goes on to the tabs.
+  await guide.getByRole('button', { name: 'Apply and continue' }).click()
+  await expect(editor).toBeHidden()
+  await expect(page.getByText('Step 7 of 10', { exact: true })).toBeVisible()
   await expect(guide.getByRole('heading', { name: 'See it on your profile' })).toBeVisible()
   await expectSpotlightOn(page, 'nav-library')
 
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(page.getByText('Step 4 of 4', { exact: true })).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Fix GIFs you already have' })).toBeVisible()
+  await expectSpotlightOn(page, 'nav-patch')
+  await guide.getByRole('button', { name: 'Next' }).click()
   await expect(guide.getByRole('heading', { name: 'Upload to Steam' })).toBeVisible()
   await expectSpotlightOn(page, 'nav-steam')
+  await guide.getByRole('button', { name: 'Next' }).click()
+  await expect(page.getByText('Step 10 of 10', { exact: true })).toBeVisible()
+  await expect(guide.getByRole('heading', { name: 'Follow a guide' })).toBeVisible()
+  await expectSpotlightOn(page, 'nav-guides')
   // The tour points at other tabs but never leaves Convert.
   await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
 
   await guide.getByRole('button', { name: 'Back' }).click()
-  await expect(page.getByText('Step 3 of 4', { exact: true })).toBeVisible()
+  await expect(page.getByText('Step 9 of 10', { exact: true })).toBeVisible()
   // Each step is announced, not just redrawn.
-  await expect(guide.locator('[aria-live="polite"]')).toContainText('Step 3 of 4. See it on your profile.')
+  await expect(guide.locator('[aria-live="polite"]')).toContainText('Step 9 of 10. Upload to Steam.')
   await guide.getByRole('button', { name: 'Next' }).click()
 
-  // Done lands on the first real action: the source file picker.
+  // Done lands on the next real action: Run Conversion, now that a clip is loaded.
   await guide.getByRole('button', { name: 'Done' }).click()
   await expect(guide).toBeHidden()
-  await expect(page.locator('[data-onboarding-target="source"] input[type="file"]')).toBeFocused()
+  await expect(page.getByRole('button', { name: 'Run Conversion' })).toBeFocused()
   await expect(page.evaluate((storageKey) => localStorage.getItem(storageKey), ONBOARDING_STORAGE_KEY)).resolves.toBe(
     'true',
   )
@@ -274,7 +305,7 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await page.getByRole('button', { name: 'Library', exact: true }).click()
   await page.getByRole('button', { name: 'Help', exact: true }).click()
   await expect(guide).toBeVisible()
-  await expect(page.getByText('Step 1 of 4', { exact: true })).toBeVisible()
+  await expect(page.getByText('Step 1 of 10', { exact: true })).toBeVisible()
   await expect(convertTab).toHaveAttribute('aria-pressed', 'true')
   await guide.getByRole('button', { name: 'Skip' }).click()
   await expect(guide).toBeHidden()
@@ -291,31 +322,45 @@ test('runs onboarding once and allows reopening from help', async ({ page }) => 
   await expect(page.getByRole('button', { name: 'Help', exact: true })).toBeFocused()
 })
 
-test('the source step follows the sample clip into the cut preview', async ({ page }) => {
+test('the tour follows the user in and out of Edit source', async ({ page }) => {
   await page.goto('/')
   const guide = page.getByLabel('Onboarding guide')
+  const editor = page.locator('dialog.source-editor')
   await guide.getByRole('button', { name: 'Next' }).click()
-  await expect(guide.getByRole('heading', { name: 'Add your clip' })).toBeVisible()
-
-  // The page stays usable under the tour: the sample button sits inside the highlight.
   await page.getByRole('button', { name: 'Use sample clip' }).click()
   await expect(guide.getByRole('heading', { name: 'Make it fit' })).toBeVisible()
-  await expect(page.getByText('Step 2 of 4', { exact: true })).toBeVisible()
-  await expectSpotlightOn(page, 'source-preview')
 
-  // Escape inside the editor closes the editor, not the tour.
-  await page.getByRole('button', { name: 'Edit source' }).first().click()
-  await expect(page.locator('dialog[open]')).toBeVisible()
+  // Opening the editor with its own button counts too.
+  await page.locator('[data-onboarding-target="edit-source"]').click()
+  await expect(guide.getByRole('heading', { name: 'Crop the frame' })).toBeVisible()
+
+  // Back from the first editor step cancels the editor and returns to Make it fit.
+  await guide.getByRole('button', { name: 'Back' }).click()
+  await expect(editor).toBeHidden()
+  await expect(guide.getByRole('heading', { name: 'Make it fit' })).toBeVisible()
+
+  // Escape inside the editor closes the editor, not the tour, and the tour moves on to the tabs.
+  await guide.getByRole('button', { name: 'Open Edit source' }).click()
+  await expect(guide.getByRole('heading', { name: 'Crop the frame' })).toBeVisible()
   await page.keyboard.press('Escape')
-  await expect(page.locator('dialog[open]')).toHaveCount(0)
-  await expect(guide).toBeVisible()
+  await expect(editor).toBeHidden()
+  await expect(guide.getByRole('heading', { name: 'See it on your profile' })).toBeVisible()
+
+  // Back from the tabs skips the closed editor's steps.
+  await guide.getByRole('button', { name: 'Back' }).click()
+  await expect(guide.getByRole('heading', { name: 'Make it fit' })).toBeVisible()
 })
 
-test('loads the sample clip so a first-timer can try the editor', async ({ page }) => {
+test('offers the sample clip only during the tour', async ({ page }) => {
   await markOnboardingComplete(page)
   await page.goto('/')
 
   const sampleButton = page.getByRole('button', { name: 'Use sample clip' })
+  await expect(page.locator('[data-onboarding-target="source"] input[type="file"]')).toBeVisible()
+  await expect(sampleButton).toHaveCount(0)
+
+  await page.getByRole('button', { name: 'Help', exact: true }).click()
+  await page.getByLabel('Onboarding guide').getByRole('button', { name: 'Next' }).click()
   await sampleButton.click()
 
   // It goes through the real file input, so the input carries the file and the preview opens.
@@ -327,7 +372,6 @@ test('loads the sample clip so a first-timer can try the editor', async ({ page 
     )
     .toBe('sample-clip.mp4')
   await expect(page.getByRole('region', { name: 'Cut Preview' })).toBeVisible()
-  await expect(page.getByRole('button', { name: 'Edit source' }).first()).toBeVisible()
   await expect(sampleButton).toHaveCount(0)
   await expect(page.getByRole('button', { name: 'Run Conversion' })).toBeEnabled()
 })
