@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
 import { downloadBlob } from '../../agents/appAgents'
 import {
@@ -15,6 +15,9 @@ import {
   libraryEntryBytes,
   libraryEntryLayout,
   listLibraryEntries,
+  LIBRARY_NOTES_MAX_LENGTH,
+  normalizeLibraryNotes,
+  updateLibraryEntryNotes,
   type LibraryEntry,
   type StorageUsage,
 } from '../../lib/artworkLibrary'
@@ -40,6 +43,64 @@ const PRESET_LABELS: Record<LibraryEntry['preset'], MessageId> = {
   showcase: 'convert.option.showcase',
   featured: 'convert.option.featured',
   guide: 'convert.option.guide',
+}
+
+type NotesStatus = 'idle' | 'saving' | 'saved' | 'error'
+
+/** The entry's notes. Saved when the field loses focus; later changes from other tabs show up unless you are typing. */
+function LibraryNotes({ entry }: { entry: LibraryEntry }) {
+  const intl = useIntl()
+  const fieldId = useId()
+  const statusId = `${fieldId}-status`
+  const stored = entry.notes ?? ''
+  const [draft, setDraft] = useState(stored)
+  const [status, setStatus] = useState<NotesStatus>('idle')
+  const editing = useRef(false)
+
+  useEffect(() => {
+    if (!editing.current) setDraft(stored)
+  }, [stored])
+
+  async function save(): Promise<void> {
+    editing.current = false
+    const next = normalizeLibraryNotes(draft)
+    setDraft(next)
+    if (next === stored) return
+    setStatus('saving')
+    try {
+      const found = await updateLibraryEntryNotes(entry.id, next)
+      setStatus(found ? 'saved' : 'error')
+    } catch {
+      setStatus('error')
+    }
+  }
+
+  return (
+    <div className="library-notes">
+      <label htmlFor={fieldId}>{intl.formatMessage({ id: 'library.notes.label' })}</label>
+      <textarea
+        id={fieldId}
+        value={draft}
+        rows={2}
+        maxLength={LIBRARY_NOTES_MAX_LENGTH}
+        placeholder={intl.formatMessage({ id: 'library.notes.placeholder' })}
+        aria-describedby={statusId}
+        onFocus={() => {
+          editing.current = true
+        }}
+        onChange={(event) => {
+          setDraft(event.target.value)
+          setStatus('idle')
+        }}
+        onBlur={() => void save()}
+      />
+      <p id={statusId} className={status === 'error' ? 'library-notes-status is-error' : 'library-notes-status'} role="status">
+        {status === 'saving' && intl.formatMessage({ id: 'library.notes.saving' })}
+        {status === 'saved' && intl.formatMessage({ id: 'library.notes.saved' })}
+        {status === 'error' && intl.formatMessage({ id: 'library.notes.failed' })}
+      </p>
+    </div>
+  )
 }
 
 function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entry: LibraryEntry) => void }) {
@@ -105,6 +166,7 @@ function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entr
             <span className="library-badge">{intl.formatMessage({ id: 'library.incomplete' })}</span>
           )}
         </p>
+        <LibraryNotes entry={entry} />
         <div className="results-actions-row">
           <button type="button" onClick={() => void downloadZip()} disabled={zipping}>
             {intl.formatMessage({ id: 'library.downloadZip' })}

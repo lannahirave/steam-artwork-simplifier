@@ -54,6 +54,8 @@ export interface BridgeEntry {
   workshopParts: number
   workshopRows: LibraryEntry['workshopRows']
   complete: boolean
+  /** The user's notes from the Library tab; empty when there are none. */
+  notes: string
   files: Array<{ name: string; type: string; width: number; height: number; blob: Blob }>
 }
 
@@ -66,6 +68,7 @@ export function toBridgeEntry(entry: LibraryEntry): BridgeEntry {
     workshopParts: entry.workshopParts,
     workshopRows: entry.workshopRows,
     complete: entry.complete,
+    notes: entry.notes ?? '',
     files: entry.files.map((file) => {
       const blob = previewBlobOf(file)
       return { name: file.name, type: blob.type, width: file.width, height: file.height, blob }

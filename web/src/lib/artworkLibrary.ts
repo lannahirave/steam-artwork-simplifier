@@ -43,6 +43,16 @@ export interface LibraryEntry {
   /** False when the conversion was finished early and some parts are missing. */
   complete: boolean
   files: LibraryFile[]
+  /** The user's own notes, edited on the Library tab. Entries saved before notes existed have none. */
+  notes?: string
+}
+
+/** Longest note kept, in characters. */
+export const LIBRARY_NOTES_MAX_LENGTH = 1000
+
+/** Notes as stored: line endings unified, surrounding whitespace trimmed, at most LIBRARY_NOTES_MAX_LENGTH characters. */
+export function normalizeLibraryNotes(notes: string): string {
+  return notes.replace(/\r\n?/g, '\n').trim().slice(0, LIBRARY_NOTES_MAX_LENGTH)
 }
 
 export function createLibraryId(): string {
@@ -245,6 +255,26 @@ export async function listLibraryEntries(): Promise<LibraryEntry[]> {
 export async function getLibraryEntry(id: string): Promise<LibraryEntry | null> {
   const entry = await withStore('readonly', (store) => requestToPromise(store.get(id)) as Promise<LibraryEntry | undefined>)
   return entry ?? null
+}
+
+/**
+ * Replaces an entry's notes. Read and write happen in one transaction, so a save from another tab
+ * cannot be lost in between. Returns false when the entry no longer exists.
+ */
+export async function updateLibraryEntryNotes(id: string, notes: string): Promise<boolean> {
+  const nextNotes = normalizeLibraryNotes(notes)
+  const updated = await withStore('readwrite', async (store) => {
+    const entry = (await requestToPromise(store.get(id))) as LibraryEntry | undefined
+    if (!entry) return false
+    if ((entry.notes ?? '') === nextNotes) return true
+    const next: LibraryEntry = { ...entry }
+    if (nextNotes) next.notes = nextNotes
+    else delete next.notes
+    store.put(next)
+    return true
+  })
+  if (updated) notifyChanged()
+  return updated
 }
 
 export async function deleteLibraryEntry(id: string): Promise<void> {

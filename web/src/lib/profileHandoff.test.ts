@@ -73,6 +73,12 @@ describe('toBridgeEntry', () => {
     expect(bridged.files).toEqual([{ name: 'featured.gif', type: 'image/gif', width: 630, height: 300, blob: original }])
   })
 
+  it('sends the notes, or an empty string for entries saved before notes existed', () => {
+    const entry = buildLibraryEntry(id, single('featured'), [artifact('featured.gif', 630)], 'clip.mp4', true)
+    expect(toBridgeEntry(entry).notes).toBe('')
+    expect(toBridgeEntry({ ...entry, notes: 'for the DL2 profile' }).notes).toBe('for the DL2 profile')
+  })
+
   it('keeps the Workshop layout and file order', () => {
     const outputs = parts(10)
     const bridged = toBridgeEntry(buildLibraryEntry(id, workshop(2), outputs, '', true))

@@ -7,6 +7,8 @@ import {
   libraryEntryArtifacts,
   libraryEntryBytes,
   libraryEntryLayout,
+  LIBRARY_NOTES_MAX_LENGTH,
+  normalizeLibraryNotes,
   pickEntriesToEvict,
 } from './artworkLibrary'
 
@@ -95,5 +97,25 @@ describe('pickEntriesToEvict', () => {
     const big = sized('big', 1, 500)
     const evicted = pickEntriesToEvict([big, sized('other', 2, 10)], 100, big.id)
     expect(evicted.map((entry) => entry.sourceName)).toEqual(['other'])
+  })
+})
+
+describe('normalizeLibraryNotes', () => {
+  it('unifies line endings and trims the ends but keeps inner lines', () => {
+    expect(normalizeLibraryNotes('  dying light\r\nprofile 2\r  ')).toBe('dying light\nprofile 2')
+  })
+
+  it('treats whitespace as no notes', () => {
+    expect(normalizeLibraryNotes(' \n\t ')).toBe('')
+  })
+
+  it('caps the length', () => {
+    expect(normalizeLibraryNotes('x'.repeat(LIBRARY_NOTES_MAX_LENGTH + 50))).toHaveLength(LIBRARY_NOTES_MAX_LENGTH)
+  })
+})
+
+describe('buildLibraryEntry notes', () => {
+  it('starts without notes', () => {
+    expect(buildLibraryEntry('abcdefghijklmnopqrstuvwx', layout, [artifact('a.gif')], 'clip.mp4', true).notes).toBeUndefined()
   })
 })

@@ -3260,6 +3260,43 @@ button.inline-link:not(:disabled):hover {
   transform: none;
 }
 
+.library-notes {
+  display: grid;
+  gap: 0.3rem;
+  margin: 0.75rem 0;
+}
+
+/* A plain caption, not the boxed field label used in the converter forms. */
+.library-notes label {
+  display: block;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--ink-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+/* Notes are prose, so they use the body font rather than the monospace one for code-like fields. */
+.library-notes textarea {
+  min-height: 3.6rem;
+  padding: 0.55rem 0.75rem;
+  font-family: inherit;
+  font-size: 0.92rem;
+  letter-spacing: normal;
+}
+
+.library-notes-status {
+  min-height: 1.1em;
+  margin: 0;
+  color: var(--ink-muted);
+  font-size: 0.78rem;
+}
+
+.library-notes-status.is-error {
+  color: var(--error);
+}
+
 .library-badge {
   padding: 0.05rem 0.5rem;
   border-radius: var(--radius-pill);
