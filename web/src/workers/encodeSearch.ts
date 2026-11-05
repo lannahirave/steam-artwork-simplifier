@@ -21,7 +21,8 @@ interface BestEncodeResult {
   finalQuality: number
 }
 
-export interface SearchEncodeOptions extends Pick<EncodeGifOptions, 'ffmpeg' | 'ffmpegLogBuffer'> {
+export interface SearchEncodeOptions
+  extends Pick<EncodeGifOptions, 'ffmpeg' | 'ffmpegLogBuffer' | 'alpha' | 'inputDecoder'> {
   postProgress: WorkerProgressSink
   postMemoryDebug?: WorkerMemoryDebugSink
   inputName: string
@@ -69,6 +70,8 @@ function encodeAttempt(
     vf,
     fps,
     quality,
+    alpha: options.alpha,
+    inputDecoder: options.inputDecoder,
     startOffsetSec: options.startOffsetSec,
     frameCache,
   })
@@ -94,6 +97,8 @@ async function encodeFixedQualityCandidates(
       outputTag: `fixed-quality-${options.requestId}`,
       vf,
       fps: options.gifFps,
+      alpha: options.alpha,
+      inputDecoder: options.inputDecoder,
       startOffsetSec: options.startOffsetSec,
       frameCache,
     },

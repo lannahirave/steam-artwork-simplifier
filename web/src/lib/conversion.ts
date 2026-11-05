@@ -1,6 +1,7 @@
 import { patchGifHeaderBytes, patchLastByteBytes } from './patch'
 import { runPrecheck } from './precheck'
 import { resolveCustomHeight, resolveFrameHeight } from './frameFit'
+import { outputKeepsAlpha, resolveAlphaHandling } from './transparency'
 import {
   analyzeSplitPartWeights,
   estimateFpsForKbTarget,
@@ -319,6 +320,23 @@ export async function convertVideo(
     emit('probe', `Static image source: outputs stay ${stillFormat.toUpperCase()}, resized and cropped only.`)
   }
 
+  const alpha = resolveAlphaHandling(config.background, rawProbe.hasAlpha)
+  // libvpx is needed for WebM alpha both to keep it and to flatten it onto black correctly.
+  const alphaPayload = {
+    ...(alpha ? { alpha } : {}),
+    ...(rawProbe.alphaDecoder ? { inputDecoder: rawProbe.alphaDecoder } : {}),
+  }
+  if (alpha === 'keep') {
+    emit(
+      'probe',
+      rawProbe.hasAlpha
+        ? 'Source has transparency; keeping it in the output (1-bit, GIF has no partial transparency).'
+        : 'Transparent background selected; letterbox bars will be transparent.',
+    )
+  } else if (alpha === 'flatten') {
+    emit('probe', 'Source has transparency; flattening it onto black (Background: Black).')
+  }
+
   const presetPlan = resolvePresetPlan(config)
   const customHeight = resolveCustomHeight(config)
   // Sent to the workers only when the user set a height; otherwise they derive it from the source.
@@ -425,6 +443,7 @@ export async function convertVideo(
       srcWidth: probe.width,
       srcHeight: probe.height,
       ...heightPayload,
+      ...alphaPayload,
       duration: probe.duration,
       gifFps: overrides.gifFps ?? config.gifFps,
       minGifFps: overrides.minGifFps ?? config.minGifFps,
@@ -640,6 +659,7 @@ export async function convertVideo(
           memoryDebugEnabled,
           featuredWidth: config.featuredWidth,
           ...heightPayload,
+          ...alphaPayload,
         },
         {
           onProgress: workerProgress('featured output'),
@@ -688,6 +708,7 @@ export async function convertVideo(
           startOffsetSec: probe.startOffsetSec,
           memoryDebugEnabled,
           guideSize: presetPlan.guideSize,
+          ...alphaPayload,
         },
         {
           onProgress: workerProgress('guide output'),
@@ -894,6 +915,7 @@ export async function convertVideo(
 
   const sorted = resultData
     .map((data) => toArtifact(data, emitMemory))
+    .map((artifact) => (outputKeepsAlpha(alpha, artifact.name) ? { ...artifact, transparent: true } : artifact))
     .sort((a, b) => a.name.localeCompare(b.name))
 
   const patched = await applyPostPatches(sorted, config, emitMemory)

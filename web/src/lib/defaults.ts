@@ -124,6 +124,7 @@ export function getDefaultConfig(preset: Preset = 'workshop'): ConversionConfig 
     featuredWidth: DEFAULTS.featured.width,
     outputHeight: 0,
     heightFit: 'crop',
+    background: 'auto',
     disableOptimizations: DEFAULTS.disableOptimizations,
     maxGifKb:
       preset === 'featured'

@@ -155,6 +155,8 @@ function buildSearchOptions(
     lossyLevel: payload.lossyLevel,
     lossyMaxAttempts: payload.lossyMaxAttempts,
     startOffsetSec: payload.startOffsetSec ?? 0,
+    alpha: payload.alpha,
+    inputDecoder: payload.inputDecoder,
     requestId,
     frameCache,
   }
@@ -168,7 +170,9 @@ async function encodeOutput(
   presetFilter: string,
 ) {
   // The user's crop/trim runs first, so the preset geometry sees the edited frame.
-  const baseFilter = payload.sourceFilter ? `${payload.sourceFilter},${presetFilter}` : presetFilter
+  const chain = payload.sourceFilter ? `${payload.sourceFilter},${presetFilter}` : presetFilter
+  // RGBA from the start, so scaling keeps the alpha and transparent letterbox bars stay transparent.
+  const baseFilter = payload.alpha === 'keep' ? `format=rgba,${chain}` : chain
   if (payload.isStillImage && payload.stillFormat && payload.stillFormat !== 'gif') {
     const still = await encodeStillImage({
       ffmpeg,
@@ -178,6 +182,8 @@ async function encodeOutput(
       requestId,
       inputName,
       baseFilter,
+      alpha: payload.alpha,
+      inputDecoder: payload.inputDecoder,
       format: payload.stillFormat,
       maxKb: payload.maxGifKb,
       disableOptimizations: payload.disableOptimizations,

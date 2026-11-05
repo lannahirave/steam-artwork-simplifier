@@ -892,20 +892,39 @@ textarea {
 
 .form-grid-source > .field-preset,
 .form-grid-source > .workshop-fields,
-.form-grid-source > .height-fields {
+.form-grid-source > .height-fields,
+.form-grid-source > .background-fields {
   grid-column: 1 / -1;
 }
 
 .form-grid-source > .workshop-fields,
-.form-grid-source > .height-fields {
+.form-grid-source > .height-fields,
+.form-grid-source > .background-fields {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 0.85rem;
 }
 
-.height-fields-note {
+.height-fields-note,
+.background-fields-note {
   align-self: center;
   margin: 0;
+}
+
+.background-fields-note {
+  grid-column: span 2;
+}
+
+/* Transparent outputs: a checkerboard shows which pixels are see-through. */
+.result-card img.is-transparent {
+  background-color: #fff;
+  background-image:
+    linear-gradient(45deg, #c8c8c8 25%, transparent 25%),
+    linear-gradient(-45deg, #c8c8c8 25%, transparent 25%),
+    linear-gradient(45deg, transparent 75%, #c8c8c8 75%),
+    linear-gradient(-45deg, transparent 75%, #c8c8c8 75%);
+  background-size: 12px 12px;
+  background-position: 0 0, 0 6px, 6px -6px, -6px 0;
 }
 
 .form-grid-source > .field-source,
@@ -2423,8 +2442,13 @@ input[type='file']::file-selector-button {
   }
 
   .form-grid-source > .workshop-fields,
-  .form-grid-source > .height-fields {
+  .form-grid-source > .height-fields,
+  .form-grid-source > .background-fields {
     grid-template-columns: 1fr;
+  }
+
+  .background-fields-note {
+    grid-column: auto;
   }
 
   .hero {

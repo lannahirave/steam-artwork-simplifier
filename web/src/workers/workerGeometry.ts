@@ -4,6 +4,8 @@ import type { ConvertFeaturedPayload, ConvertGuidePayload, ConvertPartPayload } 
 import { distributeEvenly } from '../lib/workshopRows'
 
 const SCALE_FLAGS = 'bicubic'
+/** Letterbox bars: fully transparent when the output keeps alpha. */
+const TRANSPARENT_PAD = 'black@0'
 
 export interface PartGeometry {
   baseFilter: string
@@ -24,7 +26,8 @@ function frameFilter(
   frameHeight: number,
 ): string {
   const fit = payload.outputHeight ? (payload.heightFit ?? 'crop') : undefined
-  return buildFrameFilter(payload.srcWidth, payload.srcHeight, frameWidth, frameHeight, fit, SCALE_FLAGS)
+  const padColor = payload.alpha === 'keep' ? TRANSPARENT_PAD : 'black'
+  return buildFrameFilter(payload.srcWidth, payload.srcHeight, frameWidth, frameHeight, fit, SCALE_FLAGS, padColor)
 }
 
 export function buildPartGeometry(payload: ConvertPartPayload): PartGeometry {

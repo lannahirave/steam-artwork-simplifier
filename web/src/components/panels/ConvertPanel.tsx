@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties } from 'react'
 import { useIntl } from 'react-intl'
-import type { ConversionConfig, OptimizationMode, ShadowDarkening } from '../../lib/types'
+import type { BackgroundMode, ConversionConfig, OptimizationMode, ShadowDarkening } from '../../lib/types'
 import { countAdvancedConfigOverrides } from '../../lib/defaults'
 import { MAX_SAFE_WASM_WORKERS } from '../../lib/presetPlan'
 import { SHADOW_DARKENING_LEVELS } from '../../lib/shadowDarkening'
@@ -17,6 +17,7 @@ const SAMPLE_SOURCE_NAME = 'sample-clip.mp4'
 import { MemoryDebugPanel } from './MemoryDebugPanel'
 import { Button } from '../ui/Button'
 import { MAX_OUTPUT_HEIGHT, clampOutputHeight } from '../../lib/frameFit'
+import { BACKGROUND_MODES } from '../../lib/transparency'
 
 interface ConvertPanelProps {
   onboardingTarget?: string
@@ -331,6 +332,34 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 </p>
               </div>
             )}
+
+            <div className="background-fields">
+              <label
+                className="field-layout"
+                title="Auto keeps transparency only when the source has it (transparent PNG, GIF, WebP or WebM). Transparent also makes letterbox bars see-through. Black flattens everything onto black."
+              >
+                {intl.formatMessage({ id: 'convert.background' })}
+                <select
+                  value={config.background}
+                  aria-describedby="background-note"
+                  onChange={(event) =>
+                    setConfig((prev) => ({ ...prev, background: event.target.value as BackgroundMode }))
+                  }
+                >
+                  {BACKGROUND_MODES.map((mode) => (
+                    <option key={mode} value={mode}>
+                      {intl.formatMessage({ id: `convert.background.${mode}` })}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <p id="background-note" className="field-note background-fields-note">
+                {intl.formatMessage({ id: 'convert.background.note' })}
+                {presetPlan.preset === 'guide' && config.background !== 'black' && (
+                  <> {intl.formatMessage({ id: 'convert.background.guideNote' })}</>
+                )}
+              </p>
+            </div>
 
             <label className="field-source" data-onboarding-target="source" title="Choose a source video or image file (GIF/PNG/WEBP/JPG/BMP) to convert to GIF output.">
               {intl.formatMessage({ id: 'convert.sourceFile' })}
@@ -847,6 +876,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
                 <img
                   src={item.url}
                   alt={item.artifact.name}
+                  className={item.artifact.transparent ? 'is-transparent' : undefined}
                   loading="lazy"
                   style={
                     isCompactStrip

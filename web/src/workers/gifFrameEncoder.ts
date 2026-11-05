@@ -1,4 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
+import type { AlphaHandling } from '../lib/types'
 import { clampGifskiQuality } from '../lib/gifskiQuality'
 import {
   buildGifFrameCacheKey,
@@ -31,7 +32,31 @@ export interface EncodeGifOptions {
   fps: number
   quality: number
   startOffsetSec?: number
+  /** 'keep' turns the alpha into GIF transparency; anything else is composited onto black. */
+  alpha?: AlphaHandling
+  /** ffmpeg decoder forced before `-i` (WebM alpha needs libvpx). */
+  inputDecoder?: string
   frameCache?: GifFrameCache
+}
+
+/** GIF transparency is on or off per pixel: at least this alpha stays visible. */
+export const GIF_ALPHA_THRESHOLD = 128
+
+/**
+ * Makes RGBA pixels either fully opaque or fully transparent, in place. Visible pixels keep their
+ * straight (unpremultiplied) color, so soft edges get no dark fringe.
+ */
+export function applyGifAlphaThreshold(rgba: Uint8Array | Uint8ClampedArray): void {
+  for (let index = 0; index < rgba.length; index += 4) {
+    if (rgba[index + 3] >= GIF_ALPHA_THRESHOLD) {
+      rgba[index + 3] = 255
+    } else {
+      rgba[index] = 0
+      rgba[index + 1] = 0
+      rgba[index + 2] = 0
+      rgba[index + 3] = 0
+    }
+  }
 }
 
 export interface EncodeGifCandidateResult {
@@ -70,7 +95,12 @@ function hasGifSignature(bytes: Uint8Array): boolean {
   return head === 'GIF87a' || head === 'GIF89a'
 }
 
-async function decodePngToRgba(pngBytes: Uint8Array, width: number, height: number): Promise<Uint8Array> {
+async function decodePngToRgba(
+  pngBytes: Uint8Array,
+  width: number,
+  height: number,
+  keepAlpha: boolean,
+): Promise<Uint8Array> {
   if (typeof createImageBitmap !== 'function') {
     throw new Error('createImageBitmap is not available in this worker runtime.')
   }
@@ -85,8 +115,16 @@ async function decodePngToRgba(pngBytes: Uint8Array, width: number, height: numb
     if (!context) {
       throw new Error('Failed to create 2D canvas context for frame decode.')
     }
+    if (!keepAlpha) {
+      // Flatten onto black so a transparent source never leaks transparency into the GIF.
+      context.fillStyle = '#000'
+      context.fillRect(0, 0, width, height)
+    }
     context.drawImage(bitmap, 0, 0, width, height)
     const imageData = context.getImageData(0, 0, width, height)
+    if (keepAlpha) {
+      applyGifAlphaThreshold(imageData.data)
+    }
     const out = new Uint8Array(imageData.data.byteLength)
     out.set(imageData.data)
     return out
@@ -133,6 +171,7 @@ async function withDecodedGifFrames<T>(
       '-threads',
       '1',
       ...seekArgs,
+      ...(options.inputDecoder ? ['-c:v', options.inputDecoder] : []),
       '-i',
       options.inputName,
       '-vf',
@@ -163,7 +202,8 @@ async function withDecodedGifFrames<T>(
     }
 
     const rgbaFrames: Uint8Array[] = []
-    rgbaFrames.push(await decodePngToRgba(firstFrame, dims.width, dims.height))
+    const keepAlpha = options.alpha === 'keep'
+    rgbaFrames.push(await decodePngToRgba(firstFrame, dims.width, dims.height, keepAlpha))
     let decodedRgbaBytes = rgbaFrames[0].byteLength
 
     for (let index = 1; index < framePaths.length; index += 1) {
@@ -173,7 +213,7 @@ async function withDecodedGifFrames<T>(
       if (!frameDims || frameDims.width !== dims.width || frameDims.height !== dims.height) {
         throw new Error(`Frame geometry mismatch in ${framePaths[index]}.`)
       }
-      const rgbaFrame = await decodePngToRgba(frameBytes, dims.width, dims.height)
+      const rgbaFrame = await decodePngToRgba(frameBytes, dims.width, dims.height, keepAlpha)
       decodedRgbaBytes += rgbaFrame.byteLength
       rgbaFrames.push(rgbaFrame)
     }

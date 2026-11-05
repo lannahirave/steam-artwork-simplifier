@@ -10,6 +10,14 @@ export type ShadowDarkening = 'off' | 'low' | 'medium' | 'high'
 
 export type HeightFit = 'crop' | 'letterbox'
 
+/**
+ * Output background. 'auto' keeps transparency only when the source has it; 'transparent' also
+ * makes letterbox bars see-through; 'black' flattens any transparency onto black.
+ */
+export type BackgroundMode = 'auto' | 'transparent' | 'black'
+
+export type AlphaHandling = 'keep' | 'flatten'
+
 export interface ConversionConfig {
   preset: Preset
   gifFps: number
@@ -22,6 +30,7 @@ export interface ConversionConfig {
   outputHeight: number
   /** How the source fills a custom height: crop the overflow, or letterbox with black bars. */
   heightFit: HeightFit
+  background: BackgroundMode
   disableOptimizations: boolean
   maxGifKb: number
   targetGifKb: number
@@ -56,6 +65,10 @@ export interface SourceProbe {
   duration: number
   fps: number
   startOffsetSec: number
+  /** The first frame has see-through pixels, or the stream is WebM with an alpha channel. */
+  hasAlpha: boolean
+  /** ffmpeg decoder to force before `-i` so the alpha channel is decoded (WebM VP8/VP9). */
+  alphaDecoder?: string
 }
 
 export interface ConversionArtifact {
@@ -67,6 +80,8 @@ export interface ConversionArtifact {
   status: ArtifactStatus
   finalFps: number
   finalQuality: number
+  /** Encoded with a transparent background; previews show a checkerboard behind it. */
+  transparent?: boolean
   /**
    * The output before the header and end-byte patches, kept only when they changed the bytes.
    * Patched GIFs are for uploading to Steam; previews outside Steam use this copy.
@@ -214,6 +229,13 @@ export interface ConvertPayloadBase {
   /** Custom frame height; when unset the height follows the source aspect ratio. */
   outputHeight?: number
   heightFit?: HeightFit
+  /**
+   * 'keep' encodes transparency (1-bit in GIFs); 'flatten' composites a transparent source onto
+   * black. Unset for opaque sources with a black background.
+   */
+  alpha?: AlphaHandling
+  /** ffmpeg decoder forced before `-i` (WebM alpha needs libvpx). */
+  inputDecoder?: string
   duration: number
   gifFps: number
   minGifFps: number
@@ -260,6 +282,8 @@ export interface ProbeResultData {
   duration: number
   fps: number
   startOffsetSec: number
+  hasAlpha: boolean
+  alphaDecoder?: string
 }
 
 export interface WorkerArtifactData {

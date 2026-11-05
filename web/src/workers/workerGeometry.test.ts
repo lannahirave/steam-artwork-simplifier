@@ -87,6 +87,17 @@ describe('worker geometry', () => {
     })
   })
 
+  it('letterboxes with transparent bars when the output keeps alpha', () => {
+    expect(
+      buildFeaturedGeometry({ ...basePayload, featuredWidth: 630, outputHeight: 500, heightFit: 'letterbox', alpha: 'keep' })
+        .baseFilter,
+    ).toBe('scale=630:315:flags=bicubic,pad=630:500:0:92:color=black@0')
+    expect(
+      buildFeaturedGeometry({ ...basePayload, featuredWidth: 630, outputHeight: 500, heightFit: 'letterbox', alpha: 'flatten' })
+        .baseFilter,
+    ).toBe('scale=630:315:flags=bicubic,pad=630:500:0:92:color=black')
+  })
+
   it('builds single-output featured and guide filters', () => {
     expect(buildFeaturedGeometry({ ...basePayload, featuredWidth: 630 })).toEqual({
       baseFilter: 'scale=630:315:flags=bicubic',

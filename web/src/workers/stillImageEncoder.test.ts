@@ -1,6 +1,6 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
 import { describe, expect, it, vi } from 'vitest'
-import { encodeStillImage, type StillEncodeOptions } from './stillImageEncoder'
+import { buildStillFilter, encodeStillImage, type StillEncodeOptions } from './stillImageEncoder'
 import type { CoreWatch } from './ffmpegCoreHealth'
 
 function setup(overrides: Partial<StillEncodeOptions> = {}, outputBytes = 10 * 1024) {
@@ -66,5 +66,20 @@ describe('encodeStillImage', () => {
 
     await expect(encodeStillImage(options)).rejects.toBe('RuntimeError: index out of bounds')
     expect(deleted).toEqual(['req.still-0.jpg'])
+  })
+})
+
+describe('buildStillFilter', () => {
+  const flatten = 'format=rgba,premultiply=inplace=1,format=rgb24'
+
+  it('leaves opaque sources and kept alpha in PNG/WebP alone', () => {
+    expect(buildStillFilter('scale=195:195', 'png', undefined)).toBe('scale=195:195')
+    expect(buildStillFilter('scale=195:195', 'png', 'keep')).toBe('scale=195:195')
+    expect(buildStillFilter('scale=195:195', 'webp', 'keep')).toBe('scale=195:195')
+  })
+
+  it('flattens onto black when asked, and always for JPEG', () => {
+    expect(buildStillFilter('scale=195:195', 'png', 'flatten')).toBe(`scale=195:195,${flatten}`)
+    expect(buildStillFilter('scale=195:195', 'jpg', 'keep')).toBe(`scale=195:195,${flatten}`)
   })
 })

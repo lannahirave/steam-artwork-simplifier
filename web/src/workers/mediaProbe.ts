@@ -51,6 +51,101 @@ function parseSourceFpsFromLogs(logs: string[]): number {
   return 0
 }
 
+/**
+ * WebM keeps VP8/VP9 alpha in a side channel that ffmpeg's native decoders drop. The container
+ * flags it with `alpha_mode: 1`; libvpx decodes it. Returns the decoder to force, or undefined.
+ */
+export function parseWebmAlphaDecoder(logs: string[]): string | undefined {
+  let codec: string | undefined
+  let alphaMode = false
+  for (const line of logs) {
+    if (line.includes('Stream mapping:') || line.startsWith('Output #')) {
+      break
+    }
+    if (codec === undefined && line.includes('Stream #') && line.includes('Video:')) {
+      codec = line.match(/Video:\s*(\w+)/)?.[1]?.toLowerCase()
+    }
+    if (/^\s*alpha_mode\s*:\s*1\s*$/.test(line)) {
+      alphaMode = true
+    }
+  }
+  if (!alphaMode) {
+    return undefined
+  }
+  if (codec === 'vp9') {
+    return 'libvpx-vp9'
+  }
+  if (codec === 'vp8') {
+    return 'libvpx'
+  }
+  return undefined
+}
+
+/** PNG colour types 4 and 6 carry an alpha channel; a tRNS chunk adds transparency to the others. */
+export function pngMayHaveAlpha(bytes: Uint8Array): boolean {
+  if (bytes.length < 26) {
+    return false
+  }
+  const colorType = bytes[25]
+  if (colorType === 4 || colorType === 6) {
+    return true
+  }
+  // Walk the chunks up to the image data, looking for tRNS.
+  let offset = 8
+  while (offset + 8 <= bytes.length) {
+    const length =
+      ((bytes[offset] << 24) | (bytes[offset + 1] << 16) | (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0
+    const type = String.fromCharCode(bytes[offset + 4], bytes[offset + 5], bytes[offset + 6], bytes[offset + 7])
+    if (type === 'tRNS') {
+      return true
+    }
+    if (type === 'IDAT' || type === 'IEND') {
+      return false
+    }
+    offset += 12 + length
+  }
+  return false
+}
+
+/** True when any pixel of the decoded PNG is not fully opaque. */
+async function pngHasTransparentPixels(bytes: Uint8Array, width: number, height: number): Promise<boolean> {
+  if (typeof createImageBitmap !== 'function' || typeof OffscreenCanvas === 'undefined') {
+    return false
+  }
+  const copy = new Uint8Array(bytes.byteLength)
+  copy.set(bytes)
+  const bitmap = await createImageBitmap(new Blob([copy.buffer], { type: 'image/png' }))
+  try {
+    const canvas = new OffscreenCanvas(width, height)
+    const context = canvas.getContext('2d', { willReadFrequently: true })
+    if (!context) {
+      return false
+    }
+    context.drawImage(bitmap, 0, 0, width, height)
+    const data = context.getImageData(0, 0, width, height).data
+    for (let index = 3; index < data.length; index += 4) {
+      if (data[index] < 255) {
+        return true
+      }
+    }
+    return false
+  } finally {
+    bitmap.close()
+  }
+}
+
+/** Alpha detection is a convenience; a failure here must never fail the probe. */
+async function detectFrameAlpha(bytes: Uint8Array, width: number, height: number): Promise<boolean> {
+  if (!pngMayHaveAlpha(bytes)) {
+    return false
+  }
+  try {
+    return await pngHasTransparentPixels(bytes, width, height)
+  } catch {
+    return false
+  }
+}
+
 function parseSignalYAvgSeries(logs: string[]): number[] {
   const out: number[] = []
   for (const line of logs) {
@@ -144,6 +239,8 @@ export async function runProbe(
 
     const duration = parseDurationFromLogs(ffmpegLogBuffer)
     const fps = parseSourceFpsFromLogs(ffmpegLogBuffer)
+    const alphaDecoder = parseWebmAlphaDecoder(ffmpegLogBuffer)
+    const hasAlpha = alphaDecoder !== undefined || (await detectFrameAlpha(frameBytes, dims.width, dims.height))
     let startOffsetSec = 0
 
     const introAnalysisStart = ffmpegLogBuffer.length
@@ -181,6 +278,8 @@ export async function runProbe(
       duration: Number.isFinite(duration) ? Math.max(0, duration) : 0,
       fps: Number.isFinite(fps) ? Math.max(0, fps) : 0,
       startOffsetSec,
+      hasAlpha,
+      ...(alphaDecoder ? { alphaDecoder } : {}),
     }
   } catch (error) {
     const base = error instanceof Error ? error.message : String(error)

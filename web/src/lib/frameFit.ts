@@ -40,7 +40,7 @@ export function resolveFrameHeight(
 
 /**
  * Fit the source into a fixed frame. 'crop' fills the frame and trims the overflow evenly;
- * 'letterbox' shows the whole source and pads the rest with black.
+ * 'letterbox' shows the whole source and pads the rest with black (or transparency).
  */
 export function computeFrameFit(
   srcWidth: number,
@@ -75,6 +75,7 @@ export function buildFrameFilter(
   frameHeight: number,
   fit: HeightFit | undefined,
   scaleFlags: string,
+  padColor = 'black',
 ): string {
   if (!fit) {
     return `scale=${frameWidth}:${frameHeight}:flags=${scaleFlags}`
@@ -86,5 +87,5 @@ export function buildFrameFilter(
   }
   return fit === 'crop'
     ? `${scale},crop=${frameWidth}:${frameHeight}:${-x}:${-y}`
-    : `${scale},pad=${frameWidth}:${frameHeight}:${x}:${y}:color=black`
+    : `${scale},pad=${frameWidth}:${frameHeight}:${x}:${y}:color=${padColor}`
 }

@@ -1,5 +1,5 @@
 import type { FFmpeg } from '@ffmpeg/ffmpeg'
-import type { ArtifactStatus } from '../lib/types'
+import type { AlphaHandling, ArtifactStatus } from '../lib/types'
 import type { StillImageFormat } from '../lib/stillImage'
 import { safeDelete, tailLogOutput } from './ffmpegWorkerFiles'
 import { withCoreWatchdog, type CoreWatch } from './ffmpegCoreHealth'
@@ -17,6 +17,10 @@ export interface StillEncodeOptions {
   /** Scale/crop chain from the preset geometry, without GIF-only filters. */
   baseFilter: string
   format: StillOutputFormat
+  /** 'keep' writes the alpha channel (PNG/WebP); 'flatten' composites transparency onto black. */
+  alpha?: AlphaHandling
+  /** ffmpeg decoder forced before `-i` (WebM alpha needs libvpx). */
+  inputDecoder?: string
   maxKb: number
   disableOptimizations: boolean
 }
@@ -47,6 +51,16 @@ const MJPEG_BASE_ARGS = ['-c:v', 'mjpeg', '-huffman', 'default']
 // Once the core is flagged, the worker's FFmpeg wrapper fails further calls immediately,
 // so the cleanup below cannot hang on it.
 export const STILL_ENCODE_WATCHDOG_MS = 60_000
+
+// premultiply in place scales colour by alpha; dropping the alpha then equals compositing on black.
+const FLATTEN_ALPHA_FILTER = 'format=rgba,premultiply=inplace=1,format=rgb24'
+
+/** The filter chain for one still, with transparency flattened where the format or setting needs it. */
+export function buildStillFilter(baseFilter: string, format: StillOutputFormat, alpha: AlphaHandling | undefined): string {
+  // JPEG has no alpha channel, so even 'keep' has to be flattened there.
+  const flatten = alpha === 'flatten' || (alpha === 'keep' && format === 'jpg')
+  return flatten ? `${baseFilter},${FLATTEN_ALPHA_FILTER}` : baseFilter
+}
 
 // Lossy formats step down only when the output is above the size limit.
 const QUALITY_LADDERS: Record<StillOutputFormat, QualityStep[]> = {
@@ -81,10 +95,11 @@ async function encodeOnce(
       '-loglevel',
       'error',
       '-y',
+      ...(options.inputDecoder ? ['-c:v', options.inputDecoder] : []),
       '-i',
       options.inputName,
       '-vf',
-      options.baseFilter,
+      buildStillFilter(options.baseFilter, format, options.alpha),
       '-frames:v',
       '1',
       '-update',

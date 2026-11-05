@@ -21,6 +21,8 @@ export interface GifFrameCacheKeyInput {
   vf: string
   fps: number
   startOffsetSec?: number
+  alpha?: string
+  inputDecoder?: string
 }
 
 export function createGifFrameCache(): GifFrameCache {
@@ -51,6 +53,8 @@ export function buildGifFrameCacheKey(input: GifFrameCacheKeyInput): string {
     input.vf,
     input.fps,
     (input.startOffsetSec ?? 0).toFixed(3),
+    input.alpha ?? '',
+    input.inputDecoder ?? '',
   ])
 }
 

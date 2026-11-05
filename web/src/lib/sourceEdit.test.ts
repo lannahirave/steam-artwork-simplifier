@@ -8,7 +8,7 @@ import {
   normalizeTrim,
 } from './sourceEdit'
 
-const PROBE = { width: 1920, height: 1080, duration: 10, fps: 30, startOffsetSec: 0.5 }
+const PROBE = { width: 1920, height: 1080, duration: 10, fps: 30, startOffsetSec: 0.5, hasAlpha: false }
 const NONE = { left: false, right: false, top: false, bottom: false }
 
 describe('normalizeCrop', () => {
