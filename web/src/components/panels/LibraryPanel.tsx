@@ -137,11 +137,9 @@ function LibraryCard({ entry, onDelete }: { entry: LibraryEntry; onDelete: (entr
     <article className="subpanel library-card">
       <div
         className={
-          entry.preset === 'workshop'
-            ? `library-thumbs is-workshop${entry.workshopRows === 2 ? ' is-two-rows' : ''}`
-            : 'library-thumbs'
+          entry.preset === 'workshop' ? 'library-thumbs is-workshop' : 'library-thumbs'
         }
-        style={{ '--thumb-columns': thumbColumns } as CSSProperties}
+        style={{ '--thumb-columns': thumbColumns, '--thumb-rows': entry.preset === 'workshop' ? entry.workshopRows : 1 } as CSSProperties}
       >
         {thumbnails.map((thumb) => (
           <img key={thumb.name} src={thumb.url} alt="" loading="lazy" />

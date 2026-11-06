@@ -35,11 +35,9 @@ function SavedCard({ entry, onDelete }: { entry: SteamCanvasSavedEntry; onDelete
     <article className="subpanel library-card">
       <div
         className={
-          entry.preset === 'workshop'
-            ? `library-thumbs is-workshop${entry.workshopRows === 2 ? ' is-two-rows' : ''}`
-            : 'library-thumbs'
+          entry.preset === 'workshop' ? 'library-thumbs is-workshop' : 'library-thumbs'
         }
-        style={{ '--thumb-columns': Math.max(1, columns) } as CSSProperties}
+        style={{ '--thumb-columns': Math.max(1, columns), '--thumb-rows': entry.preset === 'workshop' ? entry.workshopRows : 1 } as CSSProperties}
       >
         {thumbnails.map((thumb) => (
           <img key={thumb.key} src={thumb.url} alt="" loading="lazy" />

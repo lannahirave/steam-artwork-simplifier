@@ -3131,8 +3131,17 @@ input[type='file']::file-selector-button {
   max-height: 160px;
 }
 
-.library-thumbs.is-workshop.is-two-rows img {
-  max-height: 80px;
+/* Workshop splits keep Steam's grid: one row of slices per Workshop row, stacked top to bottom. */
+.library-thumbs.is-workshop {
+  display: grid;
+  grid-template-columns: repeat(var(--thumb-columns, 1), minmax(0, max-content));
+  justify-content: center;
+  align-content: center;
+}
+
+.library-thumbs.is-workshop img {
+  max-width: 100%;
+  max-height: calc((160px - (var(--thumb-rows, 1) - 1) * 2px) / var(--thumb-rows, 1));
 }
 
 .library-limit {
