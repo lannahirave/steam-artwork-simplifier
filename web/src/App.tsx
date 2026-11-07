@@ -6,6 +6,7 @@ import {
   type TabKey,
 } from './agents/appAgents'
 import { TAB_DETAILS } from './appShellCatalog'
+import { MovedNotice } from './components/MovedNotice'
 import { OnboardingTour } from './components/OnboardingTour'
 import { ConvertPanel } from './components/panels/ConvertPanel'
 import { GuidesPanel } from './components/panels/GuidesPanel'
@@ -35,6 +36,8 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
     () => !getStoredOnboardingComplete(),
   )
   const [onboardingRun, setOnboardingRun] = useState(0)
+  // Shown on every page load: this deployment has moved to a new domain.
+  const [showMovedNotice, setShowMovedNotice] = useState(true)
   const activeTab = TAB_DETAILS[tab]
 
   function reopenOnboarding(): void {
@@ -213,13 +216,15 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
 
         <OnboardingTour
           key={onboardingRun}
-          open={showOnboarding}
+          open={showOnboarding && !showMovedNotice}
           onOpenChange={setShowOnboarding}
           onSelectTab={setTab}
         />
 
         {trademarkDisclaimer}
       </main>
+
+      <MovedNotice open={showMovedNotice} onDismiss={() => setShowMovedNotice(false)} />
     </div>
   )
 }

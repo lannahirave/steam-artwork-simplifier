@@ -2313,3 +2313,188 @@ button:disabled {
   height: 0;
   overflow: hidden;
 }
+
+/* "We've moved" notice. Shown on every load of the legacy deployment. Native
+   <dialog> modal, so it sits above the onboarding tour and traps focus. */
+.moved-notice {
+  width: min(28rem, calc(100vw - 2rem));
+  max-width: none;
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  overflow: visible;
+}
+
+.moved-notice::backdrop {
+  background: rgba(0, 0, 0, 0.48);
+  backdrop-filter: blur(6px);
+}
+
+.moved-notice[open] {
+  animation: moved-notice-in 240ms ease-out;
+}
+
+@keyframes moved-notice-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .moved-notice[open] {
+    animation: none;
+  }
+}
+
+.moved-notice-card {
+  padding: 1.25rem 1.35rem 1.1rem;
+  border: 1px solid rgb(var(--ink-rgb) / 0.14);
+  border-radius: var(--radius-panel);
+  background: var(--surface, rgb(var(--surface-rgb)));
+  box-shadow: 0 30px 80px rgba(0, 0, 0, 0.35);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+}
+
+.moved-notice-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.moved-notice-kicker {
+  color: var(--apple-blue-light, var(--apple-blue));
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.moved-notice-close {
+  appearance: none;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.2rem 0.4rem;
+  border-radius: var(--radius-card);
+  cursor: pointer;
+}
+
+.moved-notice-close:hover {
+  color: var(--ink);
+  background: rgb(var(--ink-rgb) / 0.06);
+}
+
+.moved-notice h2 {
+  margin: 0.55rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.5rem;
+  line-height: 1.12;
+  letter-spacing: -0.024em;
+}
+
+.moved-notice p {
+  margin: 0.6rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  line-height: 1.48;
+}
+
+.moved-notice-domain {
+  display: block;
+  margin-top: 0.7rem;
+  padding: 0.7rem 0.85rem;
+  border: 1px solid rgb(var(--ink-rgb) / 0.12);
+  border-radius: var(--radius-card);
+  background: rgb(var(--ink-rgb) / 0.04);
+  color: var(--ink);
+  font-size: 1.02rem;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+  text-decoration: none;
+}
+
+.moved-notice-domain:hover {
+  border-color: var(--apple-blue);
+  text-decoration: none;
+}
+
+.moved-notice .moved-notice-guide-copy {
+  margin-top: 0.85rem;
+  font-size: 0.9rem;
+}
+
+.moved-notice-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 1.1rem;
+}
+
+.moved-notice-primary,
+.moved-notice-secondary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 10rem;
+  min-height: 2.5rem;
+  padding: 0.55rem 1rem;
+  border-radius: var(--radius-pill);
+  font-size: 0.92rem;
+  font-weight: 500;
+  text-decoration: none;
+}
+
+.moved-notice-primary {
+  background: var(--apple-blue);
+  color: var(--ink-inverse);
+}
+
+.moved-notice-primary:hover {
+  background: var(--apple-blue-dark);
+  text-decoration: none;
+}
+
+.moved-notice-secondary {
+  border: 1px solid var(--line-strong);
+  color: var(--ink);
+}
+
+.moved-notice-secondary:hover {
+  border-color: var(--ink-muted);
+  text-decoration: none;
+}
+
+.moved-notice-stay {
+  appearance: none;
+  display: block;
+  margin: 0.8rem auto 0;
+  padding: 0.3rem 0.5rem;
+  border: 0;
+  background: transparent;
+  color: var(--ink-muted);
+  font-size: 0.85rem;
+  cursor: pointer;
+}
+
+.moved-notice-stay:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+.moved-notice :focus-visible {
+  outline: 2px solid var(--apple-blue-light, var(--apple-blue));
+  outline-offset: 2px;
+}
