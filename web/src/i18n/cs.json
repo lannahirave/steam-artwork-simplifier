@@ -436,5 +436,11 @@
   "onboarding.patch.title": "Opravte GIFy, které už máte",
   "onboarding.patch.body": "Patch nástroje opraví hotové GIFy bez nového převodu: přepíší jejich koncové bajty a opraví šířku a výšku uloženou v souboru, u mnoha souborů najednou.",
   "onboarding.guides.title": "Postupujte podle návodu",
-  "onboarding.guides.body": "V Návodech najdete postupy krok za krokem pro každý typ vitríny a tipy k ladění kvality a velikosti. Prohlídku můžete kdykoli zopakovat přes Nápovědu."
+  "onboarding.guides.body": "V Návodech najdete postupy krok za krokem pro každý typ vitríny a tipy k ladění kvality a velikosti. Prohlídku můžete kdykoli zopakovat přes Nápovědu.",
+  "runtimeFailure.gifski.title": "Kodér GIF se nenačetl",
+  "runtimeFailure.gifski.body": "Artwork Studio nedokázalo načíst gifski, kodér, který vytváří vaše GIFy, a proto se tento převod zastavil. Možná vypadlo připojení nebo soubor zablokovalo rozšíření prohlížeče. Obvykle pomůže stránku znovu načíst.",
+  "runtimeFailure.countdown": "Stránka se znovu načte za {seconds, plural, one {# sekundu} few {# sekundy} other {# sekund}}.",
+  "runtimeFailure.reloadNow": "Načíst znovu",
+  "runtimeFailure.stay": "Zůstat na stránce",
+  "runtimeFailure.details": "Podrobnosti chyby"
 }

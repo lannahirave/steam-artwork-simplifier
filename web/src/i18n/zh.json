@@ -436,5 +436,11 @@
   "onboarding.patch.title": "修复已有的 GIF",
   "onboarding.patch.body": "补丁工具无需重新转换即可修复现有 GIF：重写文件末尾字节，并修正文件中记录的宽度和高度，可一次处理多个文件。",
   "onboarding.guides.title": "按指南操作",
-  "onboarding.guides.body": "“指南”提供每种展柜的分步流程，以及调整画质和大小的技巧。随时可以通过“帮助”重新查看本导览。"
+  "onboarding.guides.body": "“指南”提供每种展柜的分步流程，以及调整画质和大小的技巧。随时可以通过“帮助”重新查看本导览。",
+  "runtimeFailure.gifski.title": "GIF 编码器未能加载",
+  "runtimeFailure.gifski.body": "Artwork Studio 无法加载 gifski（用于生成 GIF 的编码器），因此本次转换已停止。可能是网络连接中断，或浏览器扩展拦截了该文件。刷新页面通常可以解决。",
+  "runtimeFailure.countdown": "{seconds, plural, other {# 秒}}后刷新页面。",
+  "runtimeFailure.reloadNow": "立即刷新",
+  "runtimeFailure.stay": "留在此页面",
+  "runtimeFailure.details": "错误详情"
 }

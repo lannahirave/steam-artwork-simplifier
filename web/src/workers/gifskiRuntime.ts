@@ -30,9 +30,21 @@ export function isGifskiRuntimeBroken(): boolean {
   return runtimeBroken
 }
 
+/** The gifski wasm could not be downloaded or instantiated. */
+export class GifskiLoadError extends Error {
+  constructor(cause: unknown) {
+    super(`gifski failed to load: ${cause instanceof Error ? cause.message : String(cause)}`, { cause })
+    this.name = 'GifskiLoadError'
+  }
+}
+
 async function ensureRuntimeInitialized(): Promise<void> {
   if (!initPromise) {
-    initPromise = initGifskiModule(GIFSKI_WASM_PATH)
+    initPromise = initGifskiModule(GIFSKI_WASM_PATH).catch((error: unknown) => {
+      // Forget the failed attempt so the next call downloads again instead of replaying the rejection.
+      initPromise = null
+      throw new GifskiLoadError(error)
+    })
   }
   await initPromise
 }

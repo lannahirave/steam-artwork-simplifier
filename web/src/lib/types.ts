@@ -309,7 +309,11 @@ export interface WorkerErrorData {
   command: WorkerCommand
   /** The worker cannot run further tasks and must be replaced. */
   fatal?: boolean
+  /** Set when a runtime the worker needs failed to load; the page shows a reload prompt. */
+  reason?: WorkerFailureReason
 }
+
+export type WorkerFailureReason = 'gifski-load-failed'
 
 export type WorkerRequestPayloadMap = {
   init: InitPayload

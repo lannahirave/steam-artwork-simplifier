@@ -10,7 +10,7 @@ import type {
 } from '../lib/types'
 import { searchBestEncode } from './encodeSearch'
 import { extensionOf, safeDelete, sourceBaseName } from './ffmpegWorkerFiles'
-import { GIFSKI_RUNTIME_VERSION, ensureGifskiRuntimeLoaded, isGifskiRuntimeBroken } from './gifskiRuntime'
+import { GIFSKI_RUNTIME_VERSION, GifskiLoadError, ensureGifskiRuntimeLoaded, isGifskiRuntimeBroken } from './gifskiRuntime'
 import {
   buildFeaturedGeometry,
   buildGuideGeometry,
@@ -390,7 +390,8 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
     if (fatal) {
       message += '\n\nThe gifski encoder crashed; this worker will be restarted.'
     }
-    postError(request.id, request.command, message, { fatal })
+    const reason = error instanceof GifskiLoadError ? 'gifski-load-failed' : undefined
+    postError(request.id, request.command, message, { fatal, reason })
   } finally {
     currentRequestId = ''
   }

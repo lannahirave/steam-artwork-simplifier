@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { ConversionWorkerPool } from './conversionWorkerPool'
+import { dismissRuntimeFailure, getRuntimeFailure } from './runtimeFailure'
 import type { AnyWorkerRequest, WorkerResponseMessage } from './types'
 
 class FakeWorker {
@@ -336,6 +337,50 @@ describe('conversion worker pool', () => {
     await Promise.all([first, sameAffinity, unrelated])
     expect(workers.map((worker) => worker.handledCommands.filter((command) => command === 'convertPart').length))
       .toEqual([2, 1])
+    pool.dispose()
+  })
+
+  it('reports a gifski load failure so the page can offer a reload', async () => {
+    class GifskiLoadFailWorker extends FakeWorker {
+      override postMessage(message: AnyWorkerRequest): void {
+        setTimeout(() => {
+          this.onmessage?.({
+            data: {
+              id: message.id,
+              event: 'error',
+              payload: { command: message.command, message: 'gifski failed to load: 404', reason: 'gifski-load-failed' },
+            },
+          } as MessageEvent<WorkerResponseMessage>)
+        }, 0)
+      }
+    }
+    const pool = new ConversionWorkerPool({
+      workerCount: 1,
+      workerFactory: () => new GifskiLoadFailWorker() as unknown as Worker,
+    })
+
+    await expect(pool.warmup()).rejects.toThrow('gifski failed to load: 404')
+    expect(getRuntimeFailure()).toEqual({ reason: 'gifski-load-failed', message: 'gifski failed to load: 404' })
+
+    dismissRuntimeFailure()
+    pool.dispose()
+  })
+
+  it('does not report a runtime failure for ordinary task errors', async () => {
+    class FailingWorker extends FakeWorker {
+      override postMessage(message: AnyWorkerRequest): void {
+        setTimeout(() => {
+          this.onmessage?.({
+            data: { id: message.id, event: 'error', payload: { command: message.command, message: 'encode failed' } },
+          } as MessageEvent<WorkerResponseMessage>)
+        }, 0)
+      }
+    }
+    const pool = new ConversionWorkerPool({ workerCount: 1, workerFactory: () => new FailingWorker() as unknown as Worker })
+
+    await expect(pool.warmup()).rejects.toThrow('encode failed')
+    expect(getRuntimeFailure()).toBeNull()
+
     pool.dispose()
   })
 

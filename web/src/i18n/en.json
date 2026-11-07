@@ -436,5 +436,11 @@
   "onboarding.patch.title": "Fix GIFs you already have",
   "onboarding.patch.body": "Patch Tools repairs existing GIFs without converting them again: it rewrites their end bytes and corrects the width and height stored in the file, many at once.",
   "onboarding.guides.title": "Follow a guide",
-  "onboarding.guides.body": "Guides has step-by-step workflows for each showcase type, plus tips for tuning quality and size. Replay this tour from Help any time."
+  "onboarding.guides.body": "Guides has step-by-step workflows for each showcase type, plus tips for tuning quality and size. Replay this tour from Help any time.",
+  "runtimeFailure.gifski.title": "The GIF encoder didn't load",
+  "runtimeFailure.gifski.body": "Artwork Studio couldn't load gifski, the encoder that makes your GIFs, so this conversion stopped. The connection may have dropped, or a browser extension blocked the file. Reloading the page usually fixes it.",
+  "runtimeFailure.countdown": "Reloading the page in {seconds, plural, one {# second} other {# seconds}}.",
+  "runtimeFailure.reloadNow": "Reload now",
+  "runtimeFailure.stay": "Stay on this page",
+  "runtimeFailure.details": "Error details"
 }

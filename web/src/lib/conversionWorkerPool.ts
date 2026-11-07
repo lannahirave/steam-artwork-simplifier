@@ -6,6 +6,7 @@ import {
   isResultMessage,
   isWorkerResponseMessage,
 } from './ffmpegProtocol'
+import { reportRuntimeFailure } from './runtimeFailure'
 import type {
   MemoryDebugEventData,
   WorkerCommand,
@@ -291,6 +292,9 @@ export class ConversionWorkerPool {
       }
       task.reject(new Error(data.payload.message))
       this.inFlight.delete(data.id)
+      if (data.payload.reason) {
+        reportRuntimeFailure({ reason: data.payload.reason, message: data.payload.message })
+      }
       if (data.payload.fatal) {
         // Replace before dispatching so no queued task lands on the broken worker.
         this.replaceWorker(workerIndex)

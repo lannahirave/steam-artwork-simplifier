@@ -7,6 +7,7 @@ import {
 } from './agents/appAgents'
 import { TAB_DETAILS } from './appShellCatalog'
 import { OnboardingTour } from './components/OnboardingTour'
+import { RuntimeFailureDialog } from './components/RuntimeFailureDialog'
 import { ConvertPanel } from './components/panels/ConvertPanel'
 import { GuidesPanel } from './components/panels/GuidesPanel'
 import { LibraryPanel } from './components/panels/LibraryPanel'
@@ -202,6 +203,8 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
           </div>
         </div>
       </header>
+
+      <RuntimeFailureDialog />
 
       <main className="shell">
         {/* First in <main> so the tour card is the next Tab stop after the header. */}

@@ -3,6 +3,7 @@ import type {
   WorkerArtifactData,
   WorkerCommand,
   WorkerErrorMessage,
+  WorkerFailureReason,
   WorkerMemoryDebugMessage,
   WorkerProgressMessage,
   WorkerResultMessage,
@@ -61,7 +62,7 @@ export function postError(
   id: string,
   command: WorkerCommand,
   message: string,
-  options: { fatal?: boolean } = {},
+  options: { fatal?: boolean; reason?: WorkerFailureReason } = {},
 ): void {
   const payload: WorkerErrorMessage = {
     id,
@@ -70,6 +71,7 @@ export function postError(
       command,
       message,
       ...(options.fatal ? { fatal: true } : {}),
+      ...(options.reason ? { reason: options.reason } : {}),
     },
   }
   self.postMessage(payload)

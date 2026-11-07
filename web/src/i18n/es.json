@@ -436,5 +436,11 @@
   "onboarding.patch.title": "Arregla los GIF que ya tienes",
   "onboarding.patch.body": "Las Herramientas de parcheo reparan GIF existentes sin volver a convertirlos: reescriben sus bytes finales y corrigen el ancho y el alto guardados en el archivo, muchos a la vez.",
   "onboarding.guides.title": "Sigue una guía",
-  "onboarding.guides.body": "Guías tiene flujos paso a paso para cada tipo de escaparate, además de consejos para ajustar la calidad y el tamaño. Repite este recorrido cuando quieras desde Ayuda."
+  "onboarding.guides.body": "Guías tiene flujos paso a paso para cada tipo de escaparate, además de consejos para ajustar la calidad y el tamaño. Repite este recorrido cuando quieras desde Ayuda.",
+  "runtimeFailure.gifski.title": "El codificador de GIF no se cargó",
+  "runtimeFailure.gifski.body": "Artwork Studio no pudo cargar gifski, el codificador que crea tus GIF, así que esta conversión se detuvo. Puede que se haya caído la conexión o que una extensión del navegador haya bloqueado el archivo. Recargar la página suele solucionarlo.",
+  "runtimeFailure.countdown": "La página se recargará en {seconds, plural, one {# segundo} other {# segundos}}.",
+  "runtimeFailure.reloadNow": "Recargar ahora",
+  "runtimeFailure.stay": "Quedarme en esta página",
+  "runtimeFailure.details": "Detalles del error"
 }
