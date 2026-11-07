@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import { createContext, use, useState, type ChangeEvent, type ReactNode } from 'react'
 import { applyEofPatch, applyHeaderPatch } from '../lib/patch'
 import type { PatchResult } from '../lib/types'

@@ -112,6 +112,7 @@ export function SourceEditor({
         }
         setCurrentTime(video.currentTime)
       }
+      // oxlint-disable-next-line react/immutability -- effect-local rAF handle, reassigned only inside the effect's own loop
       frame = requestAnimationFrame(tick)
     }
     frame = requestAnimationFrame(tick)

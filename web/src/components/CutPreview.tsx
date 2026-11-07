@@ -45,7 +45,7 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
   useEffect(() => {
     const url = URL.createObjectURL(file)
     // The object URL is an external resource that must be revoked on cleanup, so it lives in an effect.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // oxlint-disable-next-line react/set-state-in-effect
     setSourceUrl(url)
     setSize(null)
     setFailed(false)
@@ -213,6 +213,7 @@ export function CutPreview({ file, config, edit, onEditChange, disabled = false 
         <p className="cut-preview-note">{intl.formatMessage({ id: 'convert.cutPreview.unavailable' })}</p>
       ) : (
         <div className="cut-preview-scroll">
+          {/* oxlint-disable-next-line jsx-a11y/no-static-element-interactions -- role="button" is set whenever the handlers do anything */}
           <div
             className={`cut-preview-stage${isGuide ? ' is-trimmed' : ''}${canEdit ? ' is-editable' : ''}`}
             style={stageStyle}

@@ -123,6 +123,7 @@ function ScriptCard(props: ScriptCardProps) {
       </div>
       <details className="steam-script-code" open={status?.type === 'error' || undefined}>
         <summary>{intl.formatMessage({ id: 'steam.viewScript' })}</summary>
+        {/* oxlint-disable-next-line jsx-a11y/no-noninteractive-tabindex -- scrollable block must be keyboard-focusable */}
         <pre tabIndex={0}>
           <code>{script}</code>
         </pre>

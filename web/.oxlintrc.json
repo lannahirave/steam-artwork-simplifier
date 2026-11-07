@@ -1,6 +1,6 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "plugins": ["typescript", "unicorn", "oxc", "react", "react-perf", "jsx-a11y", "import", "promise", "vitest"],
+  "plugins": ["typescript", "unicorn", "oxc", "react", "jsx-a11y", "import", "promise", "vitest"],
   "env": { "browser": true, "es2024": true },
   "categories": {
     "correctness": "error",
@@ -8,14 +8,44 @@
     "perf": "warn"
   },
   "rules": {
+    "react/react-in-jsx-scope": "off",
     "react/rules-of-hooks": "error",
     "react/exhaustive-deps": "warn",
-    "react/only-export-components": ["warn", { "allowConstantExport": true }],
-    "react/react-in-jsx-scope": "off"
+    "react/only-export-components": ["error", { "allowConstantExport": true }],
+    "react/incompatible-library": "warn",
+    "react/unsupported-syntax": "warn",
+    "react/jsx-no-constructed-context-values": "off",
+    "jsx-a11y/prefer-tag-over-role": "off",
+    "import/no-unassigned-import": "off",
+
+    "no-case-declarations": "error",
+    "no-empty": "error",
+    "no-fallthrough": "error",
+    "no-prototype-builtins": "error",
+    "no-regex-spaces": "error",
+    "no-unexpected-multiline": "error",
+    "no-useless-assignment": "error",
+    "preserve-caught-error": "error",
+    "no-var": "error",
+    "prefer-const": "error",
+    "prefer-rest-params": "error",
+    "prefer-spread": "error",
+    "no-unused-vars": "error",
+    "no-unused-expressions": "error",
+    "typescript/ban-ts-comment": "error",
+    "typescript/no-array-constructor": "error",
+    "typescript/no-empty-object-type": "error",
+    "typescript/no-explicit-any": "error",
+    "typescript/no-namespace": "error",
+    "typescript/no-require-imports": "error",
+    "typescript/no-unnecessary-type-constraint": "error",
+    "typescript/no-unsafe-function-type": "error",
+
+    "vitest/require-mock-type-parameters": "off"
   },
   "overrides": [
     {
-      "files": ["scripts/**", "e2e/**", "*.config.ts", "cloudflare/**", "bridge/**"],
+      "files": ["scripts/**", "e2e/**", "*.config.ts", "*.config.js", "cloudflare/**", "bridge/**"],
       "env": { "node": true }
     }
   ],

@@ -395,5 +395,3 @@ self.onmessage = async (event: MessageEvent<AnyWorkerRequest>) => {
     currentRequestId = ''
   }
 }
-
-export {}

@@ -31,6 +31,7 @@ class FakeConversionPool {
   ): Promise<WorkerResultDataMap[T]> {
     if (command === 'probe') {
       const probePayload = payload as ProbePayload
+      // oxlint-disable-next-line vitest/no-standalone-expect -- the fake worker is only called from inside tests
       expect(probePayload.fileName).toBe('clip.mp4')
       return {
         width: 600,

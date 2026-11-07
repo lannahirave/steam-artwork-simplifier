@@ -1,7 +1,7 @@
 {
   "name": "web",
   "private": true,
-  "version": "1.2.34",
+  "version": "1.2.35",
   "license": "AGPL-3.0-or-later",
   "type": "module",
   "scripts": {
@@ -10,7 +10,7 @@
     "build:beta": "tsc -b && vite build --mode beta",
     "deploy": "npm run build && npx wrangler deploy",
     "deploy:beta": "npm run build:beta && npx wrangler deploy --env beta",
-    "lint": "eslint .",
+    "lint": "oxlint",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
@@ -19,8 +19,7 @@
     "bench:memory": "node ./scripts/benchmark-memory.mjs",
     "bench:memory:cleanup": "node ./scripts/benchmark-memory.mjs --scenario smoke --summary-only --assert-frame-cache-cleared",
     "release:beta": "node scripts/deploy.mjs beta",
-    "release:prod": "node scripts/deploy.mjs prod",
-    "lint:ox": "oxlint"
+    "release:prod": "node scripts/deploy.mjs prod"
   },
   "dependencies": {
     "@ffmpeg/ffmpeg": "^0.12.15",
@@ -33,7 +32,6 @@
   },
   "devDependencies": {
     "@babel/core": "^7.29.13",
-    "@eslint/js": "^10.0.1",
     "@playwright/test": "^1.64.1",
     "@rolldown/plugin-babel": "^0.3.0",
     "@testing-library/jest-dom": "^6.9.1",
@@ -45,14 +43,9 @@
     "@types/react-dom": "^19.3.0",
     "@vitejs/plugin-react": "^6.2.1",
     "babel-plugin-react-compiler": "^1.0.0",
-    "eslint": "^10.14.0",
-    "eslint-plugin-react-hooks": "^7.1.1",
-    "eslint-plugin-react-refresh": "^0.5.7",
-    "globals": "^17.14.0",
     "jsdom": "^29.1.1",
     "oxlint": "^1.91.0",
     "typescript": "^6.0.3",
-    "typescript-eslint": "^8.72.1",
     "vite": "^8.3.5",
     "vitest": "^4.1.11",
     "wrangler": "^4.157.0"

@@ -268,7 +268,7 @@ export function OnboardingTour(props: OnboardingTourProps) {
       goTo('source')
     }
     // goTo only reads state that is listed here.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // oxlint-disable-next-line react/exhaustive-deps
   }, [open, stepId, sourceReady, editorOpen])
 
   function restoreFocus(): void {

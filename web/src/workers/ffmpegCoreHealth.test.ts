@@ -50,9 +50,10 @@ describe('withCoreWatchdog', () => {
   it('rejects with FfmpegCoreUnresponsiveError when the task never settles', async () => {
     vi.useFakeTimers()
     const pending = withCoreWatchdog(new Promise<number>(() => undefined), 30_000)
-    const assertion = expect(pending).rejects.toBeInstanceOf(FfmpegCoreUnresponsiveError)
-    await vi.advanceTimersByTimeAsync(30_000)
-    await assertion
+    await Promise.all([
+      expect(pending).rejects.toBeInstanceOf(FfmpegCoreUnresponsiveError),
+      vi.advanceTimersByTimeAsync(30_000),
+    ])
   })
 })
 
@@ -147,9 +148,10 @@ describe('createFfmpegCoreMonitor', () => {
     const monitor = createFfmpegCoreMonitor(raw as unknown as FFmpeg)
 
     const watched = monitor.watch(monitor.ffmpeg.exec(['-i', 'a']), 1000)
-    const assertion = expect(watched).rejects.toBeInstanceOf(FfmpegCoreUnresponsiveError)
-    await vi.advanceTimersByTimeAsync(1000)
-    await assertion
+    await Promise.all([
+      expect(watched).rejects.toBeInstanceOf(FfmpegCoreUnresponsiveError),
+      vi.advanceTimersByTimeAsync(1000),
+    ])
     expect(monitor.failed).toBe(true)
 
     // terminate() rejects the abandoned exec with "called FFmpeg.terminate()"; that stale

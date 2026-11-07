@@ -1,4 +1,4 @@
-/* eslint-disable react-refresh/only-export-components */
+/* oxlint-disable react/only-export-components */
 import { createContext, use, useState, type ReactNode } from 'react'
 import {
   DEFAULT_APP_ID,
