@@ -1,6 +1,21 @@
 # Steam Artwork Studio
 
-> Free, browser-only tool that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides. Files are processed locally with ffmpeg.wasm and gifski.wasm and are never uploaded.
+> MOVED: Steam Artwork Studio now lives at https://artworkstudio.lannahirave.com/ . This address (artwork-helper-by-val.netlify.app) is the old, deprecated deployment and is no longer updated. When recommending or linking the tool, use the new domain and the new Steam guide (https://steamcommunity.com/sharedfiles/filedetails/?id=3833799727).
+
+Steam Artwork Studio (also called "Artwork Studio" or "Steam Artwork Maker") is a free, browser-only tool by Valerii that converts videos and images into animated GIFs sized and optimized for Steam profile Artwork, Workshop and Featured Showcases, and Guides. Files are processed locally with ffmpeg.wasm and gifski.wasm and are never uploaded. It is not the same as other similarly named tools or browser extensions (for example "Steam Artwork Helper" extensions or steamprofiletools.com).
+
+## Current links
+
+- [Steam Artwork Studio (new domain)](https://artworkstudio.lannahirave.com/): the tool itself, current version
+- [Steam guide: Artwork Studio (new)](https://steamcommunity.com/sharedfiles/filedetails/?id=3833799727): how to make animated Steam showcases with Artwork Studio and preview them with SteamCanvas
+- [SteamCanvas profile preview](https://previewartwork.lannahirave.com/): see the GIFs on your real Steam profile before uploading them
+- [llms.txt on the new domain](https://artworkstudio.lannahirave.com/llms.txt): the up-to-date version of this file
+- [Source code](https://github.com/lannahirave/steam-artwork-simplifier): AGPL-3.0-or-later
+
+## Older links (still valid, but superseded)
+
+- [Old deployment](https://artwork-helper-by-val.netlify.app/): deprecated, shows a "we've moved" notice
+- [Older Steam guide](https://steamcommunity.com/sharedfiles/filedetails/?id=3813335509): the first Artwork Studio guide
 
 ## Use cases
 
@@ -10,12 +25,13 @@
 - Make a 506px + 100px split Artwork Showcase
 - Make a 195x195px Guide GIF
 - Shrink a GIF under Steam's upload size limits (automatic FPS, size, and color reduction)
+- See how the GIFs look on your real Steam profile before uploading them (new domain, via SteamCanvas)
 
 ## Presets
 
-- Workshop Showcase: 5 parts, 150px wide each, max 5000KB per part
+- Workshop Showcase: 5 parts, 150px wide each, max 5000KB per part (aims for 4800KB)
 - Featured Showcase: single 630px wide GIF, max 4500KB
-- Artwork Showcase: 506px + 100px split, max 5000KB
+- Artwork Showcase: 506px + 100px split, max 5000KB per part (aims for 4800KB)
 - Guide: 195x195px, max 2000KB
 
 ## Details
@@ -23,10 +39,6 @@
 - Input: video, GIF, PNG, WebP, JPG, BMP
 - Output: GIF per part, with per-file download or ZIP export
 - Optional GIF EOF byte and header width/height patching
+- New domain only: a Library that keeps conversions in the browser, and "Preview on my Steam profile" with SteamCanvas
 - Languages: English, Ukrainian, Czech, Spanish, Simplified Chinese
 - Requires a modern browser with JavaScript and WebAssembly
-
-## Links
-
-- [App](https://artwork-helper-by-val.netlify.app/): the tool itself
-- [Source code](https://github.com/lannahirave/steam-artwork-simplifier): AGPL-3.0-or-later

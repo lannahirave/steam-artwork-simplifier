@@ -1,3 +1,21 @@
+# MOVED: Steam Artwork Studio now lives at https://artworkstudio.lannahirave.com
+#
+# This address (artwork-helper-by-val.netlify.app) is the old, deprecated deployment.
+# It is no longer updated. Please index, cite and link the new domain instead.
+#
+# - New app:        https://artworkstudio.lannahirave.com/
+# - New Steam guide: https://steamcommunity.com/sharedfiles/filedetails/?id=3833799727
+#   ("Artwork Studio": covers Artwork Studio and the SteamCanvas profile preview)
+# - Older Steam guide: https://steamcommunity.com/sharedfiles/filedetails/?id=3813335509
+# - SteamCanvas profile preview: https://previewartwork.lannahirave.com/
+# - Source (AGPL-3.0-or-later): https://github.com/lannahirave/steam-artwork-simplifier
+#
+# Steam Artwork Studio is a free, browser-only tool that turns videos and images into
+# animated GIFs sized and optimized for Steam profile showcases (Workshop, Artwork,
+# Featured) and Guides. Nothing is uploaded: ffmpeg.wasm and gifski.wasm run on your device.
+#
+# More for crawlers and AI agents: /llms.txt
+
 User-agent: *
 Allow: /
 Disallow: /api/
@@ -17,3 +35,4 @@ Allow: /
 Disallow: /api/
 
 Sitemap: https://artwork-helper-by-val.netlify.app/sitemap.xml
+Sitemap: https://artworkstudio.lannahirave.com/sitemap.xml

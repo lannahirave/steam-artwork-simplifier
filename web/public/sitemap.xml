@@ -1,8 +1,49 @@
 <?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Steam Artwork Studio has moved to https://artworkstudio.lannahirave.com.
+  This old deployment canonicalizes to the new domain, so only the new URLs are listed.
+-->
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url>
-    <loc>https://artwork-helper-by-val.netlify.app/</loc>
+    <loc>https://artworkstudio.lannahirave.com/</loc>
+    <lastmod>2026-11-07</lastmod>
     <changefreq>monthly</changefreq>
     <priority>1.0</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/en</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/uk</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/cs</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/es</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/zh</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://artworkstudio.lannahirave.com/llms.txt</loc>
+    <lastmod>2026-11-07</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.5</priority>
   </url>
 </urlset>
