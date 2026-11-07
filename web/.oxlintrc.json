@@ -17,6 +17,7 @@
     "react/jsx-no-constructed-context-values": "off",
     "jsx-a11y/prefer-tag-over-role": "off",
     "import/no-unassigned-import": "off",
+    "no-await-in-loop": "off",
 
     "no-case-declarations": "error",
     "no-empty": "error",
