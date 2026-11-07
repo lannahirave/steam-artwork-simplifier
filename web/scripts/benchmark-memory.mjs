@@ -308,11 +308,18 @@ async function setSelectField(page, label, value) {
 }
 
 async function setCheckboxField(page, label, checked) {
-  const checkbox = labelLocator(page, label).locator('input[type="checkbox"]').first()
+  const field = labelLocator(page, label)
+  const checkbox = field.locator('input[type="checkbox"]').first()
   if ((await checkbox.count()) === 0) {
     return
   }
-  await checkbox.setChecked(checked)
+  // Checkboxes render as switches whose track covers the input, so toggle through the label.
+  if ((await checkbox.isChecked()) !== checked) {
+    await field.click()
+  }
+  if ((await checkbox.isChecked()) !== checked) {
+    throw new Error(`Could not set "${label}" to ${checked}.`)
+  }
 }
 
 async function setRawMode(page, disabled) {
@@ -330,7 +337,15 @@ async function setRawMode(page, disabled) {
   }
 }
 
+async function openAdvancedOptions(page) {
+  // Min GIF FPS, Worker Count, raw mode and the retry checkboxes live in this collapsed section.
+  await page.locator('details[data-testid="advanced-options"]').evaluate((details) => {
+    details.open = true
+  })
+}
+
 async function applySettings(page, settings) {
+  await openAdvancedOptions(page)
   await setSelectField(page, 'Preset', settings.preset)
   await setNumberField(page, 'Parts', settings.parts)
   await setNumberField(page, 'Part Width', settings.partWidth)
@@ -557,8 +572,11 @@ async function runSingleBenchmark({
   timeoutMs,
   url,
 }) {
+  // The labels and status texts matched below are English; pin the locale so the app does not
+  // follow the machine's browser language.
   const context = await browser.newContext({
     viewport: { width: 1280, height: 900 },
+    locale: 'en-US',
   })
   await context.addInitScript((storageKey) => {
     window.localStorage.setItem(storageKey, 'true')
@@ -567,7 +585,7 @@ async function runSingleBenchmark({
   const startedAt = Date.now()
 
   try {
-    await page.goto(url, { waitUntil: 'domcontentloaded' })
+    await page.goto(new URL('en/', url).href, { waitUntil: 'domcontentloaded' })
     await page.waitForSelector('input[type="file"]', { timeout: 30_000 })
     await installClipboardCapture(page)
     await applySettings(page, settings)
