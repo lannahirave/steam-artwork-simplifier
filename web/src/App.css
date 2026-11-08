@@ -454,11 +454,11 @@ textarea {
   border: 0;
 }
 
-/* Post-conversion feedback nudge. Dismissible, out of the way of the results
-   area, and stacked below the onboarding overlay so the tour stays on top. */
+/* Feedback nudge, shown after a download. Dismissible, out of the way of the
+   results area, and stacked below the onboarding overlay so the tour stays on top. */
 .feedback-prompt {
   position: fixed;
-  top: 4.25rem;
+  bottom: 1rem;
   right: max(1rem, calc((100vw - var(--content-width)) / 2));
   z-index: 28;
   width: min(21rem, calc(100vw - 2rem));
@@ -480,7 +480,7 @@ textarea {
 @keyframes feedback-prompt-in {
   from {
     opacity: 0;
-    transform: translateY(-0.5rem);
+    transform: translateY(0.5rem);
   }
 
   to {
@@ -497,17 +497,9 @@ textarea {
 
 .feedback-prompt-head {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 0.75rem;
-}
-
-.feedback-prompt-kicker {
-  color: var(--ink-muted);
-  font-size: 0.72rem;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
 }
 
 .feedback-prompt-close {
@@ -535,8 +527,8 @@ textarea {
   transform: none;
 }
 
-.feedback-prompt h2 {
-  margin: 0.4rem 0 0;
+.feedback-prompt .feedback-prompt-title {
+  margin: 0.3rem 0 0;
   font-family: var(--font-display);
   font-size: 1.1rem;
   line-height: 1.2;
@@ -552,9 +544,22 @@ textarea {
 
 .feedback-prompt-actions {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 0.5rem;
   margin-top: 0.85rem;
+}
+
+.feedback-prompt-reasons {
+  display: grid;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+}
+
+.feedback-prompt-reasons button {
+  width: 100%;
+  justify-content: flex-start;
+  text-align: left;
 }
 
 .onboarding-spotlight {
@@ -2561,7 +2566,7 @@ input[type='file']::file-selector-button {
   }
 
   .feedback-prompt {
-    top: 0.75rem;
+    bottom: 0.75rem;
     right: 0.75rem;
     left: 0.75rem;
     width: auto;

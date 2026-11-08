@@ -3,6 +3,9 @@
 // POST /api/track  -> increments the per-day conversion counter in D1.
 //                     No request body is read; no IP, user agent, or session
 //                     identifier is stored.
+// POST /api/feedback?outcome=<one of FEEDBACK_OUTCOMES>
+//                  -> increments a per-day counter for that answer, under the
+//                     same guards. Only the fixed outcome name is stored.
 // GET  /api/stats with `Authorization: Bearer <STATS_TOKEN>` -> returns per-day
 //                     counts and their total. The token is not accepted in the
 //                     URL, so it stays out of browser history and request logs.
@@ -61,6 +64,16 @@ export interface StatsEnv {
 
 const DAY_KEY_PREFIX = 'day/'
 const VISITOR_KEY_PREFIX = 'visitor/'
+const FEEDBACK_KEY_PREFIX = 'feedback/'
+
+const FEEDBACK_OUTCOMES = new Set([
+  'worked',
+  'problem',
+  'problem-rejected',
+  'problem-looks-wrong',
+  'problem-quality',
+  'problem-other',
+])
 
 const INCREMENT_SQL = 'INSERT INTO counters (key, n) VALUES (?1, 1) ON CONFLICT(key) DO UPDATE SET n = n + 1'
 
@@ -77,15 +90,28 @@ function toHex(bytes: ArrayBuffer): string {
 
 /** True for the paths this handler owns. */
 export function isStatsPath(pathname: string): boolean {
-  return pathname === '/api/track' || pathname === '/api/stats'
+  return pathname === '/api/track' || pathname === '/api/stats' || pathname === '/api/feedback'
 }
 
 export async function handleStats(req: Request, env: StatsEnv): Promise<Response> {
   if (req.method !== 'GET' && req.method !== 'POST') {
     return new Response(null, { status: 405, headers: { allow: 'GET, POST' } })
   }
+  const url = new URL(req.url)
   try {
-    return req.method === 'GET' ? await readStats(req, env) : await recordConversion(req, env)
+    if (url.pathname === '/api/feedback') {
+      if (req.method !== 'POST') {
+        return new Response(null, { status: 405, headers: { allow: 'POST' } })
+      }
+      const outcome = url.searchParams.get('outcome') ?? ''
+      if (!FEEDBACK_OUTCOMES.has(outcome)) {
+        return json({ error: 'invalid outcome' }, 400)
+      }
+      return await recordCounter(req, env, (day) => `${FEEDBACK_KEY_PREFIX}${day}/${outcome}`)
+    }
+    return req.method === 'GET'
+      ? await readStats(req, env)
+      : await recordCounter(req, env, (day) => `${DAY_KEY_PREFIX}${day}`)
   } catch {
     return json({ error: 'unavailable' }, 503)
   }
@@ -120,7 +146,11 @@ async function dailySalt(db: D1Database, day: string): Promise<string> {
   return (await select.first<{ salt: string }>())?.salt ?? fresh
 }
 
-async function recordConversion(req: Request, env: StatsEnv): Promise<Response> {
+async function recordCounter(
+  req: Request,
+  env: StatsEnv,
+  counterKey: (day: string) => string,
+): Promise<Response> {
   const allowedOrigins = resolveAllowedOrigins({ ALLOWED_ORIGINS: env.ALLOWED_ORIGINS })
   if (
     !isAllowedSource(
@@ -138,7 +168,7 @@ async function recordConversion(req: Request, env: StatsEnv): Promise<Response> 
   }
 
   const day = dayBucketKey(new Date())
-  const dayKey = `${DAY_KEY_PREFIX}${day}`
+  const dayKey = counterKey(day)
   const salt = await dailySalt(env.DB, day)
   const visitorHash = toHex(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(`${salt}:${ip}`)))
   const visitorKey = `${VISITOR_KEY_PREFIX}${day}/${visitorHash.slice(0, 32)}`
@@ -189,5 +219,14 @@ async function readStats(req: Request, env: StatsEnv): Promise<Response> {
     days[row.key.slice(DAY_KEY_PREFIX.length)] = row.n
     total += row.n
   }
-  return json({ total, days }, 200)
+
+  const feedbackRows = await env.DB.prepare(
+    "SELECT key, n FROM counters WHERE key LIKE 'feedback/%'",
+  ).all<{ key: string; n: number }>()
+  const feedback: Record<string, number> = {}
+  for (const row of feedbackRows.results) {
+    const outcome = row.key.slice(row.key.lastIndexOf('/') + 1)
+    feedback[outcome] = (feedback[outcome] ?? 0) + row.n
+  }
+  return json({ total, days, feedback }, 200)
 }

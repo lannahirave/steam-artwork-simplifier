@@ -51,6 +51,7 @@ import {
   type ArtifactView,
 } from '../agents/appAgents'
 import type { MessageId } from '../i18n/messages'
+import { useFeedbackPrompt } from './useFeedbackPrompt'
 import type { FpsHeadroom } from '../lib/sizeStrategy'
 
 export interface ConvertState {
@@ -203,14 +204,13 @@ export function useConversionSession(): ConvertContextValue {
   const [headroomRun, setHeadroomRun] = useState<{ config: ConversionConfig; headroom: FpsHeadroom | null } | null>(null)
   const fpsHeadroom = headroomRun?.config === config ? headroomRun.headroom : null
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
-  const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false)
+  const { open: feedbackPromptOpen, arm: armFeedbackPrompt, dismiss: dismissFeedbackPrompt } = useFeedbackPrompt()
 
   const poolRef = useRef<ConversionWorkerPool | null>(null)
   const totalJobsRef = useRef(1)
   const workerWeightsRef = useRef<Record<number, number>>({})
   const conversionStartMsRef = useRef<number | null>(null)
   const finishCurrentRequestedRef = useRef(false)
-  const feedbackPromptShownRef = useRef(false)
 
   useEffect(() => {
     return () => {
@@ -510,13 +510,6 @@ export function useConversionSession(): ConvertContextValue {
           result.completionStatus === 'complete',
         )
         trackConversionComplete()
-        // Ask for guide feedback once per browser session, right after the
-        // aggregate counter is reported. It never blocks or alters the
-        // conversion result and stays dismissible for the rest of the session.
-        if (!feedbackPromptShownRef.current) {
-          feedbackPromptShownRef.current = true
-          setFeedbackPromptOpen(true)
-        }
       }
       setProgressPercent(100)
       const totalMs = Date.now() - startedAt
@@ -588,6 +581,7 @@ export function useConversionSession(): ConvertContextValue {
       archiveName,
     )
     downloadBlob(zip.name, zip.blob)
+    armFeedbackPrompt()
   }
 
   function openProfilePreview(): void {
@@ -604,10 +598,6 @@ export function useConversionSession(): ConvertContextValue {
     setProfilePreviewError('')
     // The entry may still be being written; the bridge retries briefly if SteamCanvas asks first.
     window.open(profilePreviewUrl(id), '_blank', 'noopener,noreferrer')
-  }
-
-  function dismissFeedbackPrompt(): void {
-    setFeedbackPromptOpen(false)
   }
 
   function updatePreset(nextPreset: ConversionConfig['preset']): void {
@@ -824,7 +814,10 @@ export function useConversionSession(): ConvertContextValue {
       isCompactStrip,
       resultsGridClassName,
       getQualityReductionPercent,
-      downloadBlob,
+      downloadBlob: (name: string, blob: Blob) => {
+        downloadBlob(name, blob)
+        armFeedbackPrompt()
+      },
       presetPlan,
       showLongMp4Memo,
       showWorkshopMemoryMemo,

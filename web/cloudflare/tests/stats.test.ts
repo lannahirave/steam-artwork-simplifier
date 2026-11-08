@@ -265,6 +265,7 @@ describe('GET /api/stats', () => {
     expect(response.status).toBe(200)
     expect(await response.json()).toEqual({
       total: 41,
+      feedback: {},
       days: { '2026-10-06': 15, '2026-10-07': 26 },
     })
   })
@@ -300,5 +301,43 @@ describe('other methods', () => {
 
     expect(response.status).toBe(405)
     expect(keys()).toEqual([])
+  })
+})
+
+describe('feedback counters', () => {
+  const post = (query: string) =>
+    handleStats(new Request(`${ORIGIN}/api/feedback${query}`, { method: 'POST', headers: { origin: ORIGIN } }), env)
+
+  it('counts a known outcome per day and reports the totals', async () => {
+    expect((await post('?outcome=worked')).status).toBe(204)
+    expect((await post('?outcome=worked')).status).toBe(204)
+    expect(keys().some((key) => key.startsWith('feedback/') && key.endsWith('/worked'))).toBe(true)
+    env.STATS_TOKEN = 'secret'
+    const response = await handleStats(
+      new Request(`${ORIGIN}/api/stats`, { headers: { authorization: 'Bearer secret' } }),
+      env,
+    )
+    const body = (await response.json()) as { total: number; feedback: Record<string, number> }
+    expect(body.feedback).toEqual({ worked: 2 })
+    expect(body.total).toBe(0)
+  })
+
+  it('rejects unknown outcomes and stores nothing', async () => {
+    expect((await post('?outcome=anything')).status).toBe(400)
+    expect(keys()).toEqual([])
+  })
+
+  it('applies the origin guard', async () => {
+    const response = await handleStats(
+      new Request(`${ORIGIN}/api/feedback?outcome=worked`, { method: 'POST', headers: { origin: 'https://evil.example' } }),
+      env,
+    )
+    expect(response.status).toBe(403)
+    expect(keys()).toEqual([])
+  })
+
+  it('only accepts POST', async () => {
+    const response = await handleStats(new Request(`${ORIGIN}/api/feedback?outcome=worked`), env)
+    expect(response.status).toBe(405)
   })
 })
