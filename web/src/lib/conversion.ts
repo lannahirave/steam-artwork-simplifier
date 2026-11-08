@@ -5,6 +5,8 @@ import { outputKeepsAlpha, resolveAlphaHandling } from './transparency'
 import {
   analyzeSplitPartWeights,
   estimateFpsForKbTarget,
+  findFpsHeadroom,
+  type FpsHeadroom,
   orderSplitPartIndicesByWeight,
 } from './sizeStrategy'
 import { recoverSplitBatchQuality } from './splitRecovery'
@@ -45,6 +47,8 @@ export interface ConversionProgress {
 
 export interface ConversionExecutionResult extends ConversionResult {
   probe: SourceProbe
+  /** Set when the largest GIF left room for a higher FPS. */
+  fpsHeadroom: FpsHeadroom | null
 }
 
 export interface ConversionOptions {
@@ -941,8 +945,13 @@ export async function convertVideo(
     emit('done', formatMessage('convert.runtime.doneFinishedEarly'))
   }
 
+  const fpsHeadroom = completionStatus === 'complete' && !config.disableOptimizations && !isStillImage
+    ? findFpsHeadroom({ items: patched, targetGifKb: config.targetGifKb, sourceFps: probe.fps })
+    : null
+
   return {
     probe,
+    fpsHeadroom,
     artifacts: patched,
     logs,
     warnings,

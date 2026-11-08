@@ -52,6 +52,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     feedbackPromptOpen,
     profilePreviewError,
     librarySave,
+    fpsHeadroom,
   } = state
   const {
     setConfig,
@@ -60,6 +61,7 @@ export function ConvertPanel(props: ConvertPanelProps) {
     onSourceEditChange,
     onEstimateAndApplyFps,
     onRunConversion,
+    onConvertAtSuggestedFps,
     onCancelConversion,
     onFinishCurrentConversion,
     onDownloadZip,
@@ -852,6 +854,24 @@ export function ConvertPanel(props: ConvertPanelProps) {
           )}
           {profilePreviewError && (
             <p className="profile-preview-error" role="alert">{profilePreviewError}</p>
+          )}
+          {fpsHeadroom && (
+            <div className="fps-headroom">
+              <p>
+                {intl.formatMessage(
+                  { id: 'convert.fpsHeadroom.message' },
+                  {
+                    largestKb: Math.round(fpsHeadroom.largestKb),
+                    targetKb: fpsHeadroom.targetKb,
+                    currentFps: fpsHeadroom.currentFps,
+                    suggestedFps: fpsHeadroom.suggestedFps,
+                  },
+                )}
+              </p>
+              <Button size="small" onClick={onConvertAtSuggestedFps}>
+                {intl.formatMessage({ id: 'convert.fpsHeadroom.action' }, { fps: fpsHeadroom.suggestedFps })}
+              </Button>
+            </div>
           )}
           <section className={resultsGridClassName} style={resultsGridStyle}>
             {artifactViews.map((item) => (

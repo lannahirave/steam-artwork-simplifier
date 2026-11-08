@@ -51,6 +51,7 @@ import {
   type ArtifactView,
 } from '../agents/appAgents'
 import type { MessageId } from '../i18n/messages'
+import type { FpsHeadroom } from '../lib/sizeStrategy'
 
 export interface ConvertState {
   config: ConversionConfig
@@ -77,6 +78,8 @@ export interface ConvertState {
   profilePreviewError: string
   /** Whether the latest results are saved in the Library. */
   librarySave: LibrarySaveState
+  /** Set when the latest results left room for a higher FPS and the settings are unchanged. */
+  fpsHeadroom: FpsHeadroom | null
 }
 
 export type LibrarySaveState =
@@ -92,6 +95,8 @@ export interface ConvertActions {
   onSourceEditChange: (edit: SourceEdit | null) => void
   onEstimateAndApplyFps: () => void
   onRunConversion: () => void
+  /** Converts again at the FPS suggested by `fpsHeadroom`. */
+  onConvertAtSuggestedFps: () => void
   onCancelConversion: () => void
   onFinishCurrentConversion: () => void
   onDownloadZip: () => void
@@ -195,6 +200,8 @@ export function useConversionSession(): ConvertContextValue {
   const lastLibraryIdRef = useRef<string | null>(null)
   const [estimatingFps, setEstimatingFps] = useState(false)
   const [fpsEstimateInfo, setFpsEstimateInfo] = useState('')
+  const [headroomRun, setHeadroomRun] = useState<{ config: ConversionConfig; headroom: FpsHeadroom | null } | null>(null)
+  const fpsHeadroom = headroomRun?.config === config ? headroomRun.headroom : null
   const [memoryDebug, setMemoryDebug] = useState<MemoryDebugSession>(() => createEmptyMemoryDebugSession())
   const [feedbackPromptOpen, setFeedbackPromptOpen] = useState(false)
 
@@ -295,6 +302,7 @@ export function useConversionSession(): ConvertContextValue {
     setProfilePreviewError('')
     setLibrarySave({ status: 'idle' })
     lastLibraryIdRef.current = null
+    setHeadroomRun(null)
     setMemoryDebug(createEmptyMemoryDebugSession())
   }
 
@@ -395,7 +403,16 @@ export function useConversionSession(): ConvertContextValue {
       })
   }
 
-  async function runConversion(): Promise<void> {
+  function convertAtSuggestedFps(): void {
+    if (!fpsHeadroom || busy) {
+      return
+    }
+    const nextConfig = { ...config, gifFps: fpsHeadroom.suggestedFps }
+    setConfig(nextConfig)
+    void runConversion(nextConfig)
+  }
+
+  async function runConversion(activeConfig: ConversionConfig = config): Promise<void> {
     if (!sourceFile) {
       return
     }
@@ -405,17 +422,17 @@ export function useConversionSession(): ConvertContextValue {
       return
     }
 
-    const plan = resolvePresetPlan(config)
+    const plan = resolvePresetPlan(activeConfig)
     const runtimeConfig: ConversionConfig = {
-      ...config,
+      ...activeConfig,
       workerCount: plan.effectiveWorkerCount,
     }
     const extraWarnings: string[] = []
     const conversionSourceName = sourceFile.name
     const conversionLayout: ConversionLayout = {
-      preset: config.preset,
-      workshopParts: config.parts,
-      workshopRows: config.workshopRows,
+      preset: activeConfig.preset,
+      workshopParts: activeConfig.parts,
+      workshopRows: activeConfig.workshopRows,
     }
     setLastConversionSourceName(conversionSourceName)
     setLastConversionLayout(conversionLayout)
@@ -441,7 +458,7 @@ export function useConversionSession(): ConvertContextValue {
 
     try {
       const pool = ensurePool(runtimeConfig.workerCount)
-      if (runtimeConfig.workerCount !== config.workerCount) {
+      if (runtimeConfig.workerCount !== activeConfig.workerCount) {
         extraWarnings.push(
           formatMessage('convert.runtime.workerCountCapped', { count: runtimeConfig.workerCount }),
         )
@@ -484,6 +501,7 @@ export function useConversionSession(): ConvertContextValue {
         }
       }
       setArtifactViews(nextArtifactViews)
+      setHeadroomRun({ config: activeConfig, headroom: result.fpsHeadroom })
       if (result.artifacts.length > 0) {
         saveToLibrary(
           conversionLayout,
@@ -775,6 +793,7 @@ export function useConversionSession(): ConvertContextValue {
       feedbackPromptOpen,
       profilePreviewError,
       librarySave,
+      fpsHeadroom,
     },
     actions: {
       setConfig,
@@ -783,6 +802,7 @@ export function useConversionSession(): ConvertContextValue {
       onSourceEditChange: setSourceEdit,
       onEstimateAndApplyFps: () => void estimateAndApplyFps(),
       onRunConversion: () => void runConversion(),
+      onConvertAtSuggestedFps: convertAtSuggestedFps,
       onCancelConversion: cancelConversion,
       onFinishCurrentConversion: finishCurrentConversion,
       onDownloadZip: () => void downloadZip(),

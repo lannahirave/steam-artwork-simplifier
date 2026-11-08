@@ -8,9 +8,48 @@ import {
   buildSharedFpsRecoveryCandidates,
   buildStandardCandidates,
   estimateFpsForKbTarget,
+  findFpsHeadroom,
   selectBatchRecoveryBudget,
   shouldTryQualityRecovery,
 } from './sizeStrategy'
+
+describe('findFpsHeadroom', () => {
+  const part = (sizeKb: number, finalFps = 10) => ({ sizeKb, finalFps })
+
+  it('scales the FPS to the largest part', () => {
+    expect(findFpsHeadroom({ items: [part(1000), part(2000)], targetGifKb: 4800, sourceFps: 60 })).toEqual({
+      currentFps: 10,
+      suggestedFps: 24,
+      largestKb: 2000,
+      targetKb: 4800,
+    })
+  })
+
+  it('stays quiet when the largest part is near the target', () => {
+    expect(findFpsHeadroom({ items: [part(4400)], targetGifKb: 4800, sourceFps: 60 })).toBeNull()
+  })
+
+  it('stays quiet when the gain rounds to nothing', () => {
+    expect(findFpsHeadroom({ items: [part(4300, 5)], targetGifKb: 4800, sourceFps: 60 })).toBeNull()
+  })
+
+  it('does not suggest more FPS than the source has', () => {
+    expect(findFpsHeadroom({ items: [part(1000)], targetGifKb: 4800, sourceFps: 23.976 })?.suggestedFps).toBe(24)
+    expect(findFpsHeadroom({ items: [part(1000, 24)], targetGifKb: 4800, sourceFps: 23.976 })).toBeNull()
+  })
+
+  it('caps the suggestion at what GIF players show', () => {
+    expect(findFpsHeadroom({ items: [part(100, 30)], targetGifKb: 4800, sourceFps: 0 })?.suggestedFps).toBe(50)
+  })
+
+  it('uses the lowest FPS of the parts', () => {
+    expect(findFpsHeadroom({ items: [part(1000, 12), part(1000, 10)], targetGifKb: 4800, sourceFps: 60 })?.currentFps).toBe(10)
+  })
+
+  it('handles an empty result', () => {
+    expect(findFpsHeadroom({ items: [], targetGifKb: 4800, sourceFps: 60 })).toBeNull()
+  })
+})
 
 describe('size strategy', () => {
   it('prefers fps-only reduction before quality ladder', () => {

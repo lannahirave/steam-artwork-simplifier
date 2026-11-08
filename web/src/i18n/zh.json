@@ -227,6 +227,8 @@
   "library.steamCanvas.deleteConfirm": "要从 SteamCanvas 删除“{name}”吗？",
   "library.steamCanvas.purgeConfirm": "要删除 SteamCanvas 在此浏览器中保存的所有示例吗？此操作无法撤销。",
   "convert.fpsMeta": "FPS：{fps}",
+  "convert.fpsHeadroom.message": "最大的 GIF 为 {largestKb} KB，目标为 {targetKb} KB，因此还有余量可以超过 {currentFps} FPS。约 {suggestedFps} FPS 应该仍能符合限制。",
+  "convert.fpsHeadroom.action": "以 {fps} FPS 重新转换",
   "convert.qualityReductionMeta": "画质降低：{percent}%",
   "convert.download": "下载",
   "convert.downloadShort": "下载",

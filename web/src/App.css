@@ -2100,6 +2100,20 @@ input[type='file']::file-selector-button {
   justify-content: flex-start;
 }
 
+.fps-headroom {
+  margin-top: 0.9rem;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 0.9rem;
+}
+
+.fps-headroom p {
+  margin: 0;
+  flex: 1 1 18rem;
+  font-size: 0.9rem;
+}
+
 .profile-preview-error,
 .library-save-status {
   margin: 0.45rem 0 0;

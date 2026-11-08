@@ -227,6 +227,8 @@
   "library.steamCanvas.deleteConfirm": "Delete “{name}” from SteamCanvas?",
   "library.steamCanvas.purgeConfirm": "Delete every example SteamCanvas saved in this browser? This cannot be undone.",
   "convert.fpsMeta": "FPS: {fps}",
+  "convert.fpsHeadroom.message": "The largest GIF is {largestKb} KB of the {targetKb} KB target, so there is room for more than {currentFps} FPS. About {suggestedFps} FPS should still fit.",
+  "convert.fpsHeadroom.action": "Convert again at {fps} FPS",
   "convert.qualityReductionMeta": "Quality reduction: {percent}%",
   "convert.download": "Download",
   "convert.downloadShort": "DL",

@@ -220,6 +220,43 @@ export function shouldTryQualityRecovery(sizeKb: number, targetGifKb: number): b
   return sizeKb < targetGifKb * RECOVERY_UNDER_TARGET_RATIO
 }
 
+/** GIF players treat delays under 20ms as slow, so more than 50 FPS never helps. */
+const MAX_USEFUL_GIF_FPS = 50
+
+export interface FpsHeadroom {
+  currentFps: number
+  suggestedFps: number
+  largestKb: number
+  targetKb: number
+}
+
+/**
+ * Finds results whose largest GIF left enough room under Target GIF KB for a higher FPS.
+ * Size is scaled linearly with FPS; the new conversion still enforces the limits.
+ */
+export function findFpsHeadroom(input: {
+  items: Array<SizeBoundItem & { finalFps: number }>
+  targetGifKb: number
+  sourceFps: number
+}): FpsHeadroom | null {
+  if (input.items.length === 0) {
+    return null
+  }
+  const currentFps = Math.min(...input.items.map((item) => item.finalFps))
+  const largestKb = Math.max(...input.items.map((item) => item.sizeKb))
+  if (currentFps <= 0 || largestKb <= 0 || !shouldTryQualityRecovery(largestKb, input.targetGifKb)) {
+    return null
+  }
+  const fpsCap = input.sourceFps > 0
+    ? Math.min(Math.ceil(input.sourceFps), MAX_USEFUL_GIF_FPS)
+    : MAX_USEFUL_GIF_FPS
+  const suggestedFps = Math.min(Math.floor((currentFps * input.targetGifKb) / largestKb), fpsCap)
+  if (suggestedFps <= currentFps) {
+    return null
+  }
+  return { currentFps, suggestedFps, largestKb, targetKb: input.targetGifKb }
+}
+
 export function allItemsFit(items: SizeBoundItem[], budgetKb: number): boolean {
   return items.every((item) => item.sizeKb <= budgetKb)
 }

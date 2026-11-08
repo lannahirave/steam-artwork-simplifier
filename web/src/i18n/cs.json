@@ -227,6 +227,8 @@
   "library.steamCanvas.deleteConfirm": "Smazat „{name}“ ze SteamCanvas?",
   "library.steamCanvas.purgeConfirm": "Smazat všechny ukázky, které SteamCanvas uložil v tomto prohlížeči? Nelze to vrátit.",
   "convert.fpsMeta": "FPS: {fps}",
+  "convert.fpsHeadroom.message": "Největší GIF má {largestKb} KB z cílových {targetKb} KB, takže je místo na více než {currentFps} FPS. Přibližně {suggestedFps} FPS by se mělo stále vejít.",
+  "convert.fpsHeadroom.action": "Převést znovu při {fps} FPS",
   "convert.qualityReductionMeta": "Snížení kvality: {percent}%",
   "convert.download": "Stáhnout",
   "convert.downloadShort": "DL",
