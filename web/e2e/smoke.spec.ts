@@ -198,7 +198,7 @@ test('shows steam helper snippets', async ({ page }) => {
   await page.getByRole('button', { name: 'Steam Helpers', exact: true }).click()
   await expect(page.getByRole('heading', { name: 'Before you paste: type allow pasting' })).toBeVisible()
   await expect(page.getByRole('heading', { name: 'Upload many files at once' })).toBeVisible()
-  await expect(page.getByRole('heading', { name: 'Fill in one upload form' })).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Classic scripts' })).toBeVisible()
   await page.getByRole('radio', { name: /Screenshot showcase/ }).check()
   await page.getByText('View script').first().click()
   const batchCode = page.locator('.steam-script-code pre').first()

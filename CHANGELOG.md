@@ -2,6 +2,11 @@
 
 This lists user-visible changes to Steam Artwork Studio, newest first. Version numbers and dates come from the project history; versions with only internal changes are not listed.
 
+## [1.2.43] - 2026-11-08
+
+### Changed
+- **Steam Helpers** shows the three classic upload scripts (Workshop, Artwork or Featured, Screenshot) together under **Classic scripts**, each with its own copy button.
+
 ## [1.2.42] - 2026-11-08
 
 ### Added

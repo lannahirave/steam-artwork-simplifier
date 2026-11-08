@@ -8,7 +8,7 @@ import {
   type SteamVisibility,
 } from '../lib/steamSnippets'
 
-export type SteamScriptKind = 'batch' | 'single'
+export type SteamScriptKind = 'batch' | SteamUploadType
 
 type CopyStatus =
   | { type: 'success'; kind: SteamScriptKind }

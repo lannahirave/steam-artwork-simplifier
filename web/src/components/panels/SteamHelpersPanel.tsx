@@ -46,7 +46,7 @@ const BATCH_STEPS: MessageId[] = [
   'steam.batch.step.result',
 ]
 
-const SINGLE_STEPS: MessageId[] = [
+const CLASSIC_STEPS: MessageId[] = [
   'steam.single.step.fill',
   'steam.single.step.finish',
   'steam.single.step.preview',
@@ -75,8 +75,9 @@ const richText = {
 interface ScriptCardProps {
   kind: SteamScriptKind
   title: string
-  lead: string
-  steps: ReactNode[]
+  lead: ReactNode
+  /** Omitted on the compact classic cards, whose steps are shared above them. */
+  steps?: ReactNode[]
   script: string
   copyLabel: string
   primary?: boolean
@@ -90,19 +91,24 @@ function ScriptCard(props: ScriptCardProps) {
   const { state, actions } = useSteamHelpersContext()
   const status = state.copyStatus?.kind === kind ? state.copyStatus : null
   const headingId = `steam-script-${kind}`
+  const Heading = steps ? 'h3' : 'h4'
 
   return (
     <article className={`steam-script${primary ? ' steam-script-primary' : ''}`} aria-labelledby={headingId}>
       <header className="steam-script-head">
-        <h3 id={headingId}>{title}</h3>
+        <Heading id={headingId}>{title}</Heading>
         <p>{lead}</p>
       </header>
-      <h4>{intl.formatMessage({ id: 'steam.whatItDoes' })}</h4>
-      <ul className="steam-script-steps">
-        {steps.map((step, index) => (
-          <li key={index}>{step}</li>
-        ))}
-      </ul>
+      {steps && (
+        <>
+          <h4>{intl.formatMessage({ id: 'steam.whatItDoes' })}</h4>
+          <ul className="steam-script-steps">
+            {steps.map((step, index) => (
+              <li key={index}>{step}</li>
+            ))}
+          </ul>
+        </>
+      )}
       {settings}
       <div className="steam-script-actions">
         <Button
@@ -161,10 +167,6 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
     },
   )
   const batchEffect = intl.formatMessage({ id: TYPE_EFFECT[uploadType] }, { ...richText, appId: String(effectiveAppId) })
-  const singleEffect = intl.formatMessage(
-    { id: TYPE_EFFECT[uploadType] },
-    { ...richText, appId: String(DEFAULT_APP_ID[uploadType]) },
-  )
 
   const settings = (
     <fieldset className="steam-settings">
@@ -333,14 +335,31 @@ export function SteamHelpersPanel(props: SteamHelpersPanelProps) {
           copyBlockedReason={settingsValid ? undefined : intl.formatMessage({ id: 'steam.settings.invalid' })}
           copyLabel={intl.formatMessage({ id: 'steam.batch.copy' })}
         />
-        <ScriptCard
-          kind="single"
-          title={intl.formatMessage({ id: 'steam.single.title' })}
-          lead={intl.formatMessage({ id: 'steam.single.lead' })}
-          steps={[singleEffect, ...SINGLE_STEPS.map((id) => intl.formatMessage({ id }))]}
-          script={SINGLE_SNIPPETS[uploadType]}
-          copyLabel={intl.formatMessage({ id: 'steam.single.copy' })}
-        />
+        <section className="steam-classic" aria-labelledby="steam-classic-title">
+          <h3 id="steam-classic-title">{intl.formatMessage({ id: 'steam.classic.title' })}</h3>
+          <p className="steam-classic-lead">{intl.formatMessage({ id: 'steam.classic.lead' })}</p>
+          <ul className="steam-script-steps">
+            {CLASSIC_STEPS.map((id) => (
+              <li key={id}>{intl.formatMessage({ id })}</li>
+            ))}
+          </ul>
+          {UPLOAD_TYPES.map((type) => {
+            const name = intl.formatMessage({ id: TYPE_LABEL[type] })
+            return (
+              <ScriptCard
+                key={type}
+                kind={type}
+                title={name}
+                lead={intl.formatMessage(
+                  { id: TYPE_EFFECT[type] },
+                  { ...richText, appId: String(DEFAULT_APP_ID[type]) },
+                )}
+                script={SINGLE_SNIPPETS[type]}
+                copyLabel={intl.formatMessage({ id: 'steam.classic.copy' }, { name })}
+              />
+            )
+          })}
+        </section>
       </div>
 
       <p className="steam-footnote">

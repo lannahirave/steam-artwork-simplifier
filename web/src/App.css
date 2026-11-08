@@ -3208,6 +3208,31 @@ input[type='file']::file-selector-button {
   background: var(--surface);
 }
 
+.steam-script .steam-script-head h4 {
+  margin: 0;
+  color: var(--ink);
+  font-size: 1.05rem;
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.steam-classic {
+  display: grid;
+  gap: 0.85rem;
+  min-width: 0;
+}
+
+.steam-classic h3,
+.steam-classic-lead,
+.steam-classic > .steam-script-steps {
+  margin: 0;
+}
+
+.steam-classic-lead {
+  color: var(--ink-soft);
+}
+
 .steam-script-primary {
   border-color: rgba(0, 113, 227, 0.35);
 }
