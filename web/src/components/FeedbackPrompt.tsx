@@ -5,7 +5,7 @@ import { buttonClassName } from './ui/buttonStyles'
 
 // Steam guide where users can leave feedback about this tool.
 export const FEEDBACK_GUIDE_URL =
-  'https://steamcommunity.com/sharedfiles/filedetails/?id=3813335509#-1'
+  'https://steamcommunity.com/sharedfiles/filedetails/?id=3833799727'
 
 interface FeedbackPromptProps {
   open: boolean
