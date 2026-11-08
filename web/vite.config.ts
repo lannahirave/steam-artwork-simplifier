@@ -1,4 +1,5 @@
 import { defineConfig } from 'vitest/config'
+import type { Plugin } from 'vite'
 import react from '@vitejs/plugin-react'
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
@@ -14,11 +15,36 @@ const packageJson = JSON.parse(
 ) as PackageJson
 const appVersion = packageJson.version ?? '0.0.0'
 
+const changelogPath = resolve(configDir, '../CHANGELOG.md')
+const CHANGELOG_ID = 'virtual:changelog'
+// The newest release heading, used to tell whether the visitor has seen the latest changes.
+const changelogLatest =
+  readFileSync(changelogPath, 'utf-8')
+    .split(/\r?\n/)
+    .find((line) => line.startsWith('## '))
+    ?.slice(3)
+    .trim() ?? ''
+
+// The Changelog dialog reads the repo's CHANGELOG.md, which sits outside web/; serve its text as a
+// module instead of widening the dev server's file access.
+function changelogPlugin(): Plugin {
+  return {
+    name: 'artwork-studio-changelog',
+    resolveId: (id) => (id === CHANGELOG_ID ? `\0${CHANGELOG_ID}` : undefined),
+    load(id) {
+      if (id !== `\0${CHANGELOG_ID}`) return undefined
+      this.addWatchFile(changelogPath)
+      return `export default ${JSON.stringify(readFileSync(changelogPath, 'utf-8'))}`
+    },
+  }
+}
+
 // https://vite.dev/config/
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), changelogPlugin()],
   define: {
     __APP_VERSION__: JSON.stringify(appVersion),
+    __CHANGELOG_LATEST__: JSON.stringify(changelogLatest),
   },
   build: {
     rollupOptions: {

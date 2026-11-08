@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { Suspense, lazy, useEffect, useRef, useState, type ReactNode } from 'react'
 import { useIntl } from 'react-intl'
 import './App.css'
 import {
@@ -18,11 +18,15 @@ import { PatchToolsProvider } from './contexts/patchToolsContext'
 import { SteamHelpersProvider } from './contexts/steamHelpersContext'
 import { SUPPORTED_LOCALES, localeLabels, type AppLocale } from './i18n/messages'
 import { getStoredOnboardingComplete } from './onboardingStorage'
+import { hasUnseenChangelog, storeChangelogSeen } from './changelogStorage'
 import { ThemeIcon } from './components/ThemeIcon'
 import type { AppTheme } from './theme'
 import { Button } from './components/ui/Button'
 
 const APP_VERSION = __APP_VERSION__
+
+// The changelog and its text load only when someone opens it.
+const ChangelogDialog = lazy(() => import('./components/ChangelogDialog'))
 
 interface AppProps {
   locale: AppLocale
@@ -39,6 +43,8 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
   )
   const [onboardingRun, setOnboardingRun] = useState(0)
   const [menuOpen, setMenuOpen] = useState(false)
+  const [changelogOpen, setChangelogOpen] = useState(false)
+  const [changelogUnseen, setChangelogUnseen] = useState(hasUnseenChangelog)
   const headerRef = useRef<HTMLElement | null>(null)
   const menuToggleRef = useRef<HTMLButtonElement | null>(null)
   const activeTab = TAB_DETAILS[tab]
@@ -196,6 +202,25 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
               <button type="button" className="nav-help" onClick={reopenOnboarding}>
                 {intl.formatMessage({ id: 'app.nav.help' })}
               </button>
+              <button
+                type="button"
+                className="nav-help nav-changelog"
+                aria-haspopup="dialog"
+                onClick={() => {
+                  setMenuOpen(false)
+                  setChangelogOpen(true)
+                  storeChangelogSeen()
+                  setChangelogUnseen(false)
+                }}
+              >
+                {intl.formatMessage({ id: 'app.nav.changelog' })}
+                {changelogUnseen && (
+                  <>
+                    <span className="nav-changelog-dot" aria-hidden="true" />
+                    <span className="visually-hidden">{intl.formatMessage({ id: 'app.nav.changelogNew' })}</span>
+                  </>
+                )}
+              </button>
               <a className="nav-source" href="https://github.com/lannahirave/steam-artwork-simplifier">
                 {intl.formatMessage({ id: 'app.nav.github' })}
               </a>
@@ -205,6 +230,11 @@ function App({ locale, onLocaleChange, theme, onThemeToggle }: AppProps) {
       </header>
 
       <RuntimeFailureDialog />
+      {changelogOpen && (
+        <Suspense fallback={null}>
+          <ChangelogDialog onClose={() => setChangelogOpen(false)} />
+        </Suspense>
+      )}
 
       <main className="shell">
         {/* First in <main> so the tour card is the next Tab stop after the header. */}

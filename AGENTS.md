@@ -16,6 +16,25 @@ Then include both files in the same commit:
 - `web/package.json`
 - `web/package-lock.json`
 
+## Changelog
+
+`CHANGELOG.md` (repo root) lists user-visible changes, newest first. The Studio's **Changelog**
+button shows it in the app (`web/src/components/ChangelogDialog.tsx`, read through the
+`virtual:changelog` module in `web/vite.config.ts` and parsed by `web/src/lib/changelog.ts`).
+
+When a change is something users would notice, add it to `CHANGELOG.md` in the same commit:
+
+- Put it under `## [x.y.z] - YYYY-MM-DD` for the version that commit bumps to (or under
+  `## [Unreleased] - YYYY-MM-DD` if there is no bump), newest section first.
+- Use only `### Added`, `### Changed`, `### Fixed` and `### Removed`, and one-line `- ` bullets with
+  plain text, `code` and **bold** (no links, nested bullets or extra headings). The parser and
+  `web/src/lib/changelog.test.ts` rely on this format.
+- Write what the user can now do or see, in plain words. Leave out internal-only work (refactors,
+  tests, CI, docs).
+- A new top heading (or a changed date on it) turns the blue dot on the Changelog button back on for
+  everyone until they open the changelog (`web/src/changelogStorage.ts`). Adding bullets to the
+  existing top section does not.
+
 ## Commit cadence
 
 For every completed part of a job, create a commit before starting the next part.

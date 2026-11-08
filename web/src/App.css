@@ -1159,6 +1159,333 @@ textarea {
   font-size: 1.3rem;
 }
 
+/* Unseen changes: a small blue light after the Changelog label that slowly gives off a ring. It sits
+   outside the label so the hover underline stays under the word. */
+.nav-changelog {
+  margin-right: 0.7rem;
+}
+
+.nav-changelog-dot {
+  position: absolute;
+  top: 50%;
+  right: -0.7rem;
+  width: 0.4rem;
+  height: 0.4rem;
+  margin-top: -0.2rem;
+  border-radius: 50%;
+  background: #2997ff;
+  box-shadow: 0 0 6px 1px rgb(41 151 255 / 0.65);
+}
+
+.nav-changelog-dot::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: #2997ff;
+  animation: nav-changelog-gleam 2.4s cubic-bezier(0.16, 1, 0.3, 1) infinite;
+}
+
+@keyframes nav-changelog-gleam {
+  0% {
+    opacity: 0.7;
+    transform: scale(1);
+  }
+
+  70%,
+  100% {
+    opacity: 0;
+    transform: scale(3.2);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .nav-changelog-dot::after {
+    animation: none;
+    opacity: 0;
+  }
+}
+
+/* Changelog: one release per row of a vertical timeline. Version and date sit in a fixed column so
+   the eye can run down them; the rail and its dots tie each release to its changes. */
+.changelog {
+  width: min(46rem, calc(100vw - 2rem));
+  max-height: min(52rem, calc(100dvh - 2rem));
+  padding: 0;
+  border: 1px solid rgb(var(--ink-rgb) / 0.14);
+  border-radius: var(--radius-panel);
+  background: var(--surface);
+  color: var(--ink);
+  box-shadow: var(--shadow-card);
+  overflow: hidden;
+}
+
+.changelog[open] {
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  animation: changelog-in 240ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.changelog::backdrop {
+  background: rgb(0 0 0 / 0.6);
+  backdrop-filter: blur(4px);
+}
+
+.changelog[open]::backdrop {
+  animation: changelog-backdrop-in 240ms ease-out;
+}
+
+@keyframes changelog-in {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.985);
+  }
+}
+
+@keyframes changelog-backdrop-in {
+  from {
+    opacity: 0;
+  }
+}
+
+.changelog-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1.25rem 1.25rem 1rem 1.5rem;
+  border-bottom: 1px solid var(--line);
+}
+
+.changelog-head h2 {
+  margin: 0;
+  font-size: 1.35rem;
+  letter-spacing: -0.02em;
+}
+
+.changelog-head p {
+  margin: 0.3rem 0 0;
+  max-width: 52ch;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.changelog-close {
+  display: inline-grid;
+  place-items: center;
+  flex: none;
+  width: 2.25rem;
+  min-height: 2.25rem;
+  padding: 0;
+  border-radius: var(--radius-pill);
+}
+
+.changelog-close svg {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.8;
+  stroke-linecap: round;
+}
+
+.changelog-timeline {
+  margin: 0;
+  padding: 1.5rem 1.5rem 2rem;
+  list-style: none;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-color: rgb(var(--ink-rgb) / 0.28) transparent;
+  scrollbar-width: thin;
+}
+
+.changelog-release {
+  display: grid;
+  grid-template-columns: 7.5rem minmax(0, 1fr);
+  column-gap: 1.25rem;
+}
+
+.changelog-when {
+  display: grid;
+  align-content: start;
+  justify-items: end;
+  gap: 0.2rem;
+  padding-top: 0.05rem;
+  text-align: right;
+}
+
+.changelog-when h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  font-variant-numeric: tabular-nums;
+}
+
+.changelog-when time {
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.changelog-current {
+  margin-top: 0.3rem;
+  padding: 0.15rem 0.55rem;
+  border-radius: var(--radius-pill);
+  background: rgb(0 113 227 / 0.1);
+  color: var(--link);
+  font-size: 0.75rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+/* The rail is the body's left edge; each release's dot sits level with its version number. */
+.changelog-body {
+  position: relative;
+  padding: 0 0 1.75rem 1.5rem;
+  border-left: 1px solid var(--line-strong, var(--line));
+}
+
+.changelog-release:last-child .changelog-body {
+  padding-bottom: 0;
+  border-left-color: transparent;
+}
+
+.changelog-body::before {
+  content: '';
+  position: absolute;
+  top: 0.35rem;
+  left: -0.3rem;
+  width: 0.6rem;
+  height: 0.6rem;
+  border: 1px solid rgb(var(--ink-rgb) / 0.4);
+  border-radius: 50%;
+  background: var(--surface);
+}
+
+.changelog-release.is-current .changelog-body::before {
+  border-color: var(--apple-blue);
+  background: var(--apple-blue);
+  box-shadow: 0 0 0 4px rgb(0 113 227 / 0.16);
+}
+
+.changelog-summary {
+  margin: 0 0 0.75rem;
+  max-width: 62ch;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.changelog-group + .changelog-group {
+  margin-top: 0.85rem;
+}
+
+.changelog-group h4 {
+  margin: 0 0 0.3rem;
+  color: var(--ink-soft);
+  font-size: 0.82rem;
+  font-weight: 600;
+}
+
+.changelog-group ul {
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding-left: 1.1rem;
+  max-width: 62ch;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.changelog-group ul {
+  list-style: disc;
+}
+
+.changelog-group li::marker {
+  color: rgb(var(--ink-rgb) / 0.4);
+}
+
+.changelog-group code {
+  padding: 0.05rem 0.3rem;
+  border-radius: 4px;
+  background: rgb(var(--ink-rgb) / 0.07);
+  font-size: 0.85em;
+}
+
+.changelog-group strong {
+  font-weight: 600;
+}
+
+/* Phones: the version and date move above their changes, still on the rail. */
+@media (max-width: 560px) {
+  .changelog {
+    width: calc(100vw - 1rem);
+    max-height: calc(100dvh - 1rem);
+  }
+
+  .changelog-head {
+    padding: 1rem 0.75rem 0.85rem 1.1rem;
+  }
+
+  .changelog-timeline {
+    padding: 1.25rem 1rem 1.5rem 1.4rem;
+  }
+
+  .changelog-release {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .changelog-when {
+    grid-auto-flow: column;
+    justify-content: start;
+    align-items: baseline;
+    gap: 0.6rem;
+    padding: 0 0 0.6rem 1.25rem;
+    border-left: 1px solid var(--line-strong, var(--line));
+    text-align: left;
+  }
+
+  .changelog-current {
+    margin-top: 0;
+  }
+
+  .changelog-body {
+    padding-left: 1.25rem;
+  }
+
+  .changelog-when {
+    position: relative;
+  }
+
+  .changelog-body::before {
+    content: none;
+  }
+
+  .changelog-when::before {
+    content: '';
+    position: absolute;
+    top: 0.4rem;
+    left: -0.3rem;
+    width: 0.6rem;
+    height: 0.6rem;
+    border: 1px solid rgb(var(--ink-rgb) / 0.4);
+    border-radius: 50%;
+    background: var(--surface);
+  }
+
+  .changelog-release.is-current .changelog-when::before {
+    border-color: var(--apple-blue);
+    background: var(--apple-blue);
+    box-shadow: 0 0 0 4px rgb(0 113 227 / 0.16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .changelog[open],
+  .changelog[open]::backdrop {
+    animation: none;
+  }
+}
+
 /* Fits the whole source in the dialog; the crop box is placed in % of the source frame. */
 .source-editor-canvas {
   position: relative;
@@ -2385,6 +2712,14 @@ input[type='file']::file-selector-button {
 @media (max-width: 1180px) {
   .overview-band {
     grid-template-columns: 1fr;
+  }
+}
+
+/* Between the full header and the folded menu there is no room for the version label next to
+   Changelog; the Changelog dialog marks the running version instead. */
+@media (min-width: 981px) and (max-width: 1180px) {
+  .global-nav-actions .nav-version {
+    display: none;
   }
 }
 
